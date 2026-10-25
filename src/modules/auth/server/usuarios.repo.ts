@@ -17,6 +17,18 @@ export async function obtenerUsuario(uid: string): Promise<Usuario | null> {
   return s.exists ? (s.data() as Usuario) : null;
 }
 
+/** Admins see only `usuario` accounts; superadmins see everyone. */
+export async function listarUsuarios(actor: Rol) {
+  const q = actor === "superadmin" ? col() : col().where("rol", "==", "usuario");
+  const snap = await q.limit(500).get();
+  return snap.docs
+    .map((d) => {
+      const { nombre, correo, rol, esta_aprobado } = d.data() as Usuario;
+      return { uid: d.id, nombre, correo, rol, esta_aprobado };
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
 /** Creates the users doc. Approved ones record who approved them (admin-created). */
 export async function crearUsuario(uid: string, u: Usuario, aprobador?: string) {
   await col()
