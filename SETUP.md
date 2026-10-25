@@ -67,6 +67,9 @@ Access rule (enforced server-side in `/api/auth/sesion` from the ID token's `fir
 - Unapproved Google `@cali.gov.co` users get a session cookie and can see the read-only pages (`RUTAS_SOLO_LECTURA` in `roles.ts`); unapproved password users get no cookie and land on `/pendiente`.
 - `requireSesion` is strict by default (approval required). Read-only API routes must opt in with `{ permitirPendiente: true }`.
 - After approval, a user holding an old pending session must sign out and in again to receive the new claims.
+- "No aprobar" (`POST /api/usuarios/[uid]/rechazar`, optional `motivo` up to 200 chars) follows the same role rules as approval and nobody can act on their own account. It sets `usuarios/{uid}.estado = "rechazado"` (`esta_aprobado: false`, `rechazado_en`, `rechazado_por_uid`/`_correo`, `motivo`), clears the `aprobado` claim, revokes refresh tokens and appends an entry to `usuarios/{uid}/auditoria`. The Auth user and the doc are kept (history); repeating it changes nothing. Approved accounts cannot be rejected (409).
+- A rejected user gets no session cookie, not even the read-only Google one: `/api/auth/sesion` answers 403 "Su solicitud no fue aprobada. Comuníquese con un administrador." Registering again with the same email stays rejected (no duplicate pending doc).
+- Reconsidering: `/admin/usuarios` lists them under "No aprobados" with an Aprobar action; approving clears the rejection fields (the audit trail keeps the history).
 
 ## 4. Firestore rules and indexes
 

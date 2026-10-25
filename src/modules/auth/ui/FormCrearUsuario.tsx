@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { ALLOWED_EMAIL_DOMAIN } from "@/shared/config";
 import { Button } from "@/shared/ui/Button";
@@ -8,8 +7,7 @@ import { Field, TextInput } from "@/shared/ui/Field";
 import { Select } from "@/shared/ui/Select";
 import { post } from "./post";
 
-export function FormCrearUsuario({ puedeElegirRol }: { puedeElegirRol: boolean }) {
-  const router = useRouter();
+export function FormCrearUsuario({ puedeElegirRol, onCreado }: { puedeElegirRol: boolean; onCreado?: () => void }) {
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -31,7 +29,7 @@ export function FormCrearUsuario({ puedeElegirRol }: { puedeElegirRol: boolean }
     if (r.error) return;
     form.reset();
     setOk("Usuario creado y aprobado.");
-    router.refresh();
+    onCreado?.();
   }
 
   return (

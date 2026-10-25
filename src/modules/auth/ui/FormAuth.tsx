@@ -37,6 +37,7 @@ async function abrirSesion(user: User): Promise<"pendiente" | "aprobado" | "lect
     const r = await post("/api/auth/sesion", { idToken: await user.getIdToken(refrescar) });
     if (!r.error) return r.data.estado as "pendiente" | "aprobado" | "lectura";
     error = r.error;
+    if (r.status !== 401) break; // only a stale-claims 401 is worth retrying with a fresh token
   }
   throw new Error(error);
 }

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ROLES, correoEnDominio, puedeGestionar } from "@/modules/auth/domain/roles";
 import { conErrores, respuesta } from "@/modules/auth/server/api";
 import { requireSesion } from "@/modules/auth/server/sesion";
-import { crearUsuario } from "@/modules/auth/server/usuarios.repo";
+import { crearUsuario, listarUsuarios } from "@/modules/auth/server/usuarios.repo";
 import { adminAuth } from "@/shared/firebase/admin";
 
 const body = z.object({
@@ -14,6 +14,14 @@ const body = z.object({
 });
 
 export const runtime = "nodejs";
+
+/** Admins see `usuario` accounts only; superadmins see everyone. */
+export function GET() {
+  return conErrores(async () => {
+    const actor = await requireSesion("admin");
+    return respuesta(200, { usuarios: await listarUsuarios(actor.rol) });
+  });
+}
 
 /** Admin creates an already-approved user; only a superadmin may create admins/superadmins. */
 export function POST(req: Request) {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COOKIE_SESION, rechazoPorProveedor } from "@/modules/auth/domain/roles";
+import { COOKIE_SESION, MENSAJE_RECHAZADO, rechazoPorProveedor } from "@/modules/auth/domain/roles";
 import { conErrores, respuesta } from "@/modules/auth/server/api";
 import { crearUsuario, obtenerUsuario } from "@/modules/auth/server/usuarios.repo";
 import { adminAuth } from "@/shared/firebase/admin";
@@ -41,6 +41,8 @@ export function POST(req: Request) {
       };
       await crearUsuario(decoded.uid, usuario);
     }
+    // A rejected user gets no cookie of any kind (not even the read-only Google tier) and stays rejected on re-register.
+    if (usuario.estado === "rechazado" && !usuario.esta_aprobado) return respuesta(403, { error: MENSAJE_RECHAZADO });
     // Unapproved: password accounts get no cookie; Google+institutional ones get a read-only session
     // (requireSesion stays strict, so every data-entry route still rejects them).
     if (!usuario.esta_aprobado && !google) return respuesta(200, { estado: "pendiente" });

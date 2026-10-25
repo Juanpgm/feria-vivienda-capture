@@ -25,7 +25,7 @@ export default defineConfig({
     { name: "publico", testMatch: "**/publico-*.spec.ts", use: { ...devices["Desktop Chrome"] } },
     {
       name: "autenticado",
-      testMatch: "**/registro-*.spec.ts",
+      testMatch: ["**/registro-*.spec.ts", "**/admin-*.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         // Missing file: the spec fails with an explicit instruction instead of an ENOENT.

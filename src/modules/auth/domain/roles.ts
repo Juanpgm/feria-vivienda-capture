@@ -16,6 +16,18 @@ export function puedeGestionar(actor: Rol, objetivo: Rol): boolean {
   return actor === "admin" && objetivo === "usuario";
 }
 
+export type ResultadoPermiso = "ok" | "propia" | "rol";
+
+/** Approve / reject check: nobody acts on their own account, and the actor must manage the target's role. */
+export function permisoSobreUsuario(actor: { uid: string; rol: Rol }, objetivo: { uid: string; rol: Rol }): ResultadoPermiso {
+  if (actor.uid === objetivo.uid) return "propia";
+  return puedeGestionar(actor.rol, objetivo.rol) ? "ok" : "rol";
+}
+
+export const MOTIVO_MAX = 200;
+
+export const MENSAJE_RECHAZADO = "Su solicitud no fue aprobada. Comuníquese con un administrador.";
+
 /** Used only by the Google rule: the institutional domain is required for Google sign-in, not for email+password. */
 export const correoEnDominio = (correo: string | undefined | null): boolean =>
   !!correo && correo.trim().toLowerCase().endsWith(`@${ALLOWED_EMAIL_DOMAIN}`);
