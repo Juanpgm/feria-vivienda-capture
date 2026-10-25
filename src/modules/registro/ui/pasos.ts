@@ -68,7 +68,7 @@ export const PASOS: readonly Paso[] = [
       },
       {
         seccion: "titularidad",
-        campos: ["tipo_titularidad", "numero_matricula_inmobiliaria", "es_unica_propiedad", "excepcion_unica_propiedad"],
+        campos: ["tipo_titularidad", "numero_matricula_inmobiliaria", "es_unica_propiedad", "excepcion_unica_propiedad", "excepcion_otra"],
         schema: () => import("@/modules/titularidad/domain/schema").then((m) => m.titularidadSchema),
       },
     ],
@@ -136,7 +136,7 @@ export function entradaDeSeccion(seccion: string, valores: Valores): Record<stri
       s.adultos_mayores = undefined;
     }
   }
-  if (seccion === "titularidad" && s.es_unica_propiedad !== false) s.excepcion_unica_propiedad = undefined;
+  if (seccion === "titularidad" && s.es_unica_propiedad !== false) { s.excepcion_unica_propiedad = undefined; s.excepcion_otra = undefined; }
   if (seccion === "riesgo" && s.esta_en_rud !== true) {
     s.numero_rud = undefined;
     s.rud_no_sabe = undefined;

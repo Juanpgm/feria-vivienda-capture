@@ -34,7 +34,7 @@ export const nuevoBorrador = (id: string): Borrador => ({
       direccion: "", codigo_division: "", id_barrio_vereda: "", estrato: "",
     },
     riesgo: { esta_en_rud: "", numero_rud: "", rud_no_sabe: false, dictamen: "", dictamen_otro: "" },
-    titularidad: { tipo_titularidad: "", numero_matricula_inmobiliaria: "", es_unica_propiedad: "", excepcion_unica_propiedad: "" },
+    titularidad: { tipo_titularidad: "", numero_matricula_inmobiliaria: "", es_unica_propiedad: "", excepcion_unica_propiedad: "", excepcion_otra: "" },
     cierre_financiero: { fuentes_financiacion: [], tiene_seguro: "", codigo_aseguradora: "", aseguradora_otra: "", observaciones: "" },
     // Markers only; the photos live in IndexedDB (modules/documentos/ui/fotos.ts).
     documentos: { documento_frente: "", documento_reverso: "" },

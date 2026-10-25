@@ -57,6 +57,7 @@ export type Titularidad = keyof typeof TITULARIDADES;
 export const EXCEPCIONES_UNICA_PROPIEDAD = {
   otras_propiedades_destruidas: "También fueron destruidas otras propiedades residenciales",
   dependencia_arriendo_40: "Dependencia económica de al menos el 40 % del arriendo del inmueble",
+  otra: "Otra (especifique)",
 } as const;
 export type ExcepcionUnicaPropiedad = keyof typeof EXCEPCIONES_UNICA_PROPIEDAD;
 

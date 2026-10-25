@@ -14,6 +14,7 @@ export function PasoTitularidad() {
   const { register, setValue, control } = useFormContext<FieldValues>();
   const error = useError();
   const unica = useWatch({ control, name: P + "es_unica_propiedad" });
+  const excepcion = useWatch({ control, name: P + "excepcion_unica_propiedad" });
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
@@ -46,13 +47,24 @@ export function PasoTitularidad() {
             { value: "no", label: "No" },
           ]}
           error={error(P + "es_unica_propiedad")}
-          inputProps={register(P + "es_unica_propiedad", { onChange: (e) => e.target.value === "si" && setValue(P + "excepcion_unica_propiedad", "") })}
+          inputProps={register(P + "es_unica_propiedad", {
+            onChange: (e) => {
+              if (e.target.value !== "si") return;
+              setValue(P + "excepcion_unica_propiedad", "");
+              setValue(P + "excepcion_otra", "");
+            },
+          })}
         />
         {unica === "no" && (
           <div className="max-w-xl">
             <Field label="Excepción que aplica" error={error(P + "excepcion_unica_propiedad")}>
               {(a11y) => <Select {...a11y} options={EXCEPCIONES} {...register(P + "excepcion_unica_propiedad")} />}
             </Field>
+            {excepcion === "otra" && (
+              <div className="mt-4">
+                <CampoTexto name={P + "excepcion_otra"} label="Describa la excepción" autoComplete="off" />
+              </div>
+            )}
           </div>
         )}
       </section>

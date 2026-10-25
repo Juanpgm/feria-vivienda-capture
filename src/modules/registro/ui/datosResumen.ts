@@ -60,7 +60,7 @@ const ETIQUETAS: Record<string, string> = {
   direccion: "Dirección", codigo_division: "Comuna o corregimiento", id_barrio_vereda: "Barrio o vereda",
   estrato: "Estrato", esta_en_rud: "RUD", numero_rud: "Número de RUD", dictamen: "Dictamen técnico", dictamen_otro: "Cuál dictamen",
   tipo_titularidad: "Titularidad", numero_matricula_inmobiliaria: "Matrícula inmobiliaria",
-  es_unica_propiedad: "Única propiedad", excepcion_unica_propiedad: "Excepción", observaciones: "Observaciones", fuentes_financiacion: "Fuentes de financiación",
+  es_unica_propiedad: "Única propiedad", excepcion_unica_propiedad: "Excepción", excepcion_otra: "Descripción de la excepción", observaciones: "Observaciones", fuentes_financiacion: "Fuentes de financiación",
   tiene_seguro: "Seguro", codigo_aseguradora: "Aseguradora", aseguradora_otra: "Nombre de la aseguradora",
 };
 
@@ -150,7 +150,7 @@ export function filasDe(id: string, datos: unknown, hoy: string): Fila[] {
         { etiqueta: "Matrícula inmobiliaria", valor: t.numero_matricula_inmobiliaria ?? "No registrada" },
         {
           etiqueta: "Única propiedad residencial",
-          valor: t.es_unica_propiedad ? "Sí" : `No. Excepción: ${EXCEPCIONES_UNICA_PROPIEDAD[t.excepcion_unica_propiedad!]}`,
+          valor: t.es_unica_propiedad ? "Sí" : `No. Excepción: ${t.excepcion_otra ?? EXCEPCIONES_UNICA_PROPIEDAD[t.excepcion_unica_propiedad!]}`,
         },
       ];
     }
