@@ -30,14 +30,81 @@ export function clientFirebaseConfig() {
   };
 }
 
+type CuentaServicio = { project_id: string; client_email: string; private_key: string };
+
+/** Escapes raw control characters that sit inside JSON strings (e.g. a private_key pasted with real line breaks). */
+function escaparControlesEnCadenas(s: string): string {
+  let salida = "";
+  let dentro = false;
+  let escape = false;
+  for (const c of s) {
+    if (dentro && !escape && (c === "\n" || c === "\r" || c === "\t")) {
+      salida += c === "\n" ? "\\n" : c === "\r" ? "\\r" : "\\t";
+      continue;
+    }
+    if (c === '"' && !escape) dentro = !dentro;
+    escape = c === "\\" && !escape;
+    salida += c;
+  }
+  return salida;
+}
+
+function intentarJson(texto: string): unknown {
+  for (const candidato of [texto, escaparControlesEnCadenas(texto)]) {
+    try {
+      return JSON.parse(candidato);
+    } catch {
+      /* try the next repair */
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Reads a service account from the value of FIREBASE_SERVICE_ACCOUNT. Tolerates the usual paste mistakes:
+ * plain JSON, pretty-printed JSON, wrapping quotes, a JSON-encoded string, real line breaks inside the private
+ * key and base64. On failure it throws a structural hint only (never any part of the value).
+ */
+export function parseServiceAccount(valor: string): CuentaServicio {
+  const crudo = valor.replace(/^﻿/, "").trim();
+  const candidatos: string[] = [crudo];
+  const comillas = crudo.length > 1 && (crudo[0] === '"' || crudo[0] === "'") && crudo.at(-1) === crudo[0];
+  if (comillas) candidatos.push(crudo.slice(1, -1));
+  if (!crudo.startsWith("{")) {
+    for (const c of [crudo, comillas ? crudo.slice(1, -1) : ""]) {
+      if (!c) continue;
+      try {
+        candidatos.push(Buffer.from(c.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8").trim());
+      } catch {
+        /* not base64 */
+      }
+    }
+  }
+  for (const c of candidatos) {
+    let valorJson = intentarJson(c);
+    if (typeof valorJson === "string") valorJson = intentarJson(valorJson.trim()); // JSON-encoded string
+    const o = valorJson as Partial<CuentaServicio> | undefined;
+    if (o && typeof o === "object" && o.client_email && o.private_key) {
+      return {
+        project_id: String(o.project_id ?? ""),
+        client_email: o.client_email,
+        private_key: o.private_key.includes("\\n") ? o.private_key.replace(/\\n/g, "\n") : o.private_key,
+      };
+    }
+  }
+  throw new Error(
+    `FIREBASE_SERVICE_ACCOUNT no es un JSON de cuenta de servicio válido (longitud ${crudo.length}, ` +
+      `primer carácter ${JSON.stringify(crudo[0] ?? "")}, último ${JSON.stringify(crudo.at(-1) ?? "")}, ` +
+      `saltos de línea ${(crudo.match(/\n/g) ?? []).length}). Péguelo en una sola línea o en base64.`,
+  );
+}
+
 /**
  * Server-only credentials. Never import from client components. Lazy so builds work without secrets.
- * FIREBASE_SERVICE_ACCOUNT is the service account JSON file, pasted as-is (single line) or base64-encoded.
+ * FIREBASE_SERVICE_ACCOUNT is the service account JSON file, pasted as-is or base64-encoded.
  */
 export function adminFirebaseConfig() {
-  const raw = required("FIREBASE_SERVICE_ACCOUNT", process.env.FIREBASE_SERVICE_ACCOUNT).trim();
-  const json = raw.startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8");
-  const account = JSON.parse(json) as { project_id: string; client_email: string; private_key: string };
+  const account = parseServiceAccount(required("FIREBASE_SERVICE_ACCOUNT", process.env.FIREBASE_SERVICE_ACCOUNT));
   return {
     projectId: process.env.FIREBASE_PROJECT_ID || account.project_id,
     clientEmail: account.client_email,
