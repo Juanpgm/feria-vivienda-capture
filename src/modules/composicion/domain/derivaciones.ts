@@ -6,11 +6,11 @@ export function bandaHogar(personas: number): BandaHogar {
 
 /**
  * Band by the oldest older adult. PDF: ">74" and "65-73" leave 74 uncovered;
- * 74 is placed in "65_73" (documented ambiguity). Ages under 65 count as none.
+ * the user decided 74 belongs to "mayor_74" (74 or older). Ages under 65 count as none.
  */
 export function bandaAdultoMayor(edades: readonly number[]): BandaAdultoMayor {
   const max = Math.max(0, ...edades);
-  return max > 74 ? "mayor_74" : max >= 65 ? "65_73" : "ninguno";
+  return max >= 74 ? "mayor_74" : max >= 65 ? "65_73" : "ninguno";
 }
 
 /** Whole years between ISO dates (YYYY-MM-DD) as of `hoy` (also ISO, Bogota date). */

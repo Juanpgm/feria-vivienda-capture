@@ -13,7 +13,7 @@ describe("bandaAdultoMayor", () => {
     [[60, 64], "ninguno"],
     [[65], "65_73"],
     [[73], "65_73"],
-    [[74], "65_73"], // PDF gap, documented
+    [[74], "mayor_74"], // PDF gap, decided by the user
     [[75], "mayor_74"],
     [[66, 80], "mayor_74"],
   ])("%j -> %s", (edades, b) => expect(bandaAdultoMayor(edades)).toBe(b));
