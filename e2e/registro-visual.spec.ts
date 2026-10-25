@@ -57,7 +57,7 @@ for (const esquema of ["light", "dark"] as const) {
         expect(sinEtiqueta).toEqual([]);
 
         if (vista === "movil") {
-          await expect(page.getByText("Paso 1 de 3")).toBeVisible();
+          await expect(page.getByText("Paso 1 de 8")).toBeVisible();
           await expect(page.getByRole("navigation", { name: "Pasos del registro" })).toBeHidden();
         } else {
           await expect(page.getByRole("navigation", { name: "Pasos del registro" }).locator('[aria-current="step"]')).toHaveCount(1);

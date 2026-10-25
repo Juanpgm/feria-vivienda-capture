@@ -5,7 +5,9 @@ import { composicionSchema } from "@/modules/composicion/domain/schema";
 import { hogarSchema } from "@/modules/hogar/domain/schema";
 import { PASOS, validarPaso, type Valores } from "@/modules/registro/ui/pasos";
 import { fechaBogota } from "@/shared/tiempo";
-import { aValores, generarCasos, generarCasosInvalidos, ETIQUETA_RANGO } from "./datos-prueba";
+import { evaluarRegistro } from "@/modules/registro/ui/datosResumen";
+import { DICTAMENES, TITULARIDADES } from "@/shared/constantes";
+import { aValores, condicionesFinales, generarCasos, generarCasosInvalidos, ETIQUETA_RANGO } from "./datos-prueba";
 
 const hoy = fechaBogota();
 const casos = generarCasos(hoy);
@@ -44,6 +46,34 @@ describe("datos de prueba e2e", () => {
     expect(comp.rango_tamano_hogar).toBe(c.esperado.bandaHogar);
     expect(comp.rango_adulto_mayor).toBe(c.esperado.bandaAdultoMayor);
     expect(comp.condiciones_especiales).toEqual(c.esperado.condicionesFinales);
+  });
+
+  it("steps 4-7 datasets parse with the real schemas and the declared catalog labels", async () => {
+    for (const c of casos) {
+      const v = aValores(c) as unknown as Valores;
+      const inm = (await evaluarRegistro(v)).inmueble;
+      if (!inm.ok) throw new Error(c.clave);
+      const d = inm.datos as { nombre_barrio_vereda: string | null; barrio_vereda_otro: string | null; sector: string; nombre_division: string };
+      const x = c.extra.vivienda;
+      expect(d.sector, c.clave).toBe(x.division!.sector.toLowerCase());
+      expect(d.nombre_barrio_vereda ?? d.barrio_vereda_otro, c.clave).toBe(x.lugar?.nombre ?? x.barrioOtro);
+      expect(x.division!.etiqueta.endsWith(d.nombre_division), c.clave).toBe(true);
+    }
+  });
+
+  it("covers every option of steps 4-7 in at least 20 valid cases", () => {
+    const ex = casos.map((c) => c.extra);
+    expect(casos.length).toBeGreaterThanOrEqual(20);
+    expect(new Set(ex.map((e) => e.vivienda.estrato))).toEqual(new Set([1, 2, 3, 4, 5, 6]));
+    expect(new Set(ex.map((e) => e.vivienda.division!.sector))).toEqual(new Set(["Urbano", "Rural"]));
+    expect(ex.some((e) => e.vivienda.barrioOtro)).toBe(true);
+    expect(new Set(ex.map((e) => e.riesgo.dictamen))).toEqual(new Set(Object.keys(DICTAMENES)));
+    expect(new Set(ex.map((e) => (e.riesgo.rud === "no" ? "no" : e.riesgo.noSabe ? "no_sabe" : "numero")))).toEqual(new Set(["no", "no_sabe", "numero"]));
+    expect(new Set(ex.map((e) => e.titularidad.tipo))).toEqual(new Set(Object.keys(TITULARIDADES)));
+    expect(ex.some((e) => e.titularidad.matricula) && ex.some((e) => !e.titularidad.matricula)).toBe(true);
+    expect(ex.some((e) => e.financiero.seguro === "no") && ex.some((e) => e.financiero.aseguradora?.codigo === "otra")).toBe(true);
+    expect(ex.some((e) => condicionesFinales(e.financiero.fuentes).includes("ninguna"))).toBe(true);
+    expect(ex.some((e) => condicionesFinales(e.financiero.fuentes).length > 1)).toBe(true);
   });
 
   it("covers every income bracket, both edges, household band and older-adult band", () => {

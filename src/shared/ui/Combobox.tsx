@@ -67,10 +67,9 @@ export function Combobox({ options, value, onChange, onBlur, onFocus, ...props }
         aria-activedescendant={abierto && visibles.length ? `${listId}-${indiceActivo}` : undefined}
         autoComplete="off"
         value={texto}
-        onFocus={(e) => {
-          setAbierto(true);
-          onFocus?.(e);
-        }}
+        // Not opened on focus: tabbing through the form would leave the list covering the fields below.
+        onFocus={onFocus}
+        onClick={() => setAbierto(true)}
         onBlur={(e) => {
           // Options use onMouseDown+preventDefault, so blur only fires when focus really leaves.
           setAbierto(false);

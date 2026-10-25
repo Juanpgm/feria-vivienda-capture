@@ -4,12 +4,27 @@ import { useCallback, useEffect, useRef, useState, type ComponentType } from "re
 import { FormProvider, set, useForm, type FieldErrors, type FieldValues, type Resolver } from "react-hook-form";
 import { PasoComposicion } from "@/modules/composicion/ui/PasoComposicion";
 import { PasoProteccion } from "@/modules/composicion/ui/PasoProteccion";
+import { PasoCierreFinanciero } from "@/modules/cierre-financiero/ui/PasoCierreFinanciero";
 import { PasoHogar } from "@/modules/hogar/ui/PasoHogar";
+import { PasoInmueble } from "@/modules/inmueble/ui/PasoInmueble";
+import { PasoRiesgo } from "@/modules/riesgo/ui/PasoRiesgo";
+import { PasoTitularidad } from "@/modules/titularidad/ui/PasoTitularidad";
 import { Button } from "@/shared/ui/Button";
+import { Resumen } from "./Resumen";
 import { cargarBorrador, descartarBorrador, guardarBorrador, type Borrador } from "./borradores";
 import { ETIQUETA_ESTADO, estadoPaso, PASOS, validarPaso, type Marca, type Valores } from "./pasos";
 
-const VISTAS: Record<string, ComponentType> = { hogar: PasoHogar, composicion: PasoComposicion, proteccion: PasoProteccion };
+type PropsVista = { irAPaso: (id: string) => void };
+const VISTAS: Record<string, ComponentType<PropsVista>> = {
+  hogar: PasoHogar,
+  composicion: PasoComposicion,
+  proteccion: PasoProteccion,
+  inmueble: PasoInmueble,
+  riesgo: PasoRiesgo,
+  titularidad: PasoTitularidad,
+  financiero: PasoCierreFinanciero,
+  resumen: Resumen,
+};
 
 const nuevoBorrador = (): Borrador => ({
   id: crypto.randomUUID(),
@@ -27,6 +42,12 @@ const nuevoBorrador = (): Borrador => ({
       cantidad_personas_hogar: "", tiene_adulto_mayor: "", cantidad_adultos_mayores: "", adultos_mayores: [],
       condiciones_especiales: [], ingreso_hogar_cop: "",
     },
+    inmueble: {
+      direccion: "", codigo_division: "", id_barrio_vereda: "", barrio_no_listado: false, barrio_vereda_otro: "", estrato: "",
+    },
+    riesgo: { esta_en_rud: "", numero_rud: "", rud_no_sabe: false, dictamen: "", dictamen_otro: "" },
+    titularidad: { tipo_titularidad: "", numero_matricula_inmobiliaria: "" },
+    cierre_financiero: { fuentes_financiacion: [], tiene_seguro: "", codigo_aseguradora: "", aseguradora_otra: "" },
   },
 });
 
@@ -119,13 +140,10 @@ function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; in
       marcarCambio();
       setFallos((f) => f + 1);
       setAviso("Revise los campos marcados antes de continuar.");
-    } else if (indice < PASOS.length - 1) irA(indice + 1, nuevas);
-    else {
-      setMarcas(nuevas);
-      marcarCambio();
-      setAviso("Este paso está completo. Los pasos siguientes aún no están disponibles.");
-    }
+    } else irA(indice + 1, nuevas);
   }
+
+  const irAPaso = (id: string) => irA(PASOS.findIndex((p) => p.id === id));
 
   async function descartar() {
     if (!window.confirm("¿Descartar el borrador? Se borrarán los datos ingresados.")) return;
@@ -187,7 +205,7 @@ function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; in
             )}
           </div>
           <form ref={formRef} noValidate onSubmit={(e) => e.preventDefault()} className="pb-6">
-            <Vista />
+            <Vista irAPaso={irAPaso} />
           </form>
         </div>
       </div>
@@ -197,7 +215,7 @@ function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; in
           <Button variant="secondary" disabled={indice === 0} onClick={() => irA(indice - 1)}>
             Atrás
           </Button>
-          <Button onClick={siguiente}>Siguiente</Button>
+          {indice < PASOS.length - 1 && <Button onClick={siguiente}>Siguiente</Button>}
           <p role="status" className="order-last basis-full text-sm text-muted md:order-none md:basis-auto md:flex-1 md:text-right">
             {aviso && <span className="mr-2 font-medium text-text">{aviso}</span>}
             <span className={guardado === "error" ? "font-medium text-danger" : ""}>{estadoGuardado}</span>

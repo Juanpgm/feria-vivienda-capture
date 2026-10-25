@@ -1,7 +1,7 @@
 // Authenticated e2e for /registros/nuevo steps 1-3, driven by the synthetic datasets in datos-prueba.ts.
 //
-// IMPORTANT: this spec NEVER writes to Firestore. There is no submit yet (steps 4-9 and POST /api/registros
-// wiring arrive in PRs 2e/3); the only persistence exercised is the IndexedDB draft, discarded between cases.
+// IMPORTANT: this spec NEVER writes to Firestore. There is no submit yet (POST /api/registros wiring arrives
+// in phase 3); the only persistence exercised is the IndexedDB draft, discarded between cases.
 // Requires a saved session: run `npm run e2e:login` once (see playwright.config.ts).
 import { expect, test } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
@@ -46,20 +46,19 @@ test.describe("registro pasos 1-3: datos validos", () => {
       await llenarPaso3(page, c);
       await verificarPaso3(page, c);
       await siguiente(page);
-      await expect(page.getByText("Este paso está completo. Los pasos siguientes aún no están disponibles.")).toBeVisible();
+      await expect(tituloPaso(page, 4)).toBeVisible();
 
-      // Going back, the rail marks step 3 as complete.
+      // Going back, the rail marks the earlier steps as complete.
       await page.getByRole("button", { name: "Atrás" }).click();
-      await expect(tituloPaso(page, 2)).toBeVisible();
-      await expect(page.getByRole("button", { name: /Especial protección constitucional/ })).toContainText("Completo");
-
-      // TODO(2e/3): continue steps 4-9 and submit with the same dataset once those exist.
+      await expect(tituloPaso(page, 3)).toBeVisible();
+      await expect(page.getByRole("button", { name: /Composición familiar/ })).toContainText("Completo");
+      // Steps 4-8 are covered by registro-pasos-4-resumen.spec.ts.
     });
   }
 });
 
 test.describe("registro pasos 1-3: datos invalidos", () => {
-  for (const c of generarCasosInvalidos(HOY)) {
+  for (const c of generarCasosInvalidos(HOY).filter((x) => x.paso <= 3)) {
     test(`${c.clave}: ${c.descripcion}`, async ({ page }) => {
       await nuevoRegistro(page);
       const base = generarCasos(HOY)[0];

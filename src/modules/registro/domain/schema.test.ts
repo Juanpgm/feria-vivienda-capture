@@ -76,6 +76,8 @@ describe("registroSchema", () => {
     expect(fallos((v) => set(v.inmueble, { id_barrio_vereda: null }))).toEqual(["inmueble.id_barrio_vereda"]);
     expect(fallos((v) => set(v.inmueble, { id_barrio_vereda: null, barrio_vereda_otro: "Sector X" }))).toEqual([]);
     expect(fallos((v) => set(v.inmueble, { codigo_division: "51", id_barrio_vereda: null, barrio_vereda_otro: "X" }))).toEqual([]);
+    // Missing estrato must not hide the cross-field errors.
+    expect(fallos((v) => set(v.inmueble, { estrato: "", codigo_division: "", id_barrio_vereda: null }))).toEqual(["inmueble.estrato", "inmueble.codigo_division"]);
     for (const e of [0, 7, 2.5]) expect(fallos((v) => set(v.inmueble, { estrato: e }))).toEqual(["inmueble.estrato"]);
   });
 

@@ -15,8 +15,8 @@ export type Paso = {
   campos: readonly string[];
   /** Neutral valid values for section fields owned by OTHER steps, so cross-field rules still run. */
   relleno?: Record<string, unknown>;
-  /** Domain schema, loaded on demand to keep the first load lean. */
-  schema: () => Promise<ZodType>;
+  /** Domain schema, loaded on demand to keep the first load lean. Absent on steps that collect nothing (summary). */
+  schema?: () => Promise<ZodType>;
 };
 
 export const PASOS: readonly Paso[] = [
@@ -47,15 +47,47 @@ export const PASOS: readonly Paso[] = [
     relleno: { cantidad_personas_hogar: 1, tiene_adulto_mayor: false, ingreso_hogar_cop: 0 },
     schema: () => import("@/modules/composicion/domain/schema").then((m) => m.composicionSchema),
   },
+  {
+    id: "inmueble",
+    titulo: "Inmueble y ubicación",
+    seccion: "inmueble",
+    campos: ["direccion", "codigo_division", "id_barrio_vereda", "barrio_vereda_otro", "estrato"],
+    schema: () => import("@/modules/inmueble/domain/schema").then((m) => m.inmuebleSchema),
+  },
+  {
+    id: "riesgo",
+    titulo: "Riesgo y dictamen técnico",
+    seccion: "riesgo",
+    campos: ["esta_en_rud", "numero_rud", "rud_no_sabe", "dictamen", "dictamen_otro"],
+    schema: () => import("@/modules/riesgo/domain/schema").then((m) => m.riesgoSchema),
+  },
+  {
+    id: "titularidad",
+    titulo: "Titularidad",
+    seccion: "titularidad",
+    campos: ["tipo_titularidad", "numero_matricula_inmobiliaria"],
+    schema: () => import("@/modules/titularidad/domain/schema").then((m) => m.titularidadSchema),
+  },
+  {
+    id: "financiero",
+    titulo: "Cierre financiero",
+    seccion: "cierre_financiero",
+    campos: ["fuentes_financiacion", "tiene_seguro", "codigo_aseguradora", "aseguradora_otra"],
+    schema: () => import("@/modules/cierre-financiero/domain/schema").then((m) => m.cierreFinancieroSchema),
+  },
+  { id: "resumen", titulo: "Resumen", seccion: "", campos: [] },
 ];
 
-/** Form strings -> schema input (radio "si"/"no" to boolean; ages only for the declared count). */
-function aEntrada(paso: Paso, valores: Valores): Record<string, unknown> {
-  const s: Record<string, unknown> = { ...valores[paso.seccion] };
-  if (paso.seccion === "composicion") {
-    const tiene = s.tiene_adulto_mayor === "si" ? true : s.tiene_adulto_mayor === "no" ? false : undefined;
-    s.tiene_adulto_mayor = tiene;
-    if (tiene) {
+/** Radio "si"/"no" fields per section, converted to booleans before parsing. */
+const BOOLEANOS: Record<string, string> = { composicion: "tiene_adulto_mayor", riesgo: "esta_en_rud", cierre_financiero: "tiene_seguro" };
+
+/** Form strings of one section -> schema input (radio "si"/"no" to boolean; conditional fields only when they apply). */
+export function entradaDeSeccion(seccion: string, valores: Valores): Record<string, unknown> {
+  const s: Record<string, unknown> = { ...valores[seccion] };
+  const campoBool = BOOLEANOS[seccion];
+  if (campoBool) s[campoBool] = s[campoBool] === "si" ? true : s[campoBool] === "no" ? false : undefined;
+  if (seccion === "composicion") {
+    if (s.tiene_adulto_mayor) {
       const n = Number(s.cantidad_adultos_mayores);
       s.adultos_mayores = Array.isArray(s.adultos_mayores) && n >= 1 ? s.adultos_mayores.slice(0, n) : [];
     } else {
@@ -63,11 +95,23 @@ function aEntrada(paso: Paso, valores: Valores): Record<string, unknown> {
       s.adultos_mayores = undefined;
     }
   }
-  return { ...s, ...paso.relleno };
+  if (seccion === "inmueble") {
+    // "Not listed" switches between the catalog barrio and the free-text fallback.
+    if (s.barrio_no_listado) s.id_barrio_vereda = undefined;
+    else s.barrio_vereda_otro = undefined;
+  }
+  if (seccion === "riesgo" && s.esta_en_rud !== true) {
+    s.numero_rud = undefined;
+    s.rud_no_sabe = undefined;
+  }
+  return s;
 }
+
+const aEntrada = (paso: Paso, valores: Valores) => ({ ...entradaDeSeccion(paso.seccion, valores), ...paso.relleno });
 
 /** Flat `{ "seccion.campo": message }` for the step's own fields; empty when valid. */
 export async function validarPaso(paso: Paso, valores: Valores): Promise<Record<string, string>> {
+  if (!paso.schema) return {};
   const r = (await paso.schema()).safeParse(aEntrada(paso, valores));
   const errores: Record<string, string> = {};
   if (r.success) return errores;

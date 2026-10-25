@@ -1,8 +1,9 @@
 // Deterministic, clearly fake applicants for the e2e specs ("PRUEBA E2E ...", documents 9xxxxxx, +57 300 555 xxxx
 // phones, @example.test emails). Nothing here is real personal data.
 //
-// The same cases can later drive a full submit test (steps 4-9 + POST /api/registros): `Caso` already carries
-// everything the steps 1-3 UI needs, and extra step data can be added to it when those steps exist.
+// The same cases can later drive a full submit test (steps 8-10 + POST /api/registros): `Caso` carries everything
+// the steps 1-7 UI needs (`extra` holds steps 4-7).
+import { DICTAMENES, TITULARIDADES } from "../src/shared/constantes";
 
 /** Fixed SMLMV 2026 used as an independent oracle (the app reads it from src/modules/cierre-financiero/domain/smlmv.ts). */
 export const SMLMV_ORACULO = 1_750_905;
@@ -43,6 +44,34 @@ export type Composicion = {
   ingreso: string;
 };
 
+/** Steps 4-7. Empty / undefined values are simply not filled (negative cases). */
+export type Vivienda = {
+  direccion: string;
+  /** Code and label as the combobox shows it. */
+  division?: { codigo: string; etiqueta: string; sector: "Urbano" | "Rural" };
+  /** Catalog barrio/vereda; mutually exclusive with `barrioOtro` (the "not listed" free text). */
+  lugar?: { id: string; nombre: string };
+  barrioOtro?: string;
+  estrato?: number;
+};
+export type RiesgoDatos = {
+  rud?: "si" | "no";
+  numero?: string;
+  /** RUD "si" with the explicit "No lo sabe" checkbox. */
+  noSabe?: boolean;
+  dictamen?: keyof typeof DICTAMENES;
+  dictamenOtro?: string;
+};
+export type TitularidadDatos = { tipo?: keyof typeof TITULARIDADES; matricula?: string };
+export type FinancieroDatos = {
+  /** Checkbox clicks in order (exclusivity of "ninguna" is applied by the UI). */
+  fuentes: string[];
+  seguro?: "si" | "no";
+  aseguradora?: { codigo: string; nombre: string };
+  aseguradoraOtra?: string;
+};
+export type Extra = { vivienda: Vivienda; riesgo: RiesgoDatos; titularidad: TitularidadDatos; financiero: FinancieroDatos };
+
 /** What the UI must show after blur / what the domain must derive. */
 export type Esperado = {
   nombre: string;
@@ -66,11 +95,12 @@ export type Caso = {
   descripcion: string;
   solicitante: Solicitante;
   composicion: Composicion;
+  extra: Extra;
   esperado: Esperado;
 };
 
 /** Negative case: the first `paso` - 1 steps are valid, step `paso` must refuse to advance and show `mensajes`. */
-export type CasoInvalido = Omit<Caso, "esperado"> & { paso: 1 | 2 | 3; mensajes: string[] };
+export type CasoInvalido = Omit<Caso, "esperado"> & { paso: 1 | 2 | 3 | 4 | 5 | 6 | 7; mensajes: string[]; mensajesUi?: string[] };
 
 // ---- date helpers (ISO yyyy-mm-dd, UTC arithmetic) ----
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -107,6 +137,60 @@ function rangoDe(ingreso: number): CodigoRango {
   return ingreso <= 4 * SMLMV_ORACULO ? "0_4" : ingreso <= 5.5 * SMLMV_ORACULO ? "4_5_5" : "mas_5_5";
 }
 
+const CALLES = ["CALLE 5 # 10-20", "cra 12 No 5-20", "Avenida 3 Norte 45-12", "CL 25 # 100-33 Apto 201", "Diagonal 26 #  72 - 15", "Vereda sin nomenclatura casa 4"];
+
+/** Eight variants rotated over the valid cases: together they cover every option of steps 4-7. */
+const VARIANTES: Extra[] = [
+  {
+    vivienda: { direccion: CALLES[0], division: { codigo: "01", etiqueta: "Comuna 1", sector: "Urbano" }, lugar: { id: "0199", nombre: "Aguacatal" }, estrato: 1 },
+    riesgo: { rud: "si", numero: "RUD-12345", dictamen: "colapso_total" },
+    titularidad: { tipo: "propietario_clt", matricula: "370-123456" },
+    financiero: { fuentes: ["credito_hipotecario", "subsidio_concurrente"], seguro: "si", aseguradora: { codigo: "allianz_seguros", nombre: "Allianz Seguros" } },
+  },
+  {
+    vivienda: { direccion: CALLES[1], division: { codigo: "03", etiqueta: "Comuna 3", sector: "Urbano" }, lugar: { id: "0310", nombre: "El Calvario" }, estrato: 2 },
+    riesgo: { rud: "no", dictamen: "demolido" },
+    titularidad: { tipo: "poseedor_legitimo" },
+    financiero: { fuentes: ["ninguna"], seguro: "no" },
+  },
+  {
+    vivienda: { direccion: CALLES[2], division: { codigo: "19", etiqueta: "Comuna 19", sector: "Urbano" }, barrioOtro: "Sector Los Pinos", estrato: 3 },
+    riesgo: { rud: "si", noSabe: true, dictamen: "orden_demolicion" },
+    titularidad: { tipo: "propietario_clt", matricula: "50C-1234567" },
+    financiero: { fuentes: ["ahorro_cesantias", "indemnizacion_seguro", "recursos_propios"], seguro: "si", aseguradora: { codigo: "otra", nombre: "Otra" }, aseguradoraOtra: "Seguros Prueba S.A." },
+  },
+  {
+    vivienda: { direccion: CALLES[3], division: { codigo: "12", etiqueta: "Comuna 12", sector: "Urbano" }, lugar: { id: "1202", nombre: "Asturias" }, estrato: 4 },
+    riesgo: { rud: "no", dictamen: "demolicion_en_proceso" },
+    titularidad: { tipo: "poseedor_legitimo", matricula: "" },
+    financiero: { fuentes: ["recursos_propios", "ninguna"], seguro: "no" },
+  },
+  {
+    vivienda: { direccion: CALLES[4], division: { codigo: "53", etiqueta: "Corregimiento Pance", sector: "Rural" }, lugar: { id: "V5306", nombre: "El Banqueo" }, estrato: 5 },
+    riesgo: { rud: "si", numero: "98765", dictamen: "arreglos_locativos" },
+    titularidad: { tipo: "propietario_clt" },
+    financiero: { fuentes: ["credito_hipotecario"], seguro: "si", aseguradora: { codigo: "axa_colpatria_seguros", nombre: "AXA Colpatria Seguros" } },
+  },
+  {
+    vivienda: { direccion: CALLES[5], division: { codigo: "55", etiqueta: "Corregimiento Villacarmelo", sector: "Rural" }, barrioOtro: "Vereda La Esperanza", estrato: 6 },
+    riesgo: { rud: "no", dictamen: "otro", dictamenOtro: "Grietas en vigas y columnas" },
+    titularidad: { tipo: "poseedor_legitimo", matricula: "370-999" },
+    financiero: { fuentes: ["subsidio_concurrente", "indemnizacion_seguro"], seguro: "no" },
+  },
+  {
+    vivienda: { direccion: CALLES[0], division: { codigo: "01", etiqueta: "Comuna 1", sector: "Urbano" }, lugar: { id: "0101", nombre: "Terron Colorado" }, estrato: 3 },
+    riesgo: { rud: "si", numero: "5", dictamen: "otro", dictamenOtro: "Deslizamiento" },
+    titularidad: { tipo: "propietario_clt", matricula: "" },
+    financiero: { fuentes: ["ahorro_cesantias"], seguro: "si", aseguradora: { codigo: "hdi_seguros", nombre: "HDI Seguros" } },
+  },
+  {
+    vivienda: { direccion: CALLES[2], division: { codigo: "55", etiqueta: "Corregimiento Villacarmelo", sector: "Rural" }, lugar: { id: "V5505", nombre: "El Carmen" }, estrato: 2 },
+    riesgo: { rud: "si", noSabe: true, dictamen: "colapso_total" },
+    titularidad: { tipo: "poseedor_legitimo" },
+    financiero: { fuentes: ["credito_hipotecario", "ninguna"], seguro: "no" },
+  },
+];
+
 type Cambios = {
   s?: Partial<Solicitante>;
   c?: Partial<Composicion>;
@@ -128,7 +212,9 @@ export function generarCasos(hoy: string): Caso[] {
   });
   const baseC = (): Composicion => ({ personas: "1", adultoMayor: "no", edades: [], condiciones: ["ninguna"], ingreso: "1500000" });
 
+  let rotacion = 0;
   const caso = (clave: string, descripcion: string, x: Cambios): Caso => {
+    const extra = VARIANTES[rotacion++ % VARIANTES.length];
     const solicitante = { ...baseS(), ...x.s };
     const composicion = { ...baseC(), ...x.c };
     const ingresoCop = Number(composicion.ingreso.replace(/\D/g, "")) || 0;
@@ -140,6 +226,7 @@ export function generarCasos(hoy: string): Caso[] {
       descripcion,
       solicitante,
       composicion,
+      extra,
       esperado: {
         nombre: "Prueba E2e Base Uno",
         documento: "9000000",
@@ -315,17 +402,20 @@ export function generarCasosInvalidos(hoy: string): CasoInvalido[] {
   const inv = (
     clave: string,
     descripcion: string,
-    paso: 1 | 2 | 3,
+    paso: CasoInvalido["paso"],
     mensajes: string[],
-    x: { s?: Partial<Solicitante>; c?: Partial<Composicion> },
+    x: { s?: Partial<Solicitante>; c?: Partial<Composicion>; e?: Partial<Extra>; ui?: string[] },
   ): CasoInvalido => ({
     clave,
     descripcion,
     paso,
     mensajes,
+    mensajesUi: x.ui,
     solicitante: { ...base.solicitante, ...x.s },
     composicion: { ...base.composicion, ...x.c },
+    extra: { ...base.extra, ...x.e },
   });
+  const vivienda = (v: Partial<Vivienda>): Partial<Extra> => ({ vivienda: { ...base.extra.vivienda, ...v } });
   const vacioS: Partial<Solicitante> = {
     nombre: "", documento: "", expedicion: "", telefono1: "", correo: "", aniosResidencia: "", nacimiento: "",
   };
@@ -358,12 +448,43 @@ export function generarCasosInvalidos(hoy: string): CasoInvalido[] {
     inv("ingreso-texto", "Ingreso no numerico", 2, ["Ingrese un valor numérico en pesos"], { c: { ingreso: "mucho dinero" } }),
     inv("ingreso-decimal", "Ingreso con decimales", 2, ["Ingrese un valor numérico en pesos"], { c: { ingreso: "1500000,50" } }),
     inv("proteccion-vacia", "Proteccion sin seleccionar nada", 3, ["Seleccione al menos una opción"], { c: { condiciones: [] } }),
+    // --- steps 4-7 ---
+    inv("paso4-vacio", "Paso 4 sin ningun dato", 4, ["Ingrese la dirección", "Seleccione comuna o corregimiento", "Seleccione un estrato del 1 al 6"], {
+      e: { vivienda: { direccion: "" } },
+    }),
+    inv("direccion-corta", "Direccion demasiado corta", 4, ["Ingrese la dirección"], { e: vivienda({ direccion: "Cl 1" }) }),
+    inv("barrio-sin-elegir", "Comuna elegida pero sin barrio", 4, ["Seleccione un barrio o vereda"], {
+      e: vivienda({ lugar: undefined, barrioOtro: undefined }),
+    }),
+    inv("barrio-no-listado-sin-texto", "Barrio no aparece en la lista pero sin escribirlo", 4, ["Seleccione un barrio o vereda"], {
+      e: vivienda({ lugar: undefined, barrioOtro: "" }),
+      ui: ["Escriba el nombre del barrio"],
+    }),
+    inv("estrato-sin-elegir", "Estrato sin elegir", 4, ["Seleccione un estrato del 1 al 6"], { e: vivienda({ estrato: undefined }) }),
+    inv("paso5-vacio", "Paso 5 sin ningun dato", 5, ["Seleccione Sí o No", "Seleccione una opción"], { e: { riesgo: {} } }),
+    inv("rud-sin-numero", "RUD si sin numero ni No lo sabe", 5, ["Ingrese el número de RUD o marque «No lo sabe»"], {
+      e: { riesgo: { rud: "si", dictamen: "demolido" } },
+    }),
+    inv("dictamen-otro-sin-texto", "Dictamen Otro sin indicar cual", 5, ["Indique cuál es el dictamen"], {
+      e: { riesgo: { rud: "no", dictamen: "otro", dictamenOtro: "" } },
+    }),
+    inv("titularidad-vacia", "Titularidad sin elegir", 6, ["Seleccione una opción"], { e: { titularidad: {} } }),
+    inv("matricula-invalida", "Matricula con simbolos", 6, ["Solo letras, números y guiones"], {
+      e: { titularidad: { tipo: "propietario_clt", matricula: "370 123/45" } },
+    }),
+    inv("paso7-vacio", "Paso 7 sin ningun dato", 7, ["Seleccione al menos una opción", "Seleccione Sí o No"], { e: { financiero: { fuentes: [] } } }),
+    inv("seguro-sin-aseguradora", "Seguro si sin aseguradora", 7, ["Seleccione la aseguradora"], {
+      e: { financiero: { fuentes: ["recursos_propios"], seguro: "si" } },
+    }),
+    inv("aseguradora-otra-sin-nombre", "Aseguradora Otra sin nombre", 7, ["Indique el nombre de la aseguradora"], {
+      e: { financiero: { fuentes: ["recursos_propios"], seguro: "si", aseguradora: { codigo: "otra", nombre: "Otra" }, aseguradoraOtra: "" } },
+    }),
   ];
 }
 
 /** Raw form values (what the stepper holds in RHF) for a case, with the final protection selection applied. */
-export function aValores(c: Pick<Caso, "solicitante" | "composicion">) {
-  const { solicitante: s, composicion: k } = c;
+export function aValores(c: Pick<Caso, "solicitante" | "composicion" | "extra">) {
+  const { solicitante: s, composicion: k, extra: x } = c;
   return {
     solicitante: {
       nombre_completo: s.nombre,
@@ -386,6 +507,28 @@ export function aValores(c: Pick<Caso, "solicitante" | "composicion">) {
       adultos_mayores: k.edades.map((edad) => ({ edad })),
       condiciones_especiales: condicionesFinales(k.condiciones),
       ingreso_hogar_cop: k.ingreso,
+    },
+    inmueble: {
+      direccion: x.vivienda.direccion,
+      codigo_division: x.vivienda.division?.codigo ?? "",
+      id_barrio_vereda: x.vivienda.lugar?.id ?? "",
+      barrio_no_listado: x.vivienda.barrioOtro !== undefined,
+      barrio_vereda_otro: x.vivienda.barrioOtro ?? "",
+      estrato: x.vivienda.estrato === undefined ? "" : String(x.vivienda.estrato),
+    },
+    riesgo: {
+      esta_en_rud: x.riesgo.rud ?? "",
+      numero_rud: x.riesgo.numero ?? "",
+      rud_no_sabe: !!x.riesgo.noSabe,
+      dictamen: x.riesgo.dictamen ?? "",
+      dictamen_otro: x.riesgo.dictamenOtro ?? "",
+    },
+    titularidad: { tipo_titularidad: x.titularidad.tipo ?? "", numero_matricula_inmobiliaria: x.titularidad.matricula ?? "" },
+    cierre_financiero: {
+      fuentes_financiacion: condicionesFinales(x.financiero.fuentes),
+      tiene_seguro: x.financiero.seguro ?? "",
+      codigo_aseguradora: x.financiero.aseguradora?.codigo ?? "",
+      aseguradora_otra: x.financiero.aseguradoraOtra ?? "",
     },
   };
 }
