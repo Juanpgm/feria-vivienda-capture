@@ -15,6 +15,7 @@ export const fila = (n: number, extra: Record<string, unknown> = {}) => ({
   estrato: 3,
   estado: "registrado",
   estado_revision: "pendiente_revision",
+  adjuntos_completos: true,
   registrado_por_nombre: "Ana Funcionaria",
   registrado_en: "2026-03-05T20:42:00.000Z", // 15:42 in Bogota
   ...extra,
@@ -33,6 +34,11 @@ export const detalle = (n: number) => {
     registrado_en: "2026-03-05T20:42:00.000Z",
     fecha_registro_bogota: "2026-03-05",
     version_esquema: 2,
+    adjuntos_completos: true,
+    adjuntos_requeridos: 3,
+    adjuntos_presentes: 3,
+    consentimiento: { version: "2026-10-v1", acepta_tratamiento: true, acepta_datos_sensibles: false, aceptado_en: "2026-03-05T20:42:00.000Z" },
+    firma: { metodo_firma: "dibujada", firmado_en: "2026-03-05T20:42:00.000Z", metodo_verificacion: null, nota_verificacion: null, verificado_por_nombre: null },
     datos: {
       solicitante: { ...r.solicitante, edad: 36 },
       composicion: r.composicion,

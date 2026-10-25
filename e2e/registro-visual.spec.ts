@@ -1,6 +1,7 @@
 // Authenticated visual/a11y smoke for the stepper: light/dark x desktop/mobile (390x844).
 // No Firestore writes (see registro-pasos-1-3.spec.ts).
 import { expect, test, type Page } from "@playwright/test";
+import { PASOS } from "../src/modules/registro/ui/pasos";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import { HOY, llenarPaso1, llenarPaso2, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
 import { generarCasos } from "./datos-prueba";
@@ -57,7 +58,7 @@ for (const esquema of ["light", "dark"] as const) {
         expect(sinEtiqueta).toEqual([]);
 
         if (vista === "movil") {
-          await expect(page.getByText("Paso 1 de 8")).toBeVisible();
+          await expect(page.getByText(`Paso 1 de ${PASOS.length}`)).toBeVisible();
           await expect(page.getByRole("navigation", { name: "Pasos del registro" })).toBeHidden();
         } else {
           await expect(page.getByRole("navigation", { name: "Pasos del registro" }).locator('[aria-current="step"]')).toHaveCount(1);

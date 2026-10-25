@@ -1,3 +1,5 @@
+import { CONSENTIMIENTO_VERSION } from "@/modules/consentimiento/domain/texto";
+
 export const valido = () => ({
   id: "6f1f6c0e-8a3b-4c52-9d77-3b1c2f5e9a10",
   solicitante: {
@@ -24,4 +26,6 @@ export const valido = () => ({
   riesgo: { esta_en_rud: false, dictamen: "colapso_total" },
   titularidad: { tipo_titularidad: "propietario_clt", es_unica_propiedad: true },
   cierre_financiero: { fuentes_financiacion: ["recursos_propios"], tiene_seguro: false },
+  consentimiento: { acepta_tratamiento: true, acepta_datos_sensibles: true, version: CONSENTIMIENTO_VERSION },
+  firma: { metodo_firma: "dibujada" },
 });

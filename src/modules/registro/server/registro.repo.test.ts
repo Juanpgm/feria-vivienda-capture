@@ -33,8 +33,9 @@ const docRef = (path: string): any => ({
   path,
   get: async () => snap(path),
   collection: (n: string) => colRef(`${path}/${n}`),
+  update: async (d: Datos) => escribir(path, { ...store.get(path), ...d }),
 });
-const colRef = (path: string): any => ({ ...consulta(path), doc: (id = `auto${++auto}`) => docRef(`${path}/${id}`) });
+const colRef = (path: string): any => ({ ...consulta(path), listDocuments: async () => hijos(path).map((k) => docRef(k)), doc: (id = `auto${++auto}`) => docRef(`${path}/${id}`) });
 
 const runTransaction = async (fn: (tx: any) => Promise<unknown>) => {
   for (;;) {
@@ -79,7 +80,9 @@ vi.mock("@/modules/auth/server/sesion", async (orig) => ({ ...(await orig<object
 
 import { registroSchema } from "../domain/schema";
 import { valido } from "../domain/fixture";
-import { buscarDuplicados, crearRegistro, listarRegistros, obtenerRegistro, RegistroConflictoError } from "./registro.repo";
+import { buscarDuplicados, crearRegistro, listarRegistros, marcarAdjuntosCompletos, obtenerRegistro, RegistroConflictoError } from "./registro.repo";
+import { hashConsentimiento } from "@/modules/consentimiento/server/hash";
+import { POST as POSTCompletar } from "@/app/api/registros/[id]/completar/route";
 import { GET as GETDuplicado } from "@/app/api/registros/duplicado/route";
 import { GET as GETLista, POST } from "@/app/api/registros/route";
 import { GET as GETDetalle } from "@/app/api/registros/[id]/route";
@@ -167,7 +170,7 @@ describe("crearRegistro", () => {
   it("retry with the same id returns the same radicado and consumes no number", async () => {
     const a = await crearRegistro(datos(uuid(1)), actor);
     const reintento = await crearRegistro(datos(uuid(1)), actor);
-    expect(reintento).toEqual({ id: uuid(1), radicado: a.radicado, creado: false, advertencias: [] });
+    expect(reintento).toEqual({ id: uuid(1), radicado: a.radicado, creado: false, registrado_en: null, advertencias: [] });
     expect(contador()).toBe(1);
     expect((await crearRegistro(datos(uuid(2), "999999"), actor)).radicado).toBe("FV-000002");
   });
@@ -358,7 +361,7 @@ describe("listarRegistros / GET /api/registros", () => {
     expect(p.items.map((i) => i.radicado)).toEqual(["FV-000001", "FV-000002"]); // fake keeps insertion order
     expect(p.siguiente).toEqual(expect.any(String));
     expect(Object.keys(p.items[0]).sort()).toEqual(
-      ["barrio", "comuna", "estado", "estado_revision", "estrato", "id", "nombre", "numero_documento", "radicado", "registrado_en", "registrado_por_nombre", "tipo_documento"],
+      ["adjuntos_completos", "barrio", "comuna", "estado", "estado_revision", "estrato", "id", "nombre", "numero_documento", "radicado", "registrado_en", "registrado_por_nombre", "tipo_documento"],
     );
     expect(JSON.stringify(p)).not.toContain("SECRETO");
     const ultima = await listarRegistros({ limite: 3 }, admin);
@@ -435,5 +438,164 @@ describe("obtenerRegistro / GET /api/registros/[id]", () => {
     expect((await detalle(uuid(1))).status).toBe(404);
     expect(await obtenerRegistro(uuid(9), admin)).toBeNull();
     expect((await detalle("../x")).status).toBe(404);
+  });
+});
+
+describe("consentimiento y firma (spec data-consent / applicant-signature)", () => {
+  const req = (body: unknown) => new Request("http://x/api/registros", { method: "POST", body: JSON.stringify(body) });
+  const sinClave = <T extends object>(o: T, k: keyof T) => {
+    const { [k]: _omitida, ...resto } = o; // eslint-disable-line @typescript-eslint/no-unused-vars
+    return resto;
+  };
+  beforeEach(() => requireSesion.mockResolvedValue(actor));
+
+  it("stores version, a server-computed hash, both booleans, the server time and who registered", async () => {
+    expect((await POST(req(valido()))).status).toBe(201);
+    const c = store.get(`registros/${valido().id}`)!.consentimiento;
+    expect(c).toEqual({
+      version: "2026-10-v1",
+      hash: hashConsentimiento(),
+      acepta_tratamiento: true,
+      acepta_datos_sensibles: true,
+      aceptado_en: "TS",
+      registrado_por: "u1",
+    });
+    expect(c.hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("ignores a hash or timestamp sent by the client", async () => {
+    const v = { ...valido(), consentimiento: { ...valido().consentimiento, hash: "falso", aceptado_en: "2000-01-01" } };
+    await POST(req(v));
+    expect(store.get(`registros/${valido().id}`)!.consentimiento).toMatchObject({ hash: hashConsentimiento(), aceptado_en: "TS" });
+  });
+
+  it("422 without consent, with the treatment refused, or with an outdated wording; nothing is written", async () => {
+    for (const body of [
+      sinClave(valido(), "consentimiento"),
+      { ...valido(), consentimiento: { ...valido().consentimiento, acepta_tratamiento: false } },
+      { ...valido(), consentimiento: { ...valido().consentimiento, version: "1999-01-v0" } },
+    ]) {
+      const res = await POST(req(body));
+      expect(res.status).toBe(422);
+      expect(Object.keys((await res.json()).campos).some((k) => k.startsWith("consentimiento"))).toBe(true);
+    }
+    expect([...store.keys()].filter((k) => k.startsWith("registros/"))).toHaveLength(0);
+    expect(contador()).toBeUndefined();
+  });
+
+  it("refusing sensitive data still registers, but the special protection is stored as no_autorizado", async () => {
+    const v = valido();
+    v.composicion.condiciones_especiales = ["discapacidad", "mujer_vbg"];
+    v.consentimiento.acepta_datos_sensibles = false;
+    expect((await POST(req(v))).status).toBe(201);
+    const doc = store.get(`registros/${v.id}`)!;
+    expect(doc.composicion.condiciones_especiales).toEqual(["no_autorizado"]);
+    expect(doc.consentimiento.acepta_datos_sensibles).toBe(false);
+  });
+
+  it("authorizing sensitive data keeps the selection", async () => {
+    const v = valido();
+    v.composicion.condiciones_especiales = ["discapacidad"];
+    await POST(req(v));
+    expect(store.get(`registros/${v.id}`)!.composicion.condiciones_especiales).toEqual(["discapacidad"]);
+  });
+
+  it("422 without a signature method or with a manual verification missing method/note", async () => {
+    const manual = { metodo_firma: "verificacion_manual" };
+    for (const firma of [
+      undefined,
+      { metodo_firma: "otra" },
+      { ...manual, metodo_verificacion: "huella", nota_verificacion: "corta" },
+      { ...manual, nota_verificacion: "Nota suficientemente larga" },
+    ]) {
+      const res = await POST(req({ ...valido(), firma }));
+      expect(res.status).toBe(422);
+      expect(Object.keys((await res.json()).campos).some((k) => k.startsWith("firma"))).toBe(true);
+    }
+    expect([...store.keys()].filter((k) => k.startsWith("registros/"))).toHaveLength(0);
+  });
+
+  it("drawn signature: method + server time, no verifier, no image field; needs 3 attachments", async () => {
+    await POST(req(valido()));
+    const doc = store.get(`registros/${valido().id}`)!;
+    expect(doc.firma).toEqual({ metodo_firma: "dibujada", firmado_en: "TS" });
+    expect(doc).toMatchObject({ adjuntos_requeridos: 3, adjuntos_presentes: 0, adjuntos_completos: false });
+  });
+
+  it("manual verification: attributed to the funcionario of the session, no image, needs 2 attachments", async () => {
+    const firma = { metodo_firma: "verificacion_manual", metodo_verificacion: "huella", nota_verificacion: "  Huella en la planilla 12.  ", verificado_por_uid: "hacker" };
+    await POST(req({ ...valido(), firma }));
+    const doc = store.get(`registros/${valido().id}`)!;
+    expect(doc.firma).toEqual({
+      metodo_firma: "verificacion_manual",
+      metodo_verificacion: "huella",
+      nota_verificacion: "Huella en la planilla 12.",
+      firmado_en: "TS",
+      verificado_por_uid: "u1",
+      verificado_por_nombre: "Ana Funcionaria",
+      verificado_por_correo: actor.correo,
+    });
+    expect(doc.adjuntos_requeridos).toBe(2);
+  });
+});
+
+describe("marcarAdjuntosCompletos / POST /api/registros/[id]/completar", () => {
+  const completar = (id: string) => POSTCompletar(new Request("http://x", { method: "POST" }), { params: Promise.resolve({ id }) });
+  const adjunto = (n: number, tipo: string) => store.set(`registros/${uuid(n)}/adjuntos/${tipo}`, { tipo });
+  beforeEach(async () => {
+    requireSesion.mockResolvedValue(actor);
+    await crearRegistro(datos(uuid(1)), actor);
+  });
+
+  it("starts incomplete and stays so (naming what is missing) until every required attachment exists", async () => {
+    expect(store.get(`registros/${uuid(1)}`)!.adjuntos_completos).toBe(false);
+    adjunto(1, "documento_frente");
+    adjunto(1, "documento_reverso");
+    const r = await (await completar(uuid(1))).json();
+    expect(r).toEqual({ completo: false, requeridos: 3, presentes: 2, faltan: ["firma"] });
+    expect(store.get(`registros/${uuid(1)}`)).toMatchObject({ adjuntos_completos: false, adjuntos_presentes: 2 });
+  });
+
+  it("flips to complete only when all exist, and is idempotent", async () => {
+    for (const t of ["documento_frente", "documento_reverso", "firma"]) adjunto(1, t);
+    expect(await (await completar(uuid(1))).json()).toEqual({ completo: true, requeridos: 3, presentes: 3, faltan: [] });
+    expect(store.get(`registros/${uuid(1)}`)).toMatchObject({ adjuntos_completos: true, adjuntos_presentes: 3, adjuntos_requeridos: 3 });
+    expect((await completar(uuid(1))).status).toBe(200);
+  });
+
+  it("a manual verification needs only the two photos (no signature image)", async () => {
+    const v = valido();
+    const firma = { metodo_firma: "verificacion_manual", metodo_verificacion: "otro", nota_verificacion: "Firmó un testigo" };
+    await crearRegistro(registroSchema.parse({ ...v, id: uuid(2), solicitante: { ...v.solicitante, numero_documento: "55555" }, firma }), actor);
+    adjunto(2, "documento_frente");
+    adjunto(2, "documento_reverso");
+    expect(await (await completar(uuid(2))).json()).toMatchObject({ completo: true, requeridos: 2 });
+  });
+
+  it("the client cannot claim completeness: a record created without attachments is incomplete", async () => {
+    expect((await (await completar(uuid(1))).json()).completo).toBe(false);
+    expect(store.get(`registros/${uuid(1)}`)!.adjuntos_completos).toBe(false);
+  });
+
+  it("404 for another usuario, an unknown id or a malformed id; admin may verify any", async () => {
+    requireSesion.mockResolvedValue({ uid: "u2", rol: "usuario", correo: "x@cali.gov.co" });
+    expect((await completar(uuid(1))).status).toBe(404);
+    expect((await completar(uuid(9))).status).toBe(404);
+    expect((await completar("../x")).status).toBe(404);
+    expect(await marcarAdjuntosCompletos(uuid(1), admin)).toMatchObject({ completo: false });
+  });
+
+  it("the list and the detail expose the flag, the consent and the signature metadata (never an image)", async () => {
+    adjunto(1, "documento_frente");
+    store.get(`registros/${uuid(1)}`)!.firma_imagen = "SECRETO";
+    const lista = await listarRegistros({ limite: 5 }, admin);
+    expect(lista.items[0].adjuntos_completos).toBe(false);
+    const d = await obtenerRegistro(uuid(1), actor);
+    expect(d).toMatchObject({
+      adjuntos_completos: false,
+      consentimiento: { version: "2026-10-v1", acepta_tratamiento: true, acepta_datos_sensibles: true },
+      firma: { metodo_firma: "dibujada" },
+    });
+    expect(JSON.stringify(d)).not.toContain("SECRETO");
   });
 });

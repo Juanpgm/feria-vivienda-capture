@@ -7,16 +7,27 @@ import { FormProvider, set, useForm, type FieldErrors, type FieldValues, type Re
 import { PasoComposicion } from "@/modules/composicion/ui/PasoComposicion";
 import { PasoProteccion } from "@/modules/composicion/ui/PasoProteccion";
 import { PasoCierreFinanciero } from "@/modules/cierre-financiero/ui/PasoCierreFinanciero";
+import { PasoConsentimiento } from "@/modules/consentimiento/ui/PasoConsentimiento";
+import { PasoDocumentos } from "@/modules/documentos/ui/PasoDocumentos";
 import { PasoHogar } from "@/modules/hogar/ui/PasoHogar";
 import { PasoInmueble } from "@/modules/inmueble/ui/PasoInmueble";
 import { PasoRiesgo } from "@/modules/riesgo/ui/PasoRiesgo";
 import { PasoTitularidad } from "@/modules/titularidad/ui/PasoTitularidad";
+import { FIRMA_VACIA } from "@/modules/firma/domain/schema";
 import { Button } from "@/shared/ui/Button";
+import { Confirmacion, type DatosConfirmacion } from "./Confirmacion";
+import { EnvioRegistro } from "./EnvioRegistro";
 import { Resumen } from "./Resumen";
 import { cargarBorrador, descartarBorrador, guardarBorrador, VERSION_BORRADOR, type Borrador } from "./borradores";
 import { ETIQUETA_ESTADO, estadoPaso, PASOS, validarPaso, type Marca, type Valores } from "./pasos";
 
-type PropsVista = { irAPaso: (id: string) => void };
+type PropsVista = {
+  irAPaso: (id: string) => void;
+  borradorId: string;
+  /** Last step only: submit finished (the owner deletes the draft and shows the confirmation) / submit running. */
+  alEnviado?: (d: DatosConfirmacion) => void;
+  alBloquear?: (ocupado: boolean) => void;
+};
 const VISTAS: Record<string, ComponentType<PropsVista>> = {
   hogar: PasoHogar,
   composicion: PasoComposicion,
@@ -25,7 +36,10 @@ const VISTAS: Record<string, ComponentType<PropsVista>> = {
   riesgo: PasoRiesgo,
   titularidad: PasoTitularidad,
   financiero: PasoCierreFinanciero,
+  consentimiento: PasoConsentimiento,
+  documentos: PasoDocumentos,
   resumen: Resumen,
+  firma: EnvioRegistro,
 };
 
 export const nuevoBorrador = (id: string): Borrador => ({
@@ -52,6 +66,10 @@ export const nuevoBorrador = (id: string): Borrador => ({
     riesgo: { esta_en_rud: "", numero_rud: "", rud_no_sabe: false, dictamen: "", dictamen_otro: "" },
     titularidad: { tipo_titularidad: "", numero_matricula_inmobiliaria: "", es_unica_propiedad: "", excepcion_unica_propiedad: "" },
     cierre_financiero: { fuentes_financiacion: [], tiene_seguro: "", codigo_aseguradora: "", aseguradora_otra: "", observaciones: "" },
+    // Markers only; the photos live in IndexedDB (modules/documentos/ui/fotos.ts).
+    documentos: { documento_frente: "", documento_reverso: "" },
+    consentimiento: { acepta_tratamiento: false, acepta_datos_sensibles: false, version: "" },
+    firma: { ...FIRMA_VACIA },
   },
 });
 
@@ -61,7 +79,8 @@ export function Stepper({ uid, borradorId }: { uid: string; borradorId: string }
   useEffect(() => {
     cargarBorrador(uid, borradorId)
       .catch(() => null)
-      .then((b) => setEstado({ borrador: b ?? nuevoBorrador(borradorId), recuperado: !!b }));
+      // Sections added after the draft was saved (consent, signature...) start from their defaults.
+      .then((b) => setEstado({ borrador: b ? { ...b, valores: { ...nuevoBorrador(borradorId).valores, ...b.valores } } : nuevoBorrador(borradorId), recuperado: !!b }));
   }, [uid, borradorId]);
 
   if (!estado) return <p role="status">Cargando borrador…</p>;
@@ -88,6 +107,9 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
   const [confirmando, setConfirmando] = useState(false);
   const pendiente = useRef(false); // a change not yet written
   const guardarRef = useRef<() => Promise<void>>(async () => {});
+  const [ocupado, setOcupado] = useState(false); // a submit is running: no navigation, no discarding
+  const terminado = useRef(false); // submitted: the draft is gone and must not be written again
+  const [confirmacion, setConfirmacion] = useState<DatosConfirmacion | null>(null);
 
   // The resolver validates only the current step; RHF shows each field's error after blur / Next.
   const resolver: Resolver<FieldValues> = async (valores) => {
@@ -108,6 +130,7 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
   // Writes the CURRENT state of this draft only (never another draft).
   useEffect(() => {
     guardarRef.current = async () => {
+      if (terminado.current) return;
       const ahora = new Date().toISOString();
       pendiente.current = false;
       try {
@@ -161,6 +184,16 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
 
   const irAPaso = (id: string) => irA(PASOS.findIndex((p) => p.id === id));
 
+  // Sent and confirmed by the server: drop the draft (and its photos) for good, leave the URL of the used draft.
+  async function alEnviado(d: DatosConfirmacion) {
+    terminado.current = true;
+    clearTimeout(temporizador.current);
+    pendiente.current = false;
+    await descartarBorrador(uid, inicial.id).catch(() => undefined);
+    window.history.replaceState(null, "", "/registros/nuevo");
+    setConfirmacion(d);
+  }
+
   async function descartar() {
     clearTimeout(temporizador.current);
     pendiente.current = false; // do not resurrect the draft on unmount
@@ -174,6 +207,8 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
     : guardado === "guardado" ? `Borrador guardado ${new Date(horaGuardado).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`
     : "Sin cambios por guardar";
 
+  if (confirmacion) return <Confirmacion datos={confirmacion} />;
+
   return (
     <FormProvider {...form}>
       <div className="md:grid md:grid-cols-[15rem_minmax(0,1fr)] md:gap-10">
@@ -185,7 +220,7 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
                 <li key={p.id} className="relative pb-5 pl-11 last:pb-0">
                   <button
                     type="button"
-                    disabled={i > maximo}
+                    disabled={i > maximo || ocupado}
                     aria-current={e === "en_curso" ? "step" : undefined}
                     onClick={() => irA(i)}
                     className="flex min-h-11 w-full flex-col items-start rounded-lg text-left disabled:cursor-not-allowed disabled:opacity-60"
@@ -224,14 +259,14 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
             )}
           </div>
           <form ref={formRef} noValidate onSubmit={(e) => e.preventDefault()} className="pb-6">
-            <Vista irAPaso={irAPaso} />
+            <Vista irAPaso={irAPaso} borradorId={inicial.id} alEnviado={alEnviado} alBloquear={setOcupado} />
           </form>
         </div>
       </div>
 
       <div className="sticky bottom-0 -mx-4 border-t border-border bg-bg px-4 py-3 md:-mx-6 md:px-6">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-2">
-          <Button variant="secondary" disabled={indice === 0} onClick={() => irA(indice - 1)}>
+          <Button variant="secondary" disabled={indice === 0 || ocupado} onClick={() => irA(indice - 1)}>
             Atrás
           </Button>
           {indice < PASOS.length - 1 && <Button onClick={siguiente}>Siguiente</Button>}
@@ -250,7 +285,7 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
               </Button>
             </div>
           ) : (
-            <Button variant="secondary" onClick={() => setConfirmando(true)}>
+            <Button variant="secondary" disabled={ocupado} onClick={() => setConfirmando(true)}>
               Descartar borrador
             </Button>
           )}

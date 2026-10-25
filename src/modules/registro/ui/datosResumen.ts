@@ -13,6 +13,7 @@ import {
   BANDAS_ADULTO_MAYOR, BANDAS_HOGAR, CONDICIONES_ESPECIALES, DICTAMENES, ESTADOS_CIVILES, FUENTES_FINANCIACION,
   EXCEPCIONES_UNICA_PROPIEDAD, TIPOS_DOCUMENTO, TITULARIDADES,
 } from "@/shared/constantes";
+import { CONDICION_NO_AUTORIZADO } from "@/modules/consentimiento/domain/schema";
 import aseguradoras from "@/modules/cierre-financiero/catalogo/aseguradoras.json";
 import { entradaDeSeccion, type Valores } from "./pasos";
 
@@ -36,12 +37,16 @@ export const SECCIONES: readonly Seccion[] = [
   { id: "cierre_financiero", titulo: "Cierre financiero", paso: "financiero", schema: () => import("@/modules/cierre-financiero/domain/schema").then((m) => m.cierreFinancieroSchema) },
 ];
 
-/** Requirements of the next phase (photos, consent, signature). Phase 3 replaces these with real sections. */
-export const PENDIENTES_FASE_3 = [
-  "Fotos del documento de identidad (frente y reverso)",
-  "Autorización de tratamiento de datos personales",
-  "Firma del solicitante",
-] as const;
+/** Consent rows for the summary, from the raw form values (the consent is not part of SECCIONES: it is validated apart). */
+export function filasConsentimiento(c: Record<string, unknown>): Fila[] {
+  return [
+    { etiqueta: "Tratamiento de datos personales", valor: c.acepta_tratamiento === true ? "Autorizado" : "Pendiente de autorización" },
+    {
+      etiqueta: "Datos sensibles",
+      valor: c.acepta_datos_sensibles === true ? "Autorizado" : "No autorizado: la información de especial protección se guardará como «no autorizado»",
+    },
+  ];
+}
 
 /** Field labels, only used to name the field of a validation message. */
 const ETIQUETAS: Record<string, string> = {
@@ -81,6 +86,9 @@ export async function evaluarRegistro(valores: Valores): Promise<Record<string, 
 /** `2026-03-05` -> `05/03/2026` (string split: no timezone involved). */
 export const fechaCorta = (iso: string) => iso.split("-").reverse().join("/");
 
+/** `no_autorizado` is what the server stores when sensitive data was refused; it is not selectable in the form. */
+const ETIQUETAS_PROTECCION: Record<string, string> = { ...CONDICIONES_ESPECIALES, [CONDICION_NO_AUTORIZADO]: "No autorizado" };
+
 const lista = (codigos: readonly string[], etiquetas: Record<string, string>) => codigos.map((c) => etiquetas[c] ?? c).join("; ");
 const siNo = (b: boolean) => (b ? "Sí" : "No");
 
@@ -113,7 +121,7 @@ export function filasDe(id: string, datos: unknown, hoy: string): Fila[] {
             ? `${c.adultos_mayores.map((a) => `${a.edad} años`).join(", ")} (${BANDAS_ADULTO_MAYOR[c.rango_adulto_mayor]})`
             : `No hay (${BANDAS_ADULTO_MAYOR.ninguno})`,
         },
-        { etiqueta: "Especial protección", valor: lista(c.condiciones_especiales, CONDICIONES_ESPECIALES) },
+        { etiqueta: "Especial protección", valor: lista(c.condiciones_especiales, ETIQUETAS_PROTECCION) },
         { etiqueta: "Ingreso mensual", valor: `${formatoCop(c.ingreso_hogar_cop)} (${rango})` },
         { etiqueta: "Equivale a", valor: `${String(c.ingreso_en_smlmv).replace(".", ",")} SMLMV (SMLMV ${c.anio_smlmv}: ${formatoCop(c.valor_smlmv_aplicado)})` },
       ];

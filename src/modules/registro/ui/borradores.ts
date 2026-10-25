@@ -3,6 +3,7 @@
 // several tabs open. Keys carry the user id so a shared PC never mixes staff drafts.
 // Note: drafts hold personal data on this device until submitted or discarded.
 import { del, entries, get, set } from "idb-keyval";
+import { descartarFotos } from "@/modules/documentos/ui/fotos";
 import { PASOS, type Marca, type Valores } from "./pasos";
 
 /** Bump when the shape of `valores` changes and add the step to `migrarBorrador`. */
@@ -109,4 +110,5 @@ export async function cargarBorrador(uid: string, id: string): Promise<Borrador 
   return migrarBorrador(await get(claveBorrador(uid, id)));
 }
 export const guardarBorrador = (uid: string, b: Omit<Borrador, "version">) => set(claveBorrador(uid, b.id), { ...b, version: VERSION_BORRADOR });
-export const descartarBorrador = (uid: string, id: string) => del(claveBorrador(uid, id));
+/** Removes the draft AND its identity-document photos (stored apart, see modules/documentos/ui/fotos.ts). */
+export const descartarBorrador = (uid: string, id: string) => Promise.all([del(claveBorrador(uid, id)), descartarFotos(id)]).then(() => undefined);

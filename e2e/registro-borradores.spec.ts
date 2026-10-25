@@ -3,6 +3,7 @@
 // IMPORTANT: this spec NEVER writes to Firestore (there is no submit); the only persistence is IndexedDB, and every
 // test runs in a fresh browser context, so each one starts with an empty list.
 import { expect, test, type Page } from "@playwright/test";
+import { PASOS } from "../src/modules/registro/ui/pasos";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import { abrirLista, HOY, llenarPaso1, nuevoDesdeLista, siguiente, tituloPaso } from "./ayudas";
 import { generarCasos } from "./datos-prueba";
@@ -74,7 +75,7 @@ test("dos borradores en paralelo: cada uno conserva sus datos y su paso, y se re
   await expect(tituloPaso(page, 2)).toBeVisible();
   await esperarGuardado(page);
   await volverALista(page);
-  await expect(fila(page, "Ana Pérez")).toContainText("Paso 2 de 8: Composición familiar");
+  await expect(fila(page, "Ana Pérez")).toContainText(`Paso 2 de ${PASOS.length}: Composición familiar`);
 
   // Person B arrives while A is open: a different draft with its own id, still on step 1.
   await nuevoDesdeLista(page);
@@ -85,8 +86,8 @@ test("dos borradores en paralelo: cada uno conserva sus datos y su paso, y se re
   await volverALista(page);
 
   await expect(page.getByRole("listitem")).toHaveCount(2);
-  await expect(fila(page, "Ana Pérez")).toContainText("Paso 2 de 8: Composición familiar");
-  await expect(fila(page, "Luis Gómez")).toContainText("Paso 1 de 8: Datos del hogar");
+  await expect(fila(page, "Ana Pérez")).toContainText(`Paso 2 de ${PASOS.length}: Composición familiar`);
+  await expect(fila(page, "Luis Gómez")).toContainText(`Paso 1 de ${PASOS.length}: Datos del hogar`);
   expect((await claves(page)).filter((k) => k.startsWith("borrador:"))).toHaveLength(2);
 
   // Resume A: step 2, and its step 1 still has A's values (B never touched them).
@@ -174,7 +175,7 @@ test("borrador legado de un solo espacio: se migra a la lista, el nombre se part
   await abrirLista(page);
   await expect(page.getByRole("listitem")).toHaveCount(2);
   const legado = fila(page, "Rosa Pérez");
-  await expect(legado).toContainText("Paso 6 de 8: Titularidad");
+  await expect(legado).toContainText(`Paso 6 de ${PASOS.length}: Titularidad`);
   const k = await claves(page);
   expect(k).not.toContain(`borrador:${uid}`); // the old slot is gone
   expect(k).toContain(`borrador:${uid}:11111111-2222-4333-8444-555555555555`);

@@ -1,6 +1,7 @@
 // Authenticated visual/a11y pass over steps 1-8: light/dark x desktop (1440x900) / mobile (390x844).
 // Screenshots go to test-results/visual (not committed). No Firestore writes (see registro-pasos-1-3.spec.ts).
 import { expect, test, type Page } from "@playwright/test";
+import { PASOS } from "../src/modules/registro/ui/pasos";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import { CAMPO_FUENTES, HOY, llenarPaso1, llenarPaso2, llenarPaso3, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, nuevoRegistro, siguiente, tituloPaso, TITULO_PASO, type NumeroPaso } from "./ayudas";
 import { generarCasos } from "./datos-prueba";
@@ -57,7 +58,7 @@ for (const esquema of ["light", "dark"] as const) {
           if (vista === "escritorio") {
             await expect(page.getByRole("navigation", { name: "Pasos del registro" }).locator('[aria-current="step"]')).toContainText(TITULO_PASO[paso]);
           } else {
-            await expect(page.getByText(`Paso ${n} de 8`, { exact: true })).toBeVisible();
+            await expect(page.getByText(`Paso ${n} de ${PASOS.length}`, { exact: true })).toBeVisible();
           }
 
           if (n === 5) {

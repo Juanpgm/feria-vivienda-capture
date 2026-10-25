@@ -4,6 +4,7 @@
 // The same cases can later drive a full submit test (steps 8-10 + POST /api/registros): `Caso` carries everything
 // the steps 1-7 UI needs (`extra` holds steps 4-7).
 import type { CountryCode } from "libphonenumber-js/min";
+import { CONSENTIMIENTO_VERSION } from "../src/modules/consentimiento/domain/texto";
 import { DICTAMENES, EXCEPCIONES_UNICA_PROPIEDAD, TITULARIDADES } from "../src/shared/constantes";
 import { aMascara, parseMascara } from "../src/shared/fecha";
 import { regionPorDefecto, resolverTelefono } from "../src/shared/normalizacion/telefono";
@@ -667,5 +668,10 @@ export function aValores(c: Pick<Caso, "solicitante" | "composicion" | "extra">)
       aseguradora_otra: x.financiero.aseguradoraOtra ?? "",
       observaciones: x.financiero.observaciones ?? "",
     },
+    // Photos are captured in step 9 (PR 3a); the form only keeps a marker per photo.
+    documentos: { documento_frente: "capturada", documento_reverso: "capturada" },
+    // PR 3b sections: the answers the happy path gives (consent granted, signature drawn).
+    consentimiento: { acepta_tratamiento: true, acepta_datos_sensibles: true, version: CONSENTIMIENTO_VERSION },
+    firma: { metodo_firma: "dibujada", imagen: "data:image/png;base64,AA==", metodo_verificacion: "", nota_verificacion: "", sello: "" },
   };
 }

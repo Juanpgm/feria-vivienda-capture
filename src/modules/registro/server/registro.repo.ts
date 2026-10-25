@@ -2,6 +2,7 @@ import { FieldPath, FieldValue, Timestamp, type Query } from "firebase-admin/fir
 import { calcularEdad } from "@/modules/composicion/domain/derivaciones";
 import { tieneRol, type Rol } from "@/modules/auth/domain/roles";
 import { obtenerUsuario } from "@/modules/auth/server/usuarios.repo";
+import { hashConsentimiento } from "@/modules/consentimiento/server/hash";
 import { radicadoPrefijo } from "@/shared/config";
 import { ESTADO_REVISION_INICIAL } from "@/shared/constantes";
 import { normalizarBusqueda } from "@/shared/busqueda";
@@ -26,7 +27,8 @@ export type Advertencia = {
   id_existente?: string;
 };
 
-export type ResultadoCreacion = { id: string; radicado: string; creado: boolean; advertencias: Advertencia[] };
+/** `registrado_en`: the stored server timestamp (ISO), read back so the confirmation shows the exact time. */
+export type ResultadoCreacion = { id: string; radicado: string; creado: boolean; registrado_en: string | null; advertencias: Advertencia[] };
 
 /** Thrown when the id exists but belongs to another funcionario (not a retry of the same submit). */
 export class RegistroConflictoError extends Error {}
@@ -126,7 +128,26 @@ export async function crearRegistro(datos: RegistroDatos, actor: Actor): Promise
       registrado_por_uid: actor.uid,
       registrado_por_nombre: nombre,
       registrado_por_correo: actor.correo,
-      // 'registrado' = initial lifecycle state; no completeness gate until phase 3 (photos/signature/consent).
+      // Consent: version and hash of the wording come from the server, never from the client; time is the server clock.
+      consentimiento: {
+        ...dominios.consentimiento,
+        hash: hashConsentimiento(),
+        aceptado_en: FieldValue.serverTimestamp(),
+        registrado_por: actor.uid,
+      },
+      // Signature: the verifier of a manual verification is the funcionario of the session. A drawn image arrives later
+      // through the adjuntos endpoint; `adjuntos_completos` flips only in `marcarAdjuntosCompletos`.
+      firma: {
+        ...dominios.firma,
+        firmado_en: FieldValue.serverTimestamp(),
+        ...(dominios.firma.metodo_firma === "verificacion_manual"
+          ? { verificado_por_uid: actor.uid, verificado_por_nombre: nombre, verificado_por_correo: actor.correo }
+          : {}),
+      },
+      adjuntos_requeridos: adjuntosRequeridos(dominios.firma.metodo_firma),
+      adjuntos_presentes: 0,
+      adjuntos_completos: false,
+      // 'registrado' = initial lifecycle state; "Incompleto" is the separate adjuntos_completos flag.
       estado: "registrado",
       estado_revision: ESTADO_REVISION_INICIAL,
       estado_revision_en: FieldValue.serverTimestamp(),
@@ -143,10 +164,35 @@ export async function crearRegistro(datos: RegistroDatos, actor: Actor): Promise
       por_correo: actor.correo,
       en: FieldValue.serverTimestamp(),
     });
-    // Phase 3: adjuntos/{tipo} docs go in this same transaction.
     return { creado: true, radicado };
   });
-  return { id, radicado: r.radicado, creado: r.creado, advertencias: r.creado ? advertencias : [] };
+  const registrado_en = aIso((await ref.get()).data()?.registrado_en);
+  return { id, radicado: r.radicado, creado: r.creado, registrado_en, advertencias: r.creado ? advertencias : [] };
+}
+
+/** Attachments a registro needs: both document photos, plus the signature image only for a drawn signature. */
+export const ADJUNTOS_DOCUMENTO = ["documento_frente", "documento_reverso"] as const;
+export const requeridosDe = (metodo: string): string[] => (metodo === "dibujada" ? [...ADJUNTOS_DOCUMENTO, "firma"] : [...ADJUNTOS_DOCUMENTO]);
+const adjuntosRequeridos = (metodo: string) => requeridosDe(metodo).length;
+
+/**
+ * Completeness is decided HERE, from what actually exists in registros/{id}/adjuntos, never from a client claim.
+ * Sets `adjuntos_completos` (and the counts) only when every required attachment exists; reports what is missing otherwise.
+ * Idempotent. Null when the registro does not exist or is not visible to the actor (existence is not leaked).
+ */
+export async function marcarAdjuntosCompletos(id: string, actor: { uid: string; rol: Rol }) {
+  const ref = col().doc(id);
+  const d = (await ref.get()).data() as Doc | undefined;
+  if (!d || (!tieneRol(actor.rol, "admin") && d.registrado_por_uid !== actor.uid)) return null;
+  const requeridos = requeridosDe(d.firma?.metodo_firma);
+  const presentes = new Set((await ref.collection("adjuntos").listDocuments()).map((x) => x.id));
+  const faltan = requeridos.filter((t) => !presentes.has(t));
+  const conteo = requeridos.length - faltan.length;
+  const completo = faltan.length === 0;
+  if (d.adjuntos_completos !== completo || d.adjuntos_presentes !== conteo) {
+    await ref.update({ adjuntos_requeridos: requeridos.length, adjuntos_presentes: conteo, adjuntos_completos: completo, actualizado_en: FieldValue.serverTimestamp() });
+  }
+  return { completo, requeridos: requeridos.length, presentes: conteo, faltan };
 }
 
 // ---- List / detail (read side). Whitelisted fields only: photos and signature never leave the server. ----
@@ -162,6 +208,7 @@ const CAMPOS_LISTA = [
   "radicado",
   "estado",
   "estado_revision",
+  "adjuntos_completos",
   "registrado_por_nombre",
   "registrado_en",
   "nombre_busqueda",
@@ -184,6 +231,8 @@ export type FilaRegistro = {
   estrato: number;
   estado: string;
   estado_revision: string;
+  /** False until every required attachment exists ("Incompleto" in the list). */
+  adjuntos_completos: boolean;
   registrado_por_nombre: string;
   registrado_en: string | null;
 };
@@ -199,6 +248,7 @@ const fila = (id: string, d: Doc): FilaRegistro => ({
   estrato: d.inmueble?.estrato,
   estado: d.estado,
   estado_revision: d.estado_revision,
+  adjuntos_completos: d.adjuntos_completos === true,
   registrado_por_nombre: d.registrado_por_nombre,
   registrado_en: aIso(d.registrado_en),
 });
@@ -238,6 +288,24 @@ export async function obtenerRegistro(id: string, actor: { uid: string; rol: Rol
     estado: d.estado,
     estado_revision: d.estado_revision,
     estado_revision_en: aIso(d.estado_revision_en),
+    adjuntos_completos: d.adjuntos_completos === true,
+    adjuntos_requeridos: d.adjuntos_requeridos ?? null,
+    adjuntos_presentes: d.adjuntos_presentes ?? null,
+    // Consent and signature METADATA only (never the signature image, never the verifier's uid).
+    consentimiento: d.consentimiento && {
+      version: d.consentimiento.version,
+      hash: d.consentimiento.hash,
+      acepta_tratamiento: d.consentimiento.acepta_tratamiento,
+      acepta_datos_sensibles: d.consentimiento.acepta_datos_sensibles,
+      aceptado_en: aIso(d.consentimiento.aceptado_en),
+    },
+    firma: d.firma && {
+      metodo_firma: d.firma.metodo_firma,
+      firmado_en: aIso(d.firma.firmado_en),
+      metodo_verificacion: d.firma.metodo_verificacion ?? null,
+      nota_verificacion: d.firma.nota_verificacion ?? null,
+      verificado_por_nombre: d.firma.verificado_por_nombre ?? null,
+    },
     registrado_por_nombre: d.registrado_por_nombre,
     registrado_por_correo: d.registrado_por_correo,
     registrado_en: aIso(d.registrado_en),

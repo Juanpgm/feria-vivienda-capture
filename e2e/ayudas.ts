@@ -2,6 +2,7 @@ import { expect, type Page } from "@playwright/test";
 import { BANDAS_ADULTO_MAYOR, BANDAS_HOGAR, CONDICIONES_ESPECIALES, DICTAMENES, EXCEPCIONES_UNICA_PROPIEDAD, FUENTES_FINANCIACION, TITULARIDADES } from "../src/shared/constantes";
 import { fechaBogota } from "../src/shared/tiempo";
 import { parsePhoneNumberFromString } from "libphonenumber-js/min";
+import { imagenPequena } from "./imagenes";
 import { type Caso, type CasoInvalido, condicionesFinales, ETIQUETA_RANGO, type PaisTel } from "./datos-prueba";
 
 export const ETIQUETAS_NOMBRE = ["Primer nombre", "Segundo nombre (opcional)", "Primer apellido", "Segundo apellido (opcional)"] as const;
@@ -17,7 +18,10 @@ export const TITULO_PASO = {
   5: "Riesgo y dictamen técnico",
   6: "Titularidad",
   7: "Cierre financiero",
-  8: "Resumen",
+  8: "Consentimiento",
+  9: "Documento de identidad",
+  10: "Resumen",
+  11: "Firma y envío",
 } as const;
 export type NumeroPaso = keyof typeof TITULO_PASO;
 
@@ -248,7 +252,8 @@ export async function llenarPaso7(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
 
 /** Fills steps 1..hasta with the dataset and advances after each one (the target step stays open). */
 export async function avanzarHasta(page: Page, c: Caso | CasoInvalido, hasta: NumeroPaso) {
-  const llenar = [llenarPaso1, llenarPaso2, llenarPaso3, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7] as const;
+  // Steps 8 (consent) and 9 (photos) take no dataset; 10 is the read-only summary.
+  const llenar = [llenarPaso1, llenarPaso2, llenarPaso3, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, llenarPaso8, llenarPaso9, async () => {}] as const;
   for (let n = 1; n < hasta; n++) {
     await llenar[n - 1](page, c);
     await siguiente(page);
@@ -262,7 +267,7 @@ const seccionResumen = (page: Page, titulo: string) => page.getByRole("region", 
 export async function verificarResumen(page: Page, c: Caso) {
   const e = c.esperado;
   const x = c.extra;
-  await expect(tituloPaso(page, 8)).toBeVisible();
+  await expect(tituloPaso(page, 10)).toBeVisible();
   await expect(page.getByText("Los datos de los pasos anteriores están completos.")).toBeVisible();
 
   const hogar = seccionResumen(page, "Datos del hogar");
@@ -305,7 +310,7 @@ export async function verificarResumen(page: Page, c: Caso) {
   );
   await expect(fin.locator("dd").last()).toHaveText(e.observaciones ? e.observaciones.replace(/\s+/g, " ") : "Sin observaciones");
 
-  // Phase 3 requirements are listed as pending and there is no submit yet.
+  // The signature is still pending (it is taken in the last step) and the summary itself has no send action.
   const pendiente = seccionResumen(page, "Pendiente para poder enviar");
   await expect(pendiente).toContainText("Firma del solicitante");
   await expect(page.getByRole("button", { name: /enviar/i })).toHaveCount(0);
@@ -313,3 +318,23 @@ export async function verificarResumen(page: Page, c: Caso) {
 
 export const siguiente = (page: Page) => page.getByRole("button", { name: "Siguiente", ...exacto }).click();
 export const tituloPaso = (page: Page, n: NumeroPaso) => page.getByRole("heading", { level: 2, name: TITULO_PASO[n] });
+
+// ---- Step 9: identity-document photos (PR 3a) ----
+
+export const entradaFoto = (page: Page, lado: "frente" | "reverso") => page.getByLabel(`Archivo de imagen: ${lado} del documento`, exacto);
+
+/** Attaches two small valid photos and waits until both are stored (thumbnails visible). */
+export async function llenarPaso9(page: Page) {
+  await entradaFoto(page, "frente").setInputFiles(await imagenPequena(page, "frente.jpg"));
+  await entradaFoto(page, "reverso").setInputFiles(await imagenPequena(page, "reverso.jpg", "#d5742a"));
+  await expect(page.getByRole("img", { name: /Vista previa: frente/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: /Vista previa: reverso/ })).toBeVisible();
+}
+
+// ---- Step 8: consent (PR 3b) ----
+
+/** Authorizes the treatment of personal data (required) and, unless `sensibles: false`, the sensitive data too. */
+export async function llenarPaso8(page: Page, _c?: unknown, o: { sensibles?: boolean } = {}) {
+  await page.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...exacto }).check();
+  if (o.sensibles !== false) await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles (opcional)", ...exacto }).check();
+}

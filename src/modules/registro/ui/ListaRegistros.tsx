@@ -19,6 +19,8 @@ export type FilaListado = {
   comuna: string;
   estrato: number;
   estado_revision: string;
+  /** False until every required attachment (photos, drawn signature) reached the server. */
+  adjuntos_completos?: boolean;
   registrado_por_nombre: string;
   registrado_en: string | null;
 };
@@ -230,7 +232,10 @@ export function ListaRegistros({ admin, funcionarios }: { admin: boolean; funcio
                         {f.barrio}, {f.comuna}
                       </td>
                       <td className="px-2 py-3">{f.estrato}</td>
-                      <td className="px-2 py-3">{estado(f.estado_revision)}</td>
+                      <td className="px-2 py-3">
+                        {estado(f.estado_revision)}
+                        {f.adjuntos_completos === false && <span className="block font-semibold text-danger">Incompleto</span>}
+                      </td>
                       <td className="px-2 py-3">
                         <span className="whitespace-nowrap">{cuando(f)}</span>
                         <br />
@@ -256,6 +261,7 @@ export function ListaRegistros({ admin, funcionarios }: { admin: boolean; funcio
                   <p className="text-sm text-muted">
                     {estado(f.estado_revision)}. {cuando(f)}, {f.registrado_por_nombre}
                   </p>
+                  {f.adjuntos_completos === false && <p className="text-sm font-semibold text-danger">Incompleto: faltan archivos</p>}
                 </li>
               ))}
             </ul>

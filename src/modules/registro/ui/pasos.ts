@@ -75,7 +75,28 @@ export const PASOS: readonly Paso[] = [
     campos: ["fuentes_financiacion", "tiene_seguro", "codigo_aseguradora", "aseguradora_otra", "observaciones"],
     schema: () => import("@/modules/cierre-financiero/domain/schema").then((m) => m.cierreFinancieroSchema),
   },
+  {
+    id: "consentimiento",
+    titulo: "Consentimiento",
+    seccion: "consentimiento",
+    campos: ["acepta_tratamiento", "acepta_datos_sensibles", "version"],
+    schema: () => import("@/modules/consentimiento/domain/schema").then((m) => m.consentimientoSchema),
+  },
+  {
+    id: "documentos",
+    titulo: "Documento de identidad",
+    seccion: "documentos",
+    campos: ["documento_frente", "documento_reverso"],
+    schema: () => import("@/modules/documentos/domain/schema").then((m) => m.documentosSchema),
+  },
   { id: "resumen", titulo: "Resumen", seccion: "", campos: [] },
+  {
+    id: "firma",
+    titulo: "Firma y envío",
+    seccion: "firma",
+    campos: ["metodo_firma", "imagen", "metodo_verificacion", "nota_verificacion"],
+    schema: () => import("@/modules/firma/domain/schema").then((m) => m.firmaFormSchema),
+  },
 ];
 
 /** Radio "si"/"no" fields per section, converted to booleans before parsing. */

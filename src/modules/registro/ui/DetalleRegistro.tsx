@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { DocumentosAdmin } from "@/modules/documentos/ui/DocumentosAdmin";
 import { ESTADOS_REVISION } from "@/shared/constantes";
 import { fechaBogota, fechaHoraBogota } from "@/shared/tiempo";
 import { Button } from "@/shared/ui/Button";
-import { filasDe, SECCIONES } from "./datosResumen";
+import { METODOS_VERIFICACION } from "@/modules/firma/domain/schema";
+import { filasDe, SECCIONES, type Fila } from "./datosResumen";
 import { ListaFilas } from "./ListaFilas";
 
 type Detalle = {
@@ -15,12 +17,41 @@ type Detalle = {
   registrado_por_nombre: string;
   registrado_por_correo: string;
   registrado_en: string | null;
+  adjuntos_completos?: boolean;
+  adjuntos_requeridos?: number | null;
+  adjuntos_presentes?: number | null;
+  consentimiento?: { version: string; acepta_tratamiento: boolean; acepta_datos_sensibles: boolean; aceptado_en: string | null } | null;
+  firma?: {
+    metodo_firma: string;
+    firmado_en: string | null;
+    metodo_verificacion: string | null;
+    nota_verificacion: string | null;
+    verificado_por_nombre: string | null;
+  } | null;
   datos: Record<string, unknown>;
   historial: { tipo: string; estado_revision: string; por_nombre: string; por_correo: string; en: string | null }[];
 };
 type Estado = { id: string; intento: number } & ({ ok: Detalle } | { error: string; noExiste?: boolean });
 
 const TIPOS_HISTORIAL: Record<string, string> = { creacion: "Registro creado" };
+const hora = (iso: string | null | undefined) => (iso ? fechaHoraBogota(iso) : "Sin fecha");
+function filasAutorizacion(d: Detalle): Fila[] {
+  const c = d.consentimiento;
+  const f = d.firma;
+  return [
+    { etiqueta: "Tratamiento de datos", valor: c ? `${c.acepta_tratamiento ? "Autorizado" : "No autorizado"} · texto ${c.version} · ${hora(c.aceptado_en)}` : "Sin información" },
+    { etiqueta: "Datos sensibles", valor: c ? (c.acepta_datos_sensibles ? "Autorizado" : "No autorizado") : "Sin información" },
+    {
+      etiqueta: "Firma",
+      valor: !f
+        ? "Sin información"
+        : f.metodo_firma === "dibujada"
+          ? `Dibujada en pantalla · ${hora(f.firmado_en)}`
+          : `Verificación manual (${METODOS_VERIFICACION[f.metodo_verificacion as keyof typeof METODOS_VERIFICACION] ?? f.metodo_verificacion}) por ${f.verificado_por_nombre} · ${hora(f.firmado_en)}`,
+    },
+    ...(f?.nota_verificacion ? [{ etiqueta: "Nota de la verificación", valor: f.nota_verificacion }] : []),
+  ];
+}
 const estado = (e: string) => ESTADOS_REVISION[e as keyof typeof ESTADOS_REVISION] ?? e;
 const volver = (
   <Link href="/registros" className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2">
@@ -29,7 +60,7 @@ const volver = (
 );
 
 /** Read-only view of one registro: radicado, who/when, review status, every captured section and the historial. */
-export function DetalleRegistro({ id }: { id: string }) {
+export function DetalleRegistro({ id, esAdmin = false }: { id: string; esAdmin?: boolean }) {
   const [intento, setIntento] = useState(0);
   const [r, setR] = useState<Estado | null>(null);
 
@@ -80,8 +111,19 @@ export function DetalleRegistro({ id }: { id: string }) {
             { etiqueta: "Estado de revisión", valor: estado(d.estado_revision) },
             { etiqueta: "Registrado por", valor: `${d.registrado_por_nombre} (${d.registrado_por_correo})` },
             { etiqueta: "Fecha de registro", valor: d.registrado_en ? fechaHoraBogota(d.registrado_en) : "Sin fecha" },
+            {
+              etiqueta: "Archivos",
+              valor: d.adjuntos_completos ? "Completos" : `Incompleto (${d.adjuntos_presentes ?? 0} de ${d.adjuntos_requeridos ?? 3} archivos recibidos)`,
+            },
           ]}
         />
+      </section>
+
+      <section aria-labelledby="det-autorizacion">
+        <h2 id="det-autorizacion" className="mb-2 border-b border-border pb-1 text-lg font-bold text-primary-strong">
+          Autorización y firma
+        </h2>
+        <ListaFilas filas={filasAutorizacion(d)} />
       </section>
 
       {SECCIONES.map((s) => (
@@ -92,6 +134,8 @@ export function DetalleRegistro({ id }: { id: string }) {
           <ListaFilas filas={filasDe(s.id, d.datos[s.id], hoy)} />
         </section>
       ))}
+
+      {esAdmin && <DocumentosAdmin registroId={id} />}
 
       <section aria-labelledby="det-historial">
         <h2 id="det-historial" className="mb-2 border-b border-border pb-1 text-lg font-bold text-primary-strong">

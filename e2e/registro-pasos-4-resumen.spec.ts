@@ -6,9 +6,10 @@
 import { expect, test } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import {
-  avanzarHasta, CAMPO_FUENTES, chip, HOY, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, nuevoRegistro, siguiente, tituloPaso, verificarPaso4,
-  verificarResumen, type NumeroPaso,
+  avanzarHasta, CAMPO_FUENTES, chip, HOY, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, llenarPaso8, llenarPaso9, nuevoRegistro, siguiente, tituloPaso,
+  verificarPaso4, verificarResumen, type NumeroPaso,
 } from "./ayudas";
+import { PASOS } from "../src/modules/registro/ui/pasos";
 import { generarCasos, generarCasosInvalidos, restarAnios } from "./datos-prueba";
 
 test.beforeAll(() => {
@@ -17,7 +18,8 @@ test.beforeAll(() => {
 
 const riel = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Pasos del registro" });
 const seccionResumenFin = (page: import("@playwright/test").Page) => page.getByRole("region", { name: "Cierre financiero", exact: true });
-const LLENAR = { 4: llenarPaso4, 5: llenarPaso5, 6: llenarPaso6, 7: llenarPaso7 } as const;
+const LLENAR = { 4: llenarPaso4, 5: llenarPaso5, 6: llenarPaso6, 7: llenarPaso7, 8: llenarPaso8, 9: llenarPaso9 } as const;
+const RESUMEN = PASOS.findIndex((p) => p.id === "resumen") + 1;
 
 test.describe("registro pasos 4-7 y resumen: datos validos", () => {
   for (const c of generarCasos(HOY)) {
@@ -28,7 +30,8 @@ test.describe("registro pasos 4-7 y resumen: datos validos", () => {
       await llenarPaso4(page, c);
       await verificarPaso4(page, c);
       await siguiente(page);
-      for (const n of [5, 6, 7] as const) {
+      // Steps 5-7 with the dataset, then consent (8) and photos (9): both take no dataset.
+      for (const n of [5, 6, 7, 8, 9] as const) {
         await expect(tituloPaso(page, n)).toBeVisible();
         await LLENAR[n](page, c);
         await siguiente(page);
@@ -166,12 +169,17 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     await obs.fill("x".repeat(1000));
     await obs.press("Tab");
     await siguiente(page);
-    await expect(tituloPaso(page, 8)).toBeVisible();
+    await expect(tituloPaso(page, 8)).toBeVisible(); // consent follows the financial closing
+    await llenarPaso8(page);
+    await siguiente(page);
+    await llenarPaso9(page);
+    await siguiente(page);
+    await expect(tituloPaso(page, RESUMEN as NumeroPaso)).toBeVisible();
     await expect(seccionResumenFin(page).locator("dd").last()).toHaveText("x".repeat(1000));
     // Empty observations are stored as null and the summary says so.
     await page.getByRole("button", { name: "Editar Cierre financiero (paso 7)", exact: true }).click();
     await page.getByLabel("Observaciones (opcional)", { exact: true }).fill("   ");
-    await siguiente(page);
+    await riel(page).getByRole("button", { name: /Resumen/ }).click();
     await expect(seccionResumenFin(page).locator("dd").last()).toHaveText("Sin observaciones");
   });
 
@@ -244,7 +252,7 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
   test("el resumen marca lo que falta cuando se vacia un dato despues de avanzar", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY)[0];
-    await avanzarHasta(page, c, 8);
+    await avanzarHasta(page, c, RESUMEN as NumeroPaso);
     await expect(page.getByText("Los datos de los pasos anteriores están completos.")).toBeVisible();
 
     // Go back to step 4, empty the address, and jump to the summary through the rail (no validation on the way).
@@ -259,14 +267,18 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     await expect(tituloPaso(page, 4)).toBeVisible();
   });
 
-  test("el resumen no tiene boton de envio y lista lo pendiente de la siguiente fase", async ({ page }) => {
+  test("el resumen no envía: lista lo pendiente (la firma), muestra la autorización y no expone la firma", async ({ page }) => {
     await nuevoRegistro(page);
-    await avanzarHasta(page, generarCasos(HOY)[0], 8);
-    await expect(page.getByRole("button", { name: /enviar/i })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Siguiente", exact: true })).toHaveCount(0);
-    for (const t of ["Fotos del documento de identidad (frente y reverso)", "Autorización de tratamiento de datos personales", "Firma del solicitante"]) {
-      await expect(page.getByText(t, { exact: true })).toBeVisible();
-    }
+    await avanzarHasta(page, generarCasos(HOY)[0], RESUMEN as NumeroPaso);
+    await expect(page.getByRole("button", { name: /^Enviar/i })).toHaveCount(0);
+    // "Siguiente" only leads to the last step ("Firma y envío").
+    await expect(page.getByRole("button", { name: "Siguiente", exact: true })).toHaveCount(1);
+    const pendiente = page.getByRole("region", { name: "Pendiente para poder enviar", exact: true });
+    await expect(pendiente).toContainText("Firma del solicitante");
+    await expect(pendiente).toContainText("Autorización de tratamiento de datos: Autorizada.");
+    await expect(pendiente).toContainText("Fotos del documento de identidad: Frente y reverso capturados.");
+    await expect(page.getByRole("region", { name: "Autorización de datos", exact: true })).toContainText("Autorizado");
+    await expect(page.getByRole("img", { name: /firma/i })).toHaveCount(0);
   });
 
   test("el borrador conserva los pasos 4-7 al recargar", async ({ page }) => {
