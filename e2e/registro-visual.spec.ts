@@ -3,7 +3,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { PASOS } from "../src/modules/registro/ui/pasos";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { HOY, llenarPaso1, llenarPaso2, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
+import { HOY, llenarComposicion, llenarProteccion, llenarSolicitante, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
 import { generarCasos } from "./datos-prueba";
 
 test.beforeAll(() => {
@@ -64,13 +64,15 @@ for (const esquema of ["light", "dark"] as const) {
           await expect(page.getByRole("navigation", { name: "Pasos del registro" }).locator('[aria-current="step"]')).toHaveCount(1);
         }
 
-        // Walk steps 2 and 3 with a valid dataset checking horizontal overflow.
+        // Walk steps 2 and 3 (Hogar, Vivienda) with a valid dataset checking horizontal overflow.
         const c = generarCasos(HOY)[0];
-        await llenarPaso1(page, c);
+        await llenarSolicitante(page, c);
         await siguiente(page);
         await expect(tituloPaso(page, 2)).toBeVisible();
         expect(await sinHorizontal(page)).toBe(true);
-        await llenarPaso2(page, { composicion: { ...c.composicion, personas: "3", adultoMayor: "si", edades: ["74", "80"] } });
+        const hogar = { composicion: { ...c.composicion, personas: "3", adultoMayor: "si" as const, edades: ["74", "80"] } };
+        await llenarComposicion(page, hogar);
+        await llenarProteccion(page, hogar);
         expect(await sinHorizontal(page)).toBe(true);
         await siguiente(page);
         await expect(tituloPaso(page, 3)).toBeVisible();

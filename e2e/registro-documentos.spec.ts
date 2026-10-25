@@ -1,17 +1,20 @@
 // Authenticated e2e for the identity-document step (photos). NEVER writes to Firestore: the adjuntos API is mocked
 // and asserted NOT to be called while capturing (upload happens at submit, owned by the submit flow).
-// The step is reached by moving the IndexedDB draft to it, so this spec does not depend on the other steps' UI.
+// The step ("Autorización y documento") is reached by moving the IndexedDB draft to it, so this spec does not depend on the other steps' UI.
+// The photos are locked until the consent is given, so every test authorizes the treatment of data first.
 import { expect, test, type Page } from "@playwright/test";
 import { PASOS } from "../src/modules/registro/ui/pasos";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { entradaFoto, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
+import { entradaFoto, nuevoRegistro, siguiente, tituloPaso, type NumeroPaso } from "./ayudas";
+import { TEXTO_TRATAMIENTO } from "./ayudas-envio";
 import { archivoTexto, imagenConExif, imagenGrande, imagenPequena, imagenPng, textoComoJpeg } from "./imagenes";
 
 test.beforeAll(() => {
   if (!hayEstadoAuth()) throw new Error(MENSAJE_SIN_SESION);
 });
 
-const INDICE = PASOS.findIndex((p) => p.id === "documentos");
+const INDICE = PASOS.findIndex((p) => p.id === "autorizacion");
+const PASO_DOCUMENTOS = (INDICE + 1) as NumeroPaso;
 const MAX_BYTES = 700 * 1024;
 
 /** Reads/updates the raw IndexedDB entries of idb-keyval ("keyval-store"). */
@@ -56,9 +59,13 @@ async function abrirPasoDocumentos(page: Page) {
   await nuevoRegistro(page);
   await page.getByLabel("Primer nombre", { exact: true }).fill("Ana");
   await expect(page.getByRole("status")).toContainText("Borrador guardado");
-  await idb(page, `const k = (await req(st.getAllKeys())).map(String).find((k) => k.startsWith("borrador:")); const v = await req(st.get(k)); v.paso = "documentos"; v.maximo = args[0]; await req(st.put(v, k));`, INDICE);
+  await idb(page, `const k = (await req(st.getAllKeys())).map(String).find((k) => k.startsWith("borrador:")); const v = await req(st.get(k)); v.paso = "autorizacion"; v.maximo = args[0]; await req(st.put(v, k));`, INDICE);
   await page.reload();
-  await expect(tituloPaso(page, 9)).toBeVisible();
+  await expect(tituloPaso(page, PASO_DOCUMENTOS)).toBeVisible();
+  // Locked until the consent is given.
+  await expect(entradaFoto(page, "frente")).toHaveCount(0);
+  await page.getByRole("checkbox", { name: TEXTO_TRATAMIENTO, exact: true }).check();
+  await expect(entradaFoto(page, "frente")).toBeVisible();
   return subidas;
 }
 
@@ -75,13 +82,13 @@ test.describe("documento de identidad: captura", () => {
     await expect(page.getByText("Falta la foto del frente del documento", { exact: true })).toBeVisible();
     await expect(page.getByText("Falta la foto del reverso del documento", { exact: true })).toBeVisible();
     await expect(page.getByText("Revise los campos marcados antes de continuar.")).toBeVisible();
-    await expect(tituloPaso(page, 9)).toBeVisible(); // did not advance
+    await expect(tituloPaso(page, PASO_DOCUMENTOS)).toBeVisible(); // did not advance
 
     await entradaFoto(page, "frente").setInputFiles(await imagenPequena(page));
     await expect(miniatura(page, "frente")).toBeVisible();
     await expect(page.getByText("Falta la foto del frente del documento", { exact: true })).toHaveCount(0);
     await siguiente(page);
-    await expect(tituloPaso(page, 9)).toBeVisible(); // still missing the back
+    await expect(tituloPaso(page, PASO_DOCUMENTOS)).toBeVisible(); // still missing the back
     await expect(page.getByText("Falta la foto del reverso del documento", { exact: true })).toBeVisible();
     expect(subidas).toEqual([]);
   });
@@ -168,12 +175,12 @@ test.describe("documento de identidad: borrador", () => {
     expect(await page.evaluate(() => JSON.stringify({ ...localStorage }))).not.toMatch(/foto|capturada/);
 
     await page.reload();
-    await expect(tituloPaso(page, 9)).toBeVisible();
+    await expect(tituloPaso(page, PASO_DOCUMENTOS)).toBeVisible();
     await expect(miniatura(page, "frente")).toBeVisible();
     await expect(miniatura(page, "reverso")).toBeVisible();
 
     await siguiente(page);
-    await expect(tituloPaso(page, 10)).toBeVisible(); // Resumen
+    await expect(tituloPaso(page, PASOS.length as NumeroPaso)).toBeVisible(); // Revisión y firma
     expect(subidas).toEqual([]);
   });
 
@@ -199,10 +206,10 @@ test.describe("documento de identidad: borrador", () => {
     await expect(page.getByRole("status")).toContainText("Borrador guardado");
     await idb(page, `for (const k of (await req(st.getAllKeys())).map(String).filter((k) => k.startsWith("foto:")).slice(0, 1)) await req(st.delete(k));`);
     await page.reload();
-    await expect(tituloPaso(page, 9)).toBeVisible();
+    await expect(tituloPaso(page, PASO_DOCUMENTOS)).toBeVisible();
     expect(await clavesFoto(page)).toHaveLength(1);
     await siguiente(page);
-    await expect(tituloPaso(page, 9)).toBeVisible();
+    await expect(tituloPaso(page, PASO_DOCUMENTOS)).toBeVisible();
   });
 });
 

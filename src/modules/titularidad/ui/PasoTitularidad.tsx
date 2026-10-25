@@ -17,7 +17,7 @@ export function PasoTitularidad() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Relación con el inmueble</h3>
+        <h4 className="text-lg font-bold text-primary-strong">Relación con el inmueble</h4>
         <SegmentedControl
           legend="El solicitante es"
           name={P + "tipo_titularidad"}
@@ -37,7 +37,7 @@ export function PasoTitularidad() {
       </section>
 
       <section className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Única propiedad residencial</h3>
+        <h4 className="text-lg font-bold text-primary-strong">Única propiedad residencial</h4>
         <SegmentedControl
           legend="¿Es su única propiedad residencial?"
           name={P + "es_unica_propiedad"}

@@ -11,21 +11,22 @@ export const HOY = fechaBogota();
 const RUTA = process.env.E2E_RUTA_NUEVO ?? "/registros/nuevo";
 
 export const TITULO_PASO = {
-  1: "Datos del hogar",
-  2: "Composición familiar",
-  3: "Especial protección constitucional",
-  4: "Inmueble y ubicación",
-  5: "Riesgo y dictamen técnico",
-  6: "Titularidad",
-  7: "Cierre financiero",
-  8: "Consentimiento",
-  9: "Documento de identidad",
-  10: "Resumen",
-  11: "Firma y envío",
+  1: "Solicitante",
+  2: "Hogar",
+  3: "Vivienda",
+  4: "Cierre financiero",
+  5: "Autorización y documento",
+  6: "Revisión y firma",
 } as const;
 export type NumeroPaso = keyof typeof TITULO_PASO;
 
 const exacto = { exact: true } as const;
+
+/**
+ * Leaves the focused field (its blur validation runs and any error appears) before the next click. On the long merged
+ * steps an error that shows up while the pointer is going down on another control moves it, and the click is lost.
+ */
+const soltarFoco = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
 /** The duplicate check reads the real Firestore: every spec that fills step 1 answers it locally instead (override with a later page.route). */
 export const sinDuplicados = (page: Page) =>
@@ -95,7 +96,7 @@ async function escribirTelefono(page: Page, alterno: boolean, valor: string | un
   await escribir(page, alterno ? "Teléfono alterno (opcional)" : "Teléfono principal", valor);
 }
 
-export async function llenarPaso1(page: Page, c: Pick<Caso, "solicitante"> | Pick<CasoInvalido, "solicitante">) {
+export async function llenarSolicitante(page: Page, c: Pick<Caso, "solicitante"> | Pick<CasoInvalido, "solicitante">) {
   const s = c.solicitante;
   for (const [i, etiqueta] of ETIQUETAS_NOMBRE.entries()) await escribir(page, etiqueta, s.nombres[i]);
   const tipos = { cc: "C.C.", ce: "C.E.", otro: "Otro" } as const;
@@ -127,7 +128,7 @@ async function verificarTelefono(page: Page, alterno: boolean, e164: string) {
 }
 
 /** What the person sees after blur: normalized text and derived hints. */
-export async function verificarPaso1(page: Page, c: Caso) {
+export async function verificarSolicitante(page: Page, c: Caso) {
   const e = c.esperado;
   for (const [i, etiqueta] of ETIQUETAS_NOMBRE.entries()) await expect(page.getByLabel(etiqueta, exacto)).toHaveValue(e.nombres[i]);
   await expect(page.getByLabel("Número de documento", exacto)).toHaveValue(e.documento);
@@ -141,7 +142,7 @@ export async function verificarPaso1(page: Page, c: Caso) {
   await expect(page.getByText(`Edad: ${e.edad} años`)).toBeVisible();
 }
 
-export async function llenarPaso2(page: Page, c: Pick<Caso, "composicion"> | Pick<CasoInvalido, "composicion">) {
+export async function llenarComposicion(page: Page, c: Pick<Caso, "composicion"> | Pick<CasoInvalido, "composicion">) {
   const k = c.composicion;
   await escribir(page, "Personas que viven en el hogar", k.personas);
   if (k.adultoMayor) {
@@ -155,9 +156,10 @@ export async function llenarPaso2(page: Page, c: Pick<Caso, "composicion"> | Pic
     for (const [i, edad] of k.edades.entries()) await escribir(page, `Edad del adulto mayor ${i + 1}`, edad);
   }
   await escribir(page, "Ingreso mensual del hogar (COP)", k.ingreso);
+  await soltarFoco(page);
 }
 
-export async function verificarPaso2(page: Page, c: Caso) {
+export async function verificarComposicion(page: Page, c: Caso) {
   const e = c.esperado;
   // Digits only: the thousands separator depends on the browser ICU data.
   const ingreso = page.getByLabel("Ingreso mensual del hogar (COP)", exacto);
@@ -180,11 +182,12 @@ export const chip = (page: Page, etiqueta: string) => page.getByRole("button", {
 export const CAMPO_CONDICIONES = "Condiciones del solicitante o su hogar";
 export const CAMPO_FUENTES = "Fuentes de financiación";
 
-export async function llenarPaso3(page: Page, c: Pick<Caso, "composicion"> | Pick<CasoInvalido, "composicion">) {
+export async function llenarProteccion(page: Page, c: Pick<Caso, "composicion"> | Pick<CasoInvalido, "composicion">) {
   await elegirVarias(page, CAMPO_CONDICIONES, c.composicion.condiciones.map((k) => CONDICIONES_ESPECIALES[k as keyof typeof CONDICIONES_ESPECIALES]));
+  await soltarFoco(page);
 }
 
-export async function verificarPaso3(page: Page, c: Caso) {
+export async function verificarProteccion(page: Page, c: Caso) {
   for (const [codigo, etiqueta] of Object.entries(CONDICIONES_ESPECIALES)) {
     if (c.esperado.condicionesFinales.includes(codigo)) await expect(chip(page, etiqueta)).toBeVisible();
     else await expect(chip(page, etiqueta)).toHaveCount(0);
@@ -197,11 +200,13 @@ const grupo = (page: Page, nombre: string) => page.getByRole("group", { name: no
 async function elegirEnCombobox(page: Page, nombre: string, texto: string) {
   const combo = page.getByRole("combobox", { name: nombre, ...exacto });
   await combo.fill(texto);
+  // The catalog loads on demand: Enter before the options exist would select nothing.
+  await expect(page.getByRole("option").first()).toBeVisible();
   await combo.press("Enter");
   await combo.press("Tab");
 }
 
-export async function llenarPaso4(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
+export async function llenarInmueble(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
   const v = c.extra.vivienda;
   await escribir(page, "Dirección del inmueble", v.direccion);
   if (v.division) await elegirEnCombobox(page, "Comuna o corregimiento", v.division.etiqueta);
@@ -210,9 +215,10 @@ export async function llenarPaso4(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
     await elegirEnCombobox(page, rural ? "Vereda" : "Barrio o vereda", v.lugar.nombre);
   }
   if (v.estrato) await grupo(page, "Estrato socioeconómico").getByRole("radio", { name: String(v.estrato), ...exacto }).check();
+  await soltarFoco(page);
 }
 
-export async function verificarPaso4(page: Page, c: Caso) {
+export async function verificarInmueble(page: Page, c: Caso) {
   const v = c.extra.vivienda;
   await expect(page.getByRole("combobox", { name: "Comuna o corregimiento", ...exacto })).toHaveValue(v.division!.etiqueta);
   await expect(page.getByText(`Sector: ${v.division!.sector}`, exacto)).toBeVisible();
@@ -220,7 +226,7 @@ export async function verificarPaso4(page: Page, c: Caso) {
   await expect(grupo(page, "Estrato socioeconómico").getByRole("radio", { name: String(v.estrato), ...exacto })).toBeChecked();
 }
 
-export async function llenarPaso5(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
+export async function llenarRiesgo(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
   const r = c.extra.riesgo;
   if (r.rud) await grupo(page, "¿Está registrado en el RUD?").getByRole("radio", { name: r.rud === "si" ? "Sí" : "No", ...exacto }).check();
   if (r.rud === "si") {
@@ -229,9 +235,10 @@ export async function llenarPaso5(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
   }
   if (r.dictamen) await page.getByLabel("Resultado del dictamen técnico", exacto).selectOption({ label: DICTAMENES[r.dictamen] });
   if (r.dictamen === "otro") await escribir(page, "Cuál dictamen", r.dictamenOtro);
+  await soltarFoco(page);
 }
 
-export async function llenarPaso6(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
+export async function llenarTitularidad(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
   const t = c.extra.titularidad;
   if (t.tipo) await grupo(page, "El solicitante es").getByRole("radio", { name: TITULARIDADES[t.tipo], ...exacto }).check();
   await escribir(page, "Número de matrícula (opcional)", t.matricula);
@@ -239,9 +246,10 @@ export async function llenarPaso6(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
   if (t.unica === "no" && t.excepcion) {
     await page.getByLabel("Excepción que aplica", exacto).selectOption({ label: EXCEPCIONES_UNICA_PROPIEDAD[t.excepcion] });
   }
+  await soltarFoco(page);
 }
 
-export async function llenarPaso7(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
+export async function llenarFinanciero(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
   const f = c.extra.financiero;
   await elegirVarias(page, CAMPO_FUENTES, f.fuentes.map((k) => FUENTES_FINANCIACION[k as keyof typeof FUENTES_FINANCIACION]));
   if (f.seguro) await grupo(page, "¿El inmueble tenía seguro?").getByRole("radio", { name: f.seguro === "si" ? "Sí" : "No", ...exacto }).check();
@@ -250,12 +258,29 @@ export async function llenarPaso7(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
   await escribir(page, "Observaciones (opcional)", f.observaciones);
 }
 
+/** Fills one step of the 6-step form with the dataset (every merged section of it). Steps 5 and 6 take no dataset fields beyond consent + photos. */
+export async function llenarPaso(page: Page, n: Exclude<NumeroPaso, 6>, c: Caso | CasoInvalido) {
+  if (n === 1) await llenarSolicitante(page, c);
+  if (n === 2) {
+    await llenarComposicion(page, c);
+    await llenarProteccion(page, c);
+  }
+  if (n === 3) {
+    await llenarInmueble(page, c);
+    await llenarRiesgo(page, c);
+    await llenarTitularidad(page, c);
+  }
+  if (n === 4) await llenarFinanciero(page, c);
+  if (n === 5) {
+    await autorizarDatos(page); // the photos are locked until the consent is given
+    await llenarFotos(page);
+  }
+}
+
 /** Fills steps 1..hasta with the dataset and advances after each one (the target step stays open). */
 export async function avanzarHasta(page: Page, c: Caso | CasoInvalido, hasta: NumeroPaso) {
-  // Steps 8 (consent) and 9 (photos) take no dataset; 10 is the read-only summary.
-  const llenar = [llenarPaso1, llenarPaso2, llenarPaso3, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, llenarPaso8, llenarPaso9, async () => {}] as const;
   for (let n = 1; n < hasta; n++) {
-    await llenar[n - 1](page, c);
+    await llenarPaso(page, n as Exclude<NumeroPaso, 6>, c);
     await siguiente(page);
     await expect(tituloPaso(page, (n + 1) as NumeroPaso)).toBeVisible();
   }
@@ -267,10 +292,10 @@ const seccionResumen = (page: Page, titulo: string) => page.getByRole("region", 
 export async function verificarResumen(page: Page, c: Caso) {
   const e = c.esperado;
   const x = c.extra;
-  await expect(tituloPaso(page, 10)).toBeVisible();
+  await expect(tituloPaso(page, 6)).toBeVisible();
   await expect(page.getByText("Los datos de los pasos anteriores están completos.")).toBeVisible();
 
-  const hogar = seccionResumen(page, "Datos del hogar");
+  const hogar = seccionResumen(page, "Solicitante");
   await expect(hogar).toContainText(e.nombre);
   await expect(hogar).toContainText(e.documento);
   await expect(hogar).toContainText(e.nacionalidad);
@@ -310,31 +335,31 @@ export async function verificarResumen(page: Page, c: Caso) {
   );
   await expect(fin.locator("dd").last()).toHaveText(e.observaciones ? e.observaciones.replace(/\s+/g, " ") : "Sin observaciones");
 
-  // The signature is still pending (it is taken in the last step) and the summary itself has no send action.
-  const pendiente = seccionResumen(page, "Pendiente para poder enviar");
+  // The signature is still pending (it is taken just below), so the send action is locked.
+  const pendiente = seccionResumen(page, "Requisitos para enviar");
   await expect(pendiente).toContainText("Firma del solicitante");
-  await expect(page.getByRole("button", { name: /enviar/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Enviar registro", ...exacto })).toBeDisabled();
 }
 
 export const siguiente = (page: Page) => page.getByRole("button", { name: "Siguiente", ...exacto }).click();
 export const tituloPaso = (page: Page, n: NumeroPaso) => page.getByRole("heading", { level: 2, name: TITULO_PASO[n] });
 
-// ---- Step 9: identity-document photos (PR 3a) ----
+// ---- Step 5: identity-document photos (locked until the consent is given) ----
 
 export const entradaFoto = (page: Page, lado: "frente" | "reverso") => page.getByLabel(`Archivo de imagen: ${lado} del documento`, exacto);
 
 /** Attaches two small valid photos and waits until both are stored (thumbnails visible). */
-export async function llenarPaso9(page: Page) {
+export async function llenarFotos(page: Page) {
   await entradaFoto(page, "frente").setInputFiles(await imagenPequena(page, "frente.jpg"));
   await entradaFoto(page, "reverso").setInputFiles(await imagenPequena(page, "reverso.jpg", "#d5742a"));
   await expect(page.getByRole("img", { name: /Vista previa: frente/ })).toBeVisible();
   await expect(page.getByRole("img", { name: /Vista previa: reverso/ })).toBeVisible();
 }
 
-// ---- Step 8: consent (PR 3b) ----
+// ---- Step 5: consent ----
 
 /** Authorizes the treatment of personal data (required) and, unless `sensibles: false`, the sensitive data too. */
-export async function llenarPaso8(page: Page, _c?: unknown, o: { sensibles?: boolean } = {}) {
+export async function autorizarDatos(page: Page, _c?: unknown, o: { sensibles?: boolean } = {}) {
   await page.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...exacto }).check();
   if (o.sensibles !== false) await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles (opcional)", ...exacto }).check();
 }

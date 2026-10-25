@@ -29,7 +29,7 @@ function Miniatura({ tipo, foto }: { tipo: TipoFoto; foto: FotoGuardada | null |
  * Review block for the summary step (same heading + "Editar" pattern as the other sections): thumbnails of the
  * stored photos. `onCompleto(true)` reports whether both are present so the summary can gate the submit button.
  */
-export function FotosResumen({ borradorId, irAPaso, onCompleto }: { borradorId: string; irAPaso?: (id: string) => void; onCompleto?: (ok: boolean) => void }) {
+export function FotosResumen({ borradorId, irAPaso, onCompleto }: { borradorId: string; irAPaso?: (id: string, ancla?: string) => void; onCompleto?: (ok: boolean) => void }) {
   const [fotos, setFotos] = useState<Record<TipoFoto, FotoGuardada | null | undefined>>({ documento_frente: undefined, documento_reverso: undefined });
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function FotosResumen({ borradorId, irAPaso, onCompleto }: { borradorId: 
         {irAPaso && (
           <button
             type="button"
-            onClick={() => irAPaso("documentos")}
+            onClick={() => irAPaso("autorizacion", "seccion-documentos")}
             aria-label="Editar Documento de identidad"
             className="min-h-11 rounded-lg px-2 text-sm font-semibold text-primary underline underline-offset-2"
           >

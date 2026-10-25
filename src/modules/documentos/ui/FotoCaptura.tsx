@@ -88,9 +88,9 @@ export function FotoCaptura({ borradorId, tipo, errorFormulario }: { borradorId:
   const mensaje = error || errorFormulario;
   return (
     <section aria-labelledby={`${id}-t`} className="flex flex-col gap-3">
-      <h3 id={`${id}-t`} className="text-lg font-bold text-primary-strong">
+      <h4 id={`${id}-t`} className="text-lg font-bold text-primary-strong">
         {etiqueta}
-      </h3>
+      </h4>
 
       <input
         ref={entrada}

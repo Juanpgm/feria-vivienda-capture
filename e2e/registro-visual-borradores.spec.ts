@@ -1,9 +1,9 @@
 // Visual pass over the drafts list and the new fields of this batch (nombre separado, unica propiedad con excepcion,
 // observaciones): light/dark x desktop (1280x800) / mobile (390x844). Screenshots go to test-results/visual (not committed).
-// No Firestore writes (see registro-pasos-1-3.spec.ts).
+// No Firestore writes (see registro-pasos-solicitante-hogar.spec.ts).
 import { expect, test, type Page } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { abrirLista, avanzarHasta, HOY, llenarPaso1, llenarPaso6, llenarPaso7, nuevoDesdeLista, tituloPaso } from "./ayudas";
+import { abrirLista, avanzarHasta, HOY, llenarFinanciero, llenarInmueble, llenarRiesgo, llenarSolicitante, llenarTitularidad, nuevoDesdeLista, tituloPaso } from "./ayudas";
 import { generarCasos } from "./datos-prueba";
 
 test.beforeAll(() => {
@@ -40,7 +40,7 @@ for (const esquema of ["light", "dark"] as const) {
         await avanzarHasta(page, a, 3);
         await page.getByRole("link", { name: "Ver borradores en curso" }).click();
         await nuevoDesdeLista(page);
-        await llenarPaso1(page, b);
+        await llenarSolicitante(page, b);
         await expect(page.getByRole("status")).toContainText("Borrador guardado");
         await page.getByRole("link", { name: "Ver borradores en curso" }).click();
 
@@ -61,25 +61,27 @@ for (const esquema of ["light", "dark"] as const) {
         const c = generarCasos(HOY)[0];
         await abrirLista(page);
         await nuevoDesdeLista(page);
-        await llenarPaso1(page, c);
+        await llenarSolicitante(page, c);
         await expect(page.getByLabel("Primer nombre", { exact: true })).toHaveValue("Ana");
         expect(await sinHorizontal(page)).toBe(true);
         await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso1-nombre.png`, fullPage: true });
 
         const conExcepcion = { extra: { ...c.extra, titularidad: { tipo: "propietario_clt" as const, matricula: "370-1", unica: "no" as const, excepcion: "dependencia_arriendo_40" as const } } };
-        await avanzarHasta(page, c, 6);
-        await llenarPaso6(page, conExcepcion);
+        await avanzarHasta(page, c, 3);
+        await llenarTitularidad(page, conExcepcion);
         await expect(page.getByLabel("Excepción que aplica", { exact: true })).toBeVisible();
         expect(await sinHorizontal(page)).toBe(true);
         expect(await objetivosPequenos(page)).toEqual([]);
-        await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso6-unica-no.png`, fullPage: true });
+        await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso3-unica-no.png`, fullPage: true });
 
+        await llenarInmueble(page, c);
+        await llenarRiesgo(page, c);
         await page.getByRole("button", { name: "Siguiente", exact: true }).click();
-        await expect(tituloPaso(page, 7)).toBeVisible();
-        await llenarPaso7(page, { extra: { ...c.extra, financiero: { ...c.extra.financiero, observaciones: "Prefiere que la llamen en la tarde.\nTiene cita el lunes." } } });
+        await expect(tituloPaso(page, 4)).toBeVisible();
+        await llenarFinanciero(page, { extra: { ...c.extra, financiero: { ...c.extra.financiero, observaciones: "Prefiere que la llamen en la tarde.\nTiene cita el lunes." } } });
         expect(await sinHorizontal(page)).toBe(true);
         expect(await objetivosPequenos(page)).toEqual([]);
-        await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso7-observaciones.png`, fullPage: true });
+        await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso4-observaciones.png`, fullPage: true });
       });
     });
   }

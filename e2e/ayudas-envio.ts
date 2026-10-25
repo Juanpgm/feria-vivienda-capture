@@ -3,17 +3,13 @@
 import { expect, type Page, type Route } from "@playwright/test";
 import { registroSchema } from "../src/modules/registro/domain/schema";
 import { PASOS } from "../src/modules/registro/ui/pasos";
-import { avanzarHasta, llenarPaso9, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
+import { avanzarHasta, llenarFotos, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
 import type { Caso } from "./datos-prueba";
 
 const exacto = { exact: true } as const;
 export const N_PASOS = PASOS.length;
-export const PASO = {
-  consentimiento: PASOS.findIndex((p) => p.id === "consentimiento") + 1,
-  documentos: PASOS.findIndex((p) => p.id === "documentos") + 1,
-  resumen: PASOS.findIndex((p) => p.id === "resumen") + 1,
-  firma: PASOS.findIndex((p) => p.id === "firma") + 1,
-} as { consentimiento: 8; documentos: 9; resumen: 10; firma: 11 };
+/** 1-based number of each step of the 6-step form (derived from PASOS, so a reorder cannot desync the specs). */
+export const PASO = Object.fromEntries(PASOS.map((p, i) => [p.id, i + 1])) as { solicitante: 1; hogar: 2; vivienda: 3; financiero: 4; autorizacion: 5; revision: 6 };
 
 export const TEXTO_TRATAMIENTO = "El titular autoriza el tratamiento de sus datos personales";
 export const TEXTO_SENSIBLES = "Autoriza el tratamiento de datos sensibles (opcional)";
@@ -98,29 +94,27 @@ export type Servidor = Awaited<ReturnType<typeof simularServidor>>;
 
 // ---- steps ----
 
-/** Step 8: authorization. Treatment is always ticked unless `tratamiento: false`; sensitive data only on request. */
+/** Consent block of the authorization step. Treatment is always ticked unless `tratamiento: false`; sensitive data only on request. */
 export async function llenarConsentimiento(page: Page, o: { tratamiento?: boolean; sensibles?: boolean } = {}) {
-  await expect(tituloPaso(page, PASO.consentimiento)).toBeVisible();
+  await expect(tituloPaso(page, PASO.autorizacion)).toBeVisible();
   if (o.tratamiento !== false) await page.getByRole("checkbox", { name: TEXTO_TRATAMIENTO, ...exacto }).check();
   if (o.sensibles) await page.getByRole("checkbox", { name: TEXTO_SENSIBLES, ...exacto }).check();
 }
 
-/** Steps 1-7 with the dataset, then 8 (consent), 9 (photos) and the summary: leaves the summary open. */
+/** Steps 1-4 with the dataset, then the authorization step (consent + photos) and the review: leaves the review step open. */
 export async function llegarAlResumen(page: Page, c: Caso, o: { sensibles?: boolean } = {}) {
   await nuevoRegistro(page);
-  await avanzarHasta(page, c, PASO.consentimiento);
+  await avanzarHasta(page, c, PASO.autorizacion);
   await llenarConsentimiento(page, { sensibles: o.sensibles ?? true });
+  await llenarFotos(page);
   await siguiente(page);
-  await expect(tituloPaso(page, PASO.documentos)).toBeVisible();
-  await llenarPaso9(page);
-  await siguiente(page);
-  await expect(tituloPaso(page, PASO.resumen)).toBeVisible();
+  await expect(tituloPaso(page, PASO.revision)).toBeVisible();
 }
 
-/** From the summary to the last step. */
+/** The signature and the send action share the review step with the summary: scrolls to the signature block. */
 export async function irAFirma(page: Page) {
-  await siguiente(page);
-  await expect(tituloPaso(page, PASO.firma)).toBeVisible();
+  await expect(tituloPaso(page, PASO.revision)).toBeVisible();
+  await page.getByRole("heading", { level: 3, name: "Firma del solicitante" }).scrollIntoViewIfNeeded();
 }
 
 export const pad = (page: Page) => page.getByTestId("pad-firma");

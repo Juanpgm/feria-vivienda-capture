@@ -14,7 +14,7 @@ import type { Valores } from "./pasos";
 import { calcularRequisitos, type Requisitos } from "./requisitos";
 
 type Props = {
-  irAPaso: (id: string) => void;
+  irAPaso: (id: string, ancla?: string) => void;
   borradorId: string;
   /** Called once the server confirmed everything: the owner deletes the draft and shows the confirmation. */
   alEnviado?: (d: DatosConfirmacion) => void;
@@ -29,7 +29,7 @@ const textoProgreso = (e: EstadoEnvio, total: number): string => {
   return "Verificando que todo quedó guardado…";
 };
 
-/** Last step: what is still pending, the applicant's signature and the "Enviar registro" action. */
+/** Second block of the last step: what is still pending, the applicant's signature and the "Enviar registro" action. */
 export function EnvioRegistro({ irAPaso, borradorId, alEnviado, alBloquear }: Props) {
   const { control, getValues } = useFormContext<FieldValues>();
   const valores = useWatch({ control }) as Valores;

@@ -4,7 +4,7 @@ import { consentimientoSchema } from "@/modules/consentimiento/domain/schema";
 import { documentosSchema } from "@/modules/documentos/domain/schema";
 import { firmaFormSchema, firmaVigente } from "@/modules/firma/domain/schema";
 import { evaluarRegistro, SECCIONES } from "./datosResumen";
-import { entradaDeSeccion, type Valores } from "./pasos";
+import { anclaDe, entradaDeSeccion, type Valores } from "./pasos";
 
 export type RequisitoId = "datos" | "consentimiento" | "documentos" | "firma";
 export type Requisito = {
@@ -13,8 +13,9 @@ export type Requisito = {
   ok: boolean;
   /** One short sentence for the person. */
   detalle: string;
-  /** Step that fixes it. */
+  /** Step that fixes it, and the anchor of the section inside that step. */
   paso: string;
+  ancla: string;
 };
 
 export type Requisitos = { items: Requisito[]; listo: boolean };
@@ -33,21 +34,24 @@ export async function calcularRequisitos(valores: Valores): Promise<Requisitos> 
       titulo: "Datos del registro",
       ok: fallan.length === 0,
       detalle: fallan.length ? `Faltan datos en: ${fallan.map((s) => s.titulo).join(", ")}.` : "Completos.",
-      paso: fallan[0]?.paso ?? "hogar",
+      paso: fallan[0]?.paso ?? "solicitante",
+      ancla: anclaDe(fallan[0]?.id ?? "solicitante"),
     },
     {
       id: "consentimiento",
       titulo: "Autorización de tratamiento de datos",
       ok: consentimiento.success,
       detalle: consentimiento.success ? "Autorizada." : "Falta la autorización del titular.",
-      paso: "consentimiento",
+      paso: "autorizacion",
+      ancla: anclaDe("consentimiento"),
     },
     {
       id: "documentos",
       titulo: "Fotos del documento de identidad",
       ok: documentos.success,
       detalle: documentos.success ? "Frente y reverso capturados." : "Faltan las fotos del frente y el reverso.",
-      paso: "documentos",
+      paso: "autorizacion",
+      ancla: anclaDe("documentos"),
     },
     {
       id: "firma",
@@ -55,8 +59,9 @@ export async function calcularRequisitos(valores: Valores): Promise<Requisitos> 
       ok: firmada,
       detalle: firmada
         ? valores.firma?.metodo_firma === "verificacion_manual" ? "Verificación manual registrada." : "Firmada."
-        : "Se registra en el último paso, después de revisar el resumen.",
-      paso: "firma",
+        : "Se registra más abajo, después de revisar el resumen.",
+      paso: "revision",
+      ancla: anclaDe("firma"),
     },
   ];
   return { items, listo: items.every((i) => i.ok) };

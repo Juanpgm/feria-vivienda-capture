@@ -3,7 +3,7 @@
 // page.route: this spec NEVER reads or writes the real Firestore.
 import { expect, test, type Page, type Request, type Route } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { abrirLista, HOY, llenarPaso1, nuevoDesdeLista, siguiente, tituloPaso } from "./ayudas";
+import { abrirLista, HOY, llenarSolicitante, nuevoDesdeLista, siguiente, tituloPaso } from "./ayudas";
 import { generarCasos } from "./datos-prueba";
 import { detalle, fila, simularLista, uuid } from "./mocks-registros";
 
@@ -147,7 +147,7 @@ test.describe("/registros/[id]", () => {
     await expect(control).toContainText("Ana Funcionaria (ana.funcionaria@cali.gov.co)");
     await expect(control).toContainText("Pendiente de revisión");
     await expect(control).toContainText(/05\/03\/2026,? 3:42/);
-    await expect(page.getByRole("region", { name: "Datos del hogar" })).toContainText("Ana María Pérez");
+    await expect(page.getByRole("region", { name: "Solicitante" })).toContainText("Ana María Pérez");
     await expect(page.getByRole("region", { name: "Composición familiar" })).toContainText("Personas en el hogar");
     await expect(page.getByRole("region", { name: "Inmueble y ubicación" })).toContainText("Aguacatal");
     await expect(page.getByRole("region", { name: "Riesgo y dictamen técnico" })).toContainText("Colapso Total");
@@ -198,7 +198,7 @@ test.describe("aviso de documento duplicado (paso 1)", () => {
       r.fulfill({ json: { existe: true, coincidencia: "exacta", cantidad: 1, radicado: "FV-000123", fecha_registro_bogota: "2026-03-05" } }),
     );
     await nuevoDesdeLista(page);
-    await llenarPaso1(page, caso);
+    await llenarSolicitante(page, caso);
     await expect(page.getByText("Ya existe un registro con este documento. Radicado FV-000123, registrado el 05/03/2026.")).toBeVisible();
     expect(pedidas.length).toBeGreaterThan(0);
     const url = new URL(pedidas.at(-1)!.url());
@@ -221,7 +221,7 @@ test.describe("aviso de documento duplicado (paso 1)", () => {
       }),
     );
     await nuevoDesdeLista(page);
-    await llenarPaso1(page, caso);
+    await llenarSolicitante(page, caso);
     const aviso = page.getByText(/documento muy parecido/);
     await expect(aviso).toContainText("Radicado FV-000045, registrado el 04/03/2026.");
     await expect(aviso).toContainText("Hay 2 registros con este documento.");
@@ -234,7 +234,7 @@ test.describe("aviso de documento duplicado (paso 1)", () => {
       r.fulfill({ json: { existe: true, coincidencia: "exacta", cantidad: 1, radicado: "FV-000123", fecha_registro_bogota: "2026-03-05" } }),
     );
     await nuevoDesdeLista(page);
-    await llenarPaso1(page, caso);
+    await llenarSolicitante(page, caso);
     await expect(page.getByText(AVISO)).toBeVisible();
     await page.getByLabel("Número de documento", { exact: true }).fill("99887766");
     await expect(page.getByText(AVISO)).toHaveCount(0);
@@ -243,7 +243,7 @@ test.describe("aviso de documento duplicado (paso 1)", () => {
   test("sin coincidencias no hay aviso", async ({ page }) => {
     await abrirLista(page); // default answer: { existe: false }
     await nuevoDesdeLista(page);
-    await llenarPaso1(page, caso);
+    await llenarSolicitante(page, caso);
     await expect(page.getByLabel("Número de documento", { exact: true })).toHaveValue(caso.esperado.documento);
     await page.waitForTimeout(600); // debounce + response
     await expect(page.getByText(/Ya existe un registro/)).toHaveCount(0);
@@ -259,7 +259,7 @@ test.describe("aviso de documento duplicado (paso 1)", () => {
       await abrirLista(page);
       const pedidas = await simularDuplicado(page, accion);
       await nuevoDesdeLista(page);
-      await llenarPaso1(page, caso);
+      await llenarSolicitante(page, caso);
       await expect.poll(() => pedidas.length).toBeGreaterThan(0);
       await page.waitForTimeout(400);
       await expect(page.getByText(/Ya existe un registro/)).toHaveCount(0);

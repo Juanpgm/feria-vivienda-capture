@@ -3,7 +3,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { PASOS } from "../src/modules/registro/ui/pasos";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { entradaFoto, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
+import { entradaFoto, nuevoRegistro, siguiente, tituloPaso, type NumeroPaso } from "./ayudas";
+import { TEXTO_TRATAMIENTO } from "./ayudas-envio";
 import { imagenGrande, imagenPequena, archivoTexto } from "./imagenes";
 import { detalle, uuid } from "./mocks-registros";
 
@@ -21,6 +22,7 @@ const objetivosPequenos = (page: Page) =>
   page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("main button, main a, main input, main select, main textarea")]
       .filter((el) => el.getAttribute("tabindex") !== "-1" && el.getBoundingClientRect().width > 0)
+      .filter((el) => !(el.tagName === "A" && el.closest("p"))) // inline links inside a paragraph (the consent text)
       .filter((el) => (el.closest("label") ?? el).getBoundingClientRect().height < 43.5)
       .map((el) => el.getAttribute("aria-label") ?? el.textContent?.trim() ?? el.tagName),
   );
@@ -29,18 +31,18 @@ async function abrirPaso(page: Page) {
   await nuevoRegistro(page);
   await page.getByLabel("Primer nombre", { exact: true }).fill("Ana");
   await expect(page.getByRole("status")).toContainText("Borrador guardado");
-  const indice = PASOS.findIndex((p) => p.id === "documentos");
+  const indice = PASOS.findIndex((p) => p.id === "autorizacion");
   await page.evaluate(async (i) => {
     const db = await new Promise<IDBDatabase>((ok) => ((indexedDB.open("keyval-store").onsuccess = (e) => ok((e.target as IDBOpenDBRequest).result))));
     const st = db.transaction("keyval", "readwrite").objectStore("keyval");
     const k = await new Promise<IDBValidKey[]>((ok) => ((st.getAllKeys().onsuccess = (e) => ok((e.target as IDBRequest).result))));
     const clave = k.find((x) => String(x).startsWith("borrador:"))!;
     const v = await new Promise<Record<string, unknown>>((ok) => ((st.get(clave).onsuccess = (e) => ok((e.target as IDBRequest).result))));
-    st.put({ ...v, paso: "documentos", maximo: i }, clave);
+    st.put({ ...v, paso: "autorizacion", maximo: i }, clave);
     await new Promise((ok) => (st.transaction.oncomplete = ok));
   }, indice);
   await page.reload();
-  await expect(tituloPaso(page, 9)).toBeVisible();
+  await expect(tituloPaso(page, (indice + 1) as NumeroPaso)).toBeVisible();
 }
 
 for (const esquema of ["light", "dark"] as const) {
@@ -51,6 +53,12 @@ for (const esquema of ["light", "dark"] as const) {
       test("paso vacio, con errores, con error de archivo y con fotos", async ({ page }) => {
         await page.addInitScript(() => localStorage.removeItem("tema"));
         await abrirPaso(page);
+        // Locked until the consent is given: the explanation replaces the capture controls.
+        await expect(page.getByText("Las fotos se habilitan cuando el titular autoriza")).toBeVisible();
+        expect(await sinHorizontal(page)).toBe(true);
+        await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-documentos-bloqueado.png`, fullPage: true });
+        await page.getByRole("checkbox", { name: TEXTO_TRATAMIENTO, exact: true }).check();
+        await expect(entradaFoto(page, "frente")).toBeVisible();
         expect(await sinHorizontal(page)).toBe(true);
         expect(await objetivosPequenos(page)).toEqual([]);
         await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-documentos-vacio.png`, fullPage: true });

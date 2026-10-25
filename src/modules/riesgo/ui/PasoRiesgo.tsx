@@ -24,7 +24,7 @@ export function PasoRiesgo() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Registro Único de Damnificados (RUD)</h3>
+        <h4 className="text-lg font-bold text-primary-strong">Registro Único de Damnificados (RUD)</h4>
         <SegmentedControl legend="¿Está registrado en el RUD?" name={P + "esta_en_rud"} options={SI_NO} error={error(P + "esta_en_rud")} inputProps={register(P + "esta_en_rud")} />
         {enRud === "si" && (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -42,7 +42,7 @@ export function PasoRiesgo() {
       </section>
 
       <section className="flex max-w-md flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Dictamen técnico</h3>
+        <h4 className="text-lg font-bold text-primary-strong">Dictamen técnico</h4>
         <Field label="Resultado del dictamen técnico" error={error(P + "dictamen")}>
           {(a11y) => <Select {...a11y} options={OPCIONES_DICTAMEN} {...register(P + "dictamen")} />}
         </Field>

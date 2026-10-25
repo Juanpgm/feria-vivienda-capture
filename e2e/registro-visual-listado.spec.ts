@@ -2,7 +2,7 @@
 // (390x844). Screenshots go to test-results/visual (not committed). API answers are mocked: no Firestore access.
 import { expect, test, type Page } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { abrirLista, HOY, llenarPaso1, nuevoDesdeLista } from "./ayudas";
+import { abrirLista, HOY, llenarSolicitante, nuevoDesdeLista } from "./ayudas";
 import { generarCasos } from "./datos-prueba";
 import { detalle, fila, simularLista, uuid } from "./mocks-registros";
 
@@ -90,7 +90,7 @@ for (const esquema of ["light", "dark"] as const) {
           }),
         );
         await nuevoDesdeLista(page);
-        await llenarPaso1(page, generarCasos(HOY)[0]);
+        await llenarSolicitante(page, generarCasos(HOY)[0]);
         const aviso = page.getByText(/Ya existe un registro con este documento\./);
         await expect(aviso).toBeVisible();
         await aviso.scrollIntoViewIfNeeded();

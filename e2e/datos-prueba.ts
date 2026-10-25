@@ -124,8 +124,8 @@ export type Caso = {
   esperado: Esperado;
 };
 
-/** Negative case: the first `paso` - 1 steps are valid, step `paso` must refuse to advance and show `mensajes`. */
-export type CasoInvalido = Omit<Caso, "esperado"> & { paso: 1 | 2 | 3 | 4 | 5 | 6 | 7; mensajes: string[]; mensajesUi?: string[] };
+/** Negative case (6-step form; only steps 1-4 take dataset fields): the first `paso` - 1 steps are valid, step `paso` must refuse to advance and show `mensajes`. */
+export type CasoInvalido = Omit<Caso, "esperado"> & { paso: 1 | 2 | 3 | 4; mensajes: string[]; mensajesUi?: string[] };
 
 // ---- date helpers (ISO yyyy-mm-dd, UTC arithmetic) ----
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -506,7 +506,7 @@ export function generarCasosInvalidos(hoy: string): CasoInvalido[] {
   };
 
   return [
-    inv("paso1-vacio", "Paso 1 sin ningun dato", 1, ["Ingrese el primer nombre", "Ingrese el primer apellido", "Teléfono inválido", "Ingrese los años de residencia"], { s: vacioS }),
+    inv("solicitante-vacio", "Solicitante sin ningun dato", 1, ["Ingrese el primer nombre", "Ingrese el primer apellido", "Teléfono inválido", "Ingrese los años de residencia"], { s: vacioS }),
     inv("correo-sin-formato", "Correo sin arroba", 1, ["Correo inválido"], { s: { correo: "no-es-un-correo" } }),
     inv("correo-sin-dominio", "Correo incompleto", 1, ["Correo inválido"], { s: { correo: "persona@" } }),
     inv("telefono-corto", "Telefono demasiado corto", 1, ["Teléfono inválido"], { s: { telefono1: "12345" } }),
@@ -546,7 +546,7 @@ export function generarCasosInvalidos(hoy: string): CasoInvalido[] {
       s: { tipoDocumento: "otro", tipoDocumentoOtro: "", nacionalidad: { codigo: "VE", nombre: "Venezolana" }, codigoPais1: TEL_CO },
     }),
     inv("anios-negativos", "Años de residencia negativos", 1, ["No puede ser negativo"], { s: { aniosResidencia: "-1" } }),
-    inv("paso2-vacio", "Paso 2 sin ningun dato", 2, ["Debe ser un número entero", "Seleccione Sí o No", "Ingrese un valor numérico en pesos"], {
+    inv("composicion-vacia", "Composicion familiar sin ningun dato", 2, ["Debe ser un número entero", "Seleccione Sí o No", "Ingrese un valor numérico en pesos"], {
       c: { personas: "", adultoMayor: undefined, ingreso: "" },
     }),
     inv("personas-decimal", "Integrantes no entero (2.5)", 2, ["Debe ser un número entero"], { c: { personas: "2.5" } }),
@@ -560,39 +560,39 @@ export function generarCasosInvalidos(hoy: string): CasoInvalido[] {
     inv("am-edad-menor-60", "Edad de adulto mayor menor a 60", 2, ["Edad mínima 60"], { c: { adultoMayor: "si", edades: ["50"] } }),
     inv("ingreso-texto", "Ingreso no numerico", 2, ["Ingrese un valor numérico en pesos"], { c: { ingreso: "mucho dinero" } }),
     inv("ingreso-decimal", "Ingreso con decimales", 2, ["Ingrese un valor numérico en pesos"], { c: { ingreso: "1500000,50" } }),
-    inv("proteccion-vacia", "Proteccion sin seleccionar nada", 3, ["Seleccione al menos una opción"], { c: { condiciones: [] } }),
-    // --- steps 4-7 ---
-    inv("paso4-vacio", "Paso 4 sin ningun dato", 4, ["Ingrese la dirección", "Seleccione comuna o corregimiento", "Seleccione un estrato del 1 al 6"], {
+    inv("proteccion-vacia", "Proteccion sin seleccionar nada", 2, ["Seleccione al menos una opción"], { c: { condiciones: [] } }),
+    // --- vivienda (step 3) and cierre financiero (step 4) ---
+    inv("inmueble-vacio", "Inmueble sin ningun dato", 3, ["Ingrese la dirección", "Seleccione comuna o corregimiento", "Seleccione un estrato del 1 al 6"], {
       e: { vivienda: { direccion: "" } },
     }),
-    inv("direccion-corta", "Direccion demasiado corta", 4, ["Ingrese la dirección"], { e: vivienda({ direccion: "Cl 1" }) }),
-    inv("barrio-sin-elegir", "Comuna elegida pero sin barrio", 4, ["Seleccione un barrio o vereda"], {
+    inv("direccion-corta", "Direccion demasiado corta", 3, ["Ingrese la dirección"], { e: vivienda({ direccion: "Cl 1" }) }),
+    inv("barrio-sin-elegir", "Comuna elegida pero sin barrio", 3, ["Seleccione un barrio o vereda"], {
       e: vivienda({ lugar: undefined }),
     }),
-    inv("estrato-sin-elegir", "Estrato sin elegir", 4, ["Seleccione un estrato del 1 al 6"], { e: vivienda({ estrato: undefined }) }),
-    inv("paso5-vacio", "Paso 5 sin ningun dato", 5, ["Seleccione Sí o No", "Seleccione una opción"], { e: { riesgo: {} } }),
-    inv("rud-sin-numero", "RUD si sin numero ni No lo sabe", 5, ["Ingrese el número de RUD o marque «No lo sabe»"], {
+    inv("estrato-sin-elegir", "Estrato sin elegir", 3, ["Seleccione un estrato del 1 al 6"], { e: vivienda({ estrato: undefined }) }),
+    inv("riesgo-vacio", "Riesgo sin ningun dato", 3, ["Seleccione Sí o No", "Seleccione una opción"], { e: { riesgo: {} } }),
+    inv("rud-sin-numero", "RUD si sin numero ni No lo sabe", 3, ["Ingrese el número de RUD o marque «No lo sabe»"], {
       e: { riesgo: { rud: "si", dictamen: "demolido" } },
     }),
-    inv("dictamen-otro-sin-texto", "Dictamen Otro sin indicar cual", 5, ["Indique cuál es el dictamen"], {
+    inv("dictamen-otro-sin-texto", "Dictamen Otro sin indicar cual", 3, ["Indique cuál es el dictamen"], {
       e: { riesgo: { rud: "no", dictamen: "otro", dictamenOtro: "" } },
     }),
-    inv("titularidad-vacia", "Titularidad sin elegir", 6, ["Seleccione una opción", "Seleccione Sí o No"], { e: { titularidad: {} } }),
-    inv("unica-sin-respuesta", "Unica propiedad sin responder", 6, ["Seleccione Sí o No"], { e: { titularidad: { tipo: "propietario_clt" } } }),
-    inv("unica-no-sin-excepcion", "Unica propiedad No sin elegir la excepcion", 6, ["Seleccione la excepción que aplica"], {
+    inv("titularidad-vacia", "Titularidad sin elegir", 3, ["Seleccione una opción", "Seleccione Sí o No"], { e: { titularidad: {} } }),
+    inv("unica-sin-respuesta", "Unica propiedad sin responder", 3, ["Seleccione Sí o No"], { e: { titularidad: { tipo: "propietario_clt" } } }),
+    inv("unica-no-sin-excepcion", "Unica propiedad No sin elegir la excepcion", 3, ["Seleccione la excepción que aplica"], {
       e: { titularidad: { tipo: "propietario_clt", unica: "no" } },
     }),
-    inv("matricula-invalida", "Matricula con simbolos", 6, ["Solo letras, números y guiones"], {
+    inv("matricula-invalida", "Matricula con simbolos", 3, ["Solo letras, números y guiones"], {
       e: { titularidad: { tipo: "propietario_clt", matricula: "370 123/45", unica: "si" } },
     }),
-    inv("paso7-vacio", "Paso 7 sin ningun dato", 7, ["Seleccione al menos una opción", "Seleccione Sí o No"], { e: { financiero: { fuentes: [] } } }),
-    inv("observaciones-demasiado-largas", "Observaciones de 1001 caracteres", 7, ["Máximo 1000 caracteres"], {
+    inv("financiero-vacio", "Cierre financiero sin ningun dato", 4, ["Seleccione al menos una opción", "Seleccione Sí o No"], { e: { financiero: { fuentes: [] } } }),
+    inv("observaciones-demasiado-largas", "Observaciones de 1001 caracteres", 4, ["Máximo 1000 caracteres"], {
       e: { financiero: { fuentes: ["recursos_propios"], seguro: "no", observaciones: "x".repeat(1001) } },
     }),
-    inv("seguro-sin-aseguradora", "Seguro si sin aseguradora", 7, ["Seleccione la aseguradora"], {
+    inv("seguro-sin-aseguradora", "Seguro si sin aseguradora", 4, ["Seleccione la aseguradora"], {
       e: { financiero: { fuentes: ["recursos_propios"], seguro: "si" } },
     }),
-    inv("aseguradora-otra-sin-nombre", "Aseguradora Otra sin nombre", 7, ["Indique el nombre de la aseguradora"], {
+    inv("aseguradora-otra-sin-nombre", "Aseguradora Otra sin nombre", 4, ["Indique el nombre de la aseguradora"], {
       e: { financiero: { fuentes: ["recursos_propios"], seguro: "si", aseguradora: { codigo: "otra", nombre: "Otra" }, aseguradoraOtra: "" } },
     }),
   ];

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { migrarBorrador, ordenarBorradores, partirNombre, resumenBorrador, sinBorrador, VERSION_BORRADOR, type Borrador } from "./borradores";
+import { migrarBorrador, migrarPasos, ordenarBorradores, partirNombre, resumenBorrador, sinBorrador, VERSION_BORRADOR, type Borrador } from "./borradores";
 
-const base = (id: string, guardado_en: string, solicitante: Record<string, unknown> = {}, paso = "hogar"): Borrador => ({
+const base = (id: string, guardado_en: string, solicitante: Record<string, unknown> = {}, paso = "solicitante"): Borrador => ({
   id, version: VERSION_BORRADOR, valores: { solicitante }, paso, maximo: 0, marcas: {}, guardado_en,
 });
 
@@ -31,15 +31,48 @@ describe("migrarBorrador", () => {
     expect(m.valores.solicitante).toMatchObject({ primer_nombre: "ana", segundo_nombre: "", primer_apellido: "maría", segundo_apellido: "pérez", correo_solicitante: "a@b.co" });
     expect(m.valores.solicitante).not.toHaveProperty("nombre_completo");
     expect(m.valores.inmueble).toEqual({ direccion: "Calle 5" });
-    expect(m.marcas).toEqual({ hogar: "completo" }); // inmueble (free text) and titularidad (new required answer) re-validate
-    expect(m.paso).toBe("inmueble");
+    // inmueble (free text) and titularidad (new required answer) re-validate, so the merged "vivienda" step is not complete
+    expect(m.marcas).toEqual({ solicitante: "completo" });
+    expect(m.paso).toBe("vivienda");
+    expect(m.maximo).toBe(2);
   });
 
   it("current draft passes through untouched; garbage and unknown steps are handled without throwing", () => {
     const actual = base("u2", "2026-10-25T10:00:00.000Z", { primer_nombre: "Luis" });
     expect(migrarBorrador(actual)).toEqual(actual);
     for (const basura of [null, undefined, 3, "x", [], {}, { id: 1, valores: {} }, { id: "x" }]) expect(migrarBorrador(basura)).toBeNull();
-    expect(migrarBorrador({ ...actual, paso: "no-existe" })!.paso).toBe("hogar");
+    expect(migrarBorrador({ ...actual, paso: "no-existe" })!.paso).toBe("solicitante");
+  });
+});
+
+describe("migrarPasos (11 steps -> 6)", () => {
+  it("maps the current step and the furthest step reached", () => {
+    const viejos = ["hogar", "composicion", "proteccion", "inmueble", "riesgo", "titularidad", "financiero", "consentimiento", "documentos", "resumen", "firma"];
+    expect(viejos.map((p, i) => migrarPasos(p, i, {}).paso)).toEqual(["solicitante", "hogar", "hogar", "vivienda", "vivienda", "vivienda", "financiero", "autorizacion", "autorizacion", "revision", "revision"]);
+    expect(viejos.map((_, i) => migrarPasos("hogar", i, {}).maximo)).toEqual([0, 1, 1, 2, 2, 2, 3, 4, 4, 5, 5]);
+  });
+
+  it("a merged step is complete only when all its old steps were; errors win; the review step has no mark", () => {
+    const completos = { hogar: "completo", composicion: "completo", proteccion: "completo", inmueble: "completo", riesgo: "completo", titularidad: "completo", financiero: "completo", consentimiento: "completo", documentos: "completo", resumen: "completo" } as const;
+    expect(migrarPasos("resumen", 9, completos).marcas).toEqual({ solicitante: "completo", hogar: "completo", vivienda: "completo", financiero: "completo", autorizacion: "completo" });
+    const parcial = { ...completos, proteccion: undefined, riesgo: "errores", documentos: undefined } as unknown as Record<string, "completo" | "errores">;
+    expect(migrarPasos("riesgo", 4, parcial).marcas).toEqual({ solicitante: "completo", vivienda: "errores", financiero: "completo" });
+  });
+
+  it("is safe with bad input", () => {
+    expect(migrarPasos(undefined, "x", {})).toEqual({ paso: "solicitante", maximo: 0, marcas: {} });
+    expect(migrarPasos("nada", 99, {}).maximo).toBe(5);
+  });
+
+  it("migrates a version 2 draft keeping every value", () => {
+    const v2 = {
+      id: "u3", version: 2, paso: "proteccion", maximo: 7, guardado_en: "2026-10-25T10:00:00.000Z",
+      marcas: { hogar: "completo", composicion: "completo", proteccion: "completo", inmueble: "errores" },
+      valores: { solicitante: { primer_nombre: "Ana" }, composicion: { cantidad_personas_hogar: "3" }, titularidad: { es_unica_propiedad: "si" } },
+    };
+    const m = migrarBorrador(v2)!;
+    expect(m).toMatchObject({ version: VERSION_BORRADOR, paso: "hogar", maximo: 4, valores: v2.valores, marcas: { solicitante: "completo", hogar: "completo", vivienda: "errores" } });
+    expect(migrarBorrador(m)).toEqual(m); // idempotent
   });
 });
 
@@ -50,8 +83,8 @@ describe("lista de borradores", () => {
   });
 
   it("names the row from primer_nombre + primer_apellido, 'Sin nombre' when empty, with the current step", () => {
-    expect(resumenBorrador(base("a", "", { primer_nombre: " Ana ", segundo_nombre: "María", primer_apellido: "Pérez" }, "composicion"))).toMatchObject({
-      nombre: "Ana Pérez", numeroPaso: 2, paso: "Composición familiar",
+    expect(resumenBorrador(base("a", "", { primer_nombre: " Ana ", segundo_nombre: "María", primer_apellido: "Pérez" }, "hogar"))).toMatchObject({
+      nombre: "Ana Pérez", numeroPaso: 2, paso: "Hogar",
     });
     expect(resumenBorrador(base("b", "", { primer_nombre: "Ana" })).nombre).toBe("Ana");
     expect(resumenBorrador(base("c", "")).nombre).toBe("Sin nombre");

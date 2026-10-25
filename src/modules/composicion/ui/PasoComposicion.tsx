@@ -26,12 +26,12 @@ export function PasoComposicion() {
 
   return (
     <div className="flex flex-col gap-8">
-      <Seccion titulo="Hogar">
+      <Seccion sub titulo="Hogar">
         <CampoTexto name={P + "cantidad_personas_hogar"} label="Personas que viven en el hogar" type="number" inputMode="numeric" min={1} />
       </Seccion>
 
       <section className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Adultos mayores</h3>
+        <h4 className="text-lg font-bold text-primary-strong">Adultos mayores</h4>
         <RadioGroup
           legend="¿Hay adultos mayores en el hogar?"
           name={P + "tiene_adulto_mayor"}
@@ -62,7 +62,7 @@ export function PasoComposicion() {
         )}
       </section>
 
-      <Seccion titulo="Ingresos">
+      <Seccion sub titulo="Ingresos">
         <Field
           label="Ingreso mensual del hogar (COP)"
           hint={

@@ -44,10 +44,12 @@ export function CampoTexto({ name, label, hint, normalizar, alSalir, ...input }:
   );
 }
 
-export function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+/** Titled block of fields. `sub` renders an h4, for screens nested under a section heading (merged steps). */
+export function Seccion({ titulo, sub, children }: { titulo: string; sub?: boolean; children: React.ReactNode }) {
+  const H = sub ? "h4" : "h3";
   return (
     <section className="flex flex-col gap-4">
-      <h3 className="text-lg font-bold text-primary-strong">{titulo}</h3>
+      <H className="text-lg font-bold text-primary-strong">{titulo}</H>
       <div className="grid gap-4 sm:grid-cols-2">{children}</div>
     </section>
   );

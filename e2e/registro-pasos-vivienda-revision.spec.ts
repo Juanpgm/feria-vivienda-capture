@@ -1,15 +1,14 @@
-// Authenticated e2e for /registros/nuevo steps 4-7 and the summary (step 8), driven by datos-prueba.ts.
+// Authenticated e2e for /registros/nuevo steps 3-6 (Vivienda, Cierre financiero, Autorización y documento, Revisión y firma),
+// driven by datos-prueba.ts.
 //
-// IMPORTANT: this spec NEVER writes to Firestore. The summary has no submit yet (documents, consent and signature
-// arrive in phase 3); the only persistence exercised is the IndexedDB draft (each test runs in a fresh browser context).
-// Requires a saved session: run `npm run e2e:login` once (see playwright.config.ts).
+// IMPORTANT: this spec NEVER writes to Firestore (no submit here; the only persistence exercised is the IndexedDB draft,
+// each test runs in a fresh browser context). Requires a saved session: run `npm run e2e:login` once (see playwright.config.ts).
 import { expect, test } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import {
-  avanzarHasta, CAMPO_FUENTES, chip, HOY, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, llenarPaso8, llenarPaso9, nuevoRegistro, siguiente, tituloPaso,
-  verificarPaso4, verificarResumen, type NumeroPaso,
+  avanzarHasta, CAMPO_FUENTES, chip, HOY, llenarFinanciero, llenarInmueble, llenarPaso, llenarProteccion, llenarRiesgo, llenarTitularidad, nuevoRegistro, siguiente,
+  tituloPaso, verificarInmueble, verificarResumen, type NumeroPaso,
 } from "./ayudas";
-import { PASOS } from "../src/modules/registro/ui/pasos";
 import { generarCasos, generarCasosInvalidos, restarAnios } from "./datos-prueba";
 
 test.beforeAll(() => {
@@ -18,44 +17,46 @@ test.beforeAll(() => {
 
 const riel = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "Pasos del registro" });
 const seccionResumenFin = (page: import("@playwright/test").Page) => page.getByRole("region", { name: "Cierre financiero", exact: true });
-const LLENAR = { 4: llenarPaso4, 5: llenarPaso5, 6: llenarPaso6, 7: llenarPaso7, 8: llenarPaso8, 9: llenarPaso9 } as const;
-const RESUMEN = PASOS.findIndex((p) => p.id === "resumen") + 1;
 
-test.describe("registro pasos 4-7 y resumen: datos validos", () => {
+test.describe("registro pasos 3-6: datos validos", () => {
   for (const c of generarCasos(HOY)) {
     test(`${c.clave}: ${c.descripcion}`, async ({ page }) => {
       await nuevoRegistro(page);
-      await avanzarHasta(page, c, 4);
+      await avanzarHasta(page, c, 3);
 
-      await llenarPaso4(page, c);
-      await verificarPaso4(page, c);
+      // Vivienda: inmueble, riesgo and titularidad on one screen.
+      await llenarInmueble(page, c);
+      await verificarInmueble(page, c);
+      await llenarRiesgo(page, c);
+      await llenarTitularidad(page, c);
       await siguiente(page);
-      // Steps 5-7 with the dataset, then consent (8) and photos (9): both take no dataset.
-      for (const n of [5, 6, 7, 8, 9] as const) {
-        await expect(tituloPaso(page, n)).toBeVisible();
-        await LLENAR[n](page, c);
-        await siguiente(page);
-      }
+      await expect(tituloPaso(page, 4)).toBeVisible();
+      await llenarPaso(page, 4, c);
+      await siguiente(page);
+      // Authorization (consent first) and the identity-document photos share one step.
+      await expect(tituloPaso(page, 5)).toBeVisible();
+      await llenarPaso(page, 5, c);
+      await siguiente(page);
 
       await verificarResumen(page, c);
-      await expect(riel(page).locator('[aria-current="step"]')).toContainText("Resumen");
+      await expect(riel(page).locator('[aria-current="step"]')).toContainText("Revisión y firma");
 
       // "Editar" jumps to the step with the values intact, and the rail keeps every earlier step complete.
-      await page.getByRole("button", { name: "Editar Inmueble y ubicación (paso 4)", exact: true }).click();
-      await expect(tituloPaso(page, 4)).toBeVisible();
-      await verificarPaso4(page, c);
-      await expect(page.getByRole("button", { name: /Datos del hogar/ })).toContainText("Completo");
+      await page.getByRole("button", { name: "Editar Inmueble y ubicación (paso 3)", exact: true }).click();
+      await expect(tituloPaso(page, 3)).toBeVisible();
+      await verificarInmueble(page, c);
+      await expect(riel(page).getByRole("button", { name: /Solicitante/ })).toContainText("Completo");
     });
   }
 });
 
-test.describe("registro pasos 4-7: datos invalidos", () => {
-  for (const c of generarCasosInvalidos(HOY).filter((x) => x.paso >= 4)) {
+test.describe("registro pasos 3-4: datos invalidos", () => {
+  for (const c of generarCasosInvalidos(HOY).filter((x) => x.paso >= 3)) {
     test(`${c.clave}: ${c.descripcion}`, async ({ page }) => {
       await nuevoRegistro(page);
       const base = generarCasos(HOY)[0];
       await avanzarHasta(page, base, c.paso as NumeroPaso);
-      await LLENAR[c.paso as 4 | 5 | 6 | 7](page, c);
+      await llenarPaso(page, c.paso as 3 | 4, c);
       await siguiente(page);
 
       await expect(page.getByText("Revise los campos marcados antes de continuar.")).toBeVisible();
@@ -68,12 +69,12 @@ test.describe("registro pasos 4-7: datos invalidos", () => {
   }
 });
 
-test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
+test.describe("registro pasos 3-6: comportamientos puntuales", () => {
   test("cambiar la comuna limpia el barrio incompatible y filtra las opciones", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY)[0];
-    await avanzarHasta(page, c, 4);
-    await llenarPaso4(page, c); // Comuna 1 / Aguacatal
+    await avanzarHasta(page, c, 3);
+    await llenarInmueble(page, c); // Comuna 1 / Aguacatal
     const barrio = page.getByRole("combobox", { name: "Barrio o vereda", exact: true });
     await expect(barrio).toHaveValue("Aguacatal");
 
@@ -99,7 +100,7 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
   test("territorio solo por listas: no hay checkbox ni texto libre; el texto no elegido se descarta y el campo queda requerido", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY)[0];
-    await avanzarHasta(page, c, 4);
+    await avanzarHasta(page, c, 3);
     await expect(page.getByRole("checkbox", { name: /No aparece en la lista/ })).toHaveCount(0);
 
     const comuna = page.getByRole("combobox", { name: "Comuna o corregimiento", exact: true });
@@ -124,14 +125,16 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     await page.getByLabel("Dirección del inmueble", { exact: true }).fill("Calle 5 # 10-20");
     await page.getByRole("radio", { name: "3", exact: true }).check();
     await siguiente(page);
-    await expect(tituloPaso(page, 4)).toBeVisible();
+    await expect(tituloPaso(page, 3)).toBeVisible();
     await expect(page.getByText("Seleccione un barrio o vereda", { exact: true }).first()).toBeVisible();
   });
 
   test("unica propiedad: Si no pide nada, No muestra la excepcion obligatoria y volver a Si la olvida", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY)[0];
-    await avanzarHasta(page, c, 6);
+    await avanzarHasta(page, c, 3);
+    await llenarInmueble(page, c);
+    await llenarRiesgo(page, c);
     const unica = page.getByRole("group", { name: "¿Es su única propiedad residencial?" });
     const excepcion = page.getByLabel("Excepción que aplica", { exact: true });
     await expect(excepcion).toHaveCount(0);
@@ -144,7 +147,7 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     await page.getByRole("radio", { name: /Propietario con título/ }).check();
     await siguiente(page);
     await expect(page.getByText("Seleccione la excepción que aplica", { exact: true })).toBeVisible();
-    await expect(tituloPaso(page, 6)).toBeVisible();
+    await expect(tituloPaso(page, 3)).toBeVisible();
 
     await excepcion.selectOption({ label: "Dependencia económica de al menos el 40 % del arriendo del inmueble" });
     await unica.getByRole("radio", { name: "Sí", exact: true }).check();
@@ -153,14 +156,14 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     await expect(page.getByLabel("Excepción que aplica", { exact: true })).toHaveValue("");
     await unica.getByRole("radio", { name: "Sí", exact: true }).check();
     await siguiente(page);
-    await expect(tituloPaso(page, 7)).toBeVisible();
+    await expect(tituloPaso(page, 4)).toBeVisible();
   });
 
   test("observaciones: contador, limite de 1000 y se muestra en el resumen", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY).find((x) => x.extra.financiero.observaciones?.includes("tarde"))!;
-    await avanzarHasta(page, c, 7);
-    await llenarPaso7(page, c);
+    await avanzarHasta(page, c, 4);
+    await llenarFinanciero(page, c);
     await expect(page.getByText(`${c.extra.financiero.observaciones!.length} de 1000 caracteres`, { exact: true })).toBeVisible();
     const obs = page.getByLabel("Observaciones (opcional)", { exact: true });
     await obs.fill("x".repeat(1001));
@@ -169,17 +172,15 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     await obs.fill("x".repeat(1000));
     await obs.press("Tab");
     await siguiente(page);
-    await expect(tituloPaso(page, 8)).toBeVisible(); // consent follows the financial closing
-    await llenarPaso8(page);
+    await expect(tituloPaso(page, 5)).toBeVisible(); // authorization and photos follow the financial closing
+    await llenarPaso(page, 5, c);
     await siguiente(page);
-    await llenarPaso9(page);
-    await siguiente(page);
-    await expect(tituloPaso(page, RESUMEN as NumeroPaso)).toBeVisible();
+    await expect(tituloPaso(page, 6)).toBeVisible();
     await expect(seccionResumenFin(page).locator("dd").last()).toHaveText("x".repeat(1000));
     // Empty observations are stored as null and the summary says so.
-    await page.getByRole("button", { name: "Editar Cierre financiero (paso 7)", exact: true }).click();
+    await page.getByRole("button", { name: "Editar Cierre financiero (paso 4)", exact: true }).click();
     await page.getByLabel("Observaciones (opcional)", { exact: true }).fill("   ");
-    await riel(page).getByRole("button", { name: /Resumen/ }).click();
+    await riel(page).getByRole("button", { name: /Revisión y firma/ }).click();
     await expect(seccionResumenFin(page).locator("dd").last()).toHaveText("Sin observaciones");
   });
 
@@ -188,6 +189,7 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     const base = generarCasos(HOY)[0];
     const mayor = { ...base, solicitante: { ...base.solicitante, nacimiento: restarAnios(HOY, 70) } };
     await avanzarHasta(page, mayor, 2);
+    await llenarProteccion(page, mayor);
 
     const sugerencia = page.getByText("El solicitante tiene 65 años o más. Verifique si debe contarse como adulto mayor del hogar.", { exact: true });
     const adultos = page.getByRole("group", { name: "¿Hay adultos mayores en el hogar?" });
@@ -216,18 +218,18 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
   test("RUD: 'No lo sé' deshabilita el numero; seguro Otra pide el nombre; Ninguna es exclusiva", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY)[0];
-    await avanzarHasta(page, c, 5);
+    await avanzarHasta(page, c, 3);
     await page.getByRole("group", { name: "¿Está registrado en el RUD?" }).getByRole("radio", { name: "Sí", exact: true }).check();
     await page.getByLabel("Número de RUD", { exact: true }).fill("123");
     await page.getByRole("checkbox", { name: "No lo sé", exact: true }).check();
     await expect(page.getByLabel("Número de RUD", { exact: true })).toBeDisabled();
     await expect(page.getByLabel("Número de RUD", { exact: true })).toHaveValue("");
 
-    await llenarPaso5(page, { extra: { ...c.extra, riesgo: { rud: "no", dictamen: "demolido" } } });
+    await llenarRiesgo(page, { extra: { ...c.extra, riesgo: { rud: "no", dictamen: "demolido" } } });
+    await llenarInmueble(page, c);
+    await llenarTitularidad(page, c);
     await siguiente(page);
-    await llenarPaso6(page, c);
-    await siguiente(page);
-    await expect(tituloPaso(page, 7)).toBeVisible();
+    await expect(tituloPaso(page, 4)).toBeVisible();
 
     const fuentes = page.getByRole("combobox", { name: CAMPO_FUENTES, exact: true });
     await fuentes.click();
@@ -252,43 +254,65 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
   test("el resumen marca lo que falta cuando se vacia un dato despues de avanzar", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY)[0];
-    await avanzarHasta(page, c, RESUMEN as NumeroPaso);
+    await avanzarHasta(page, c, 6);
     await expect(page.getByText("Los datos de los pasos anteriores están completos.")).toBeVisible();
 
-    // Go back to step 4, empty the address, and jump to the summary through the rail (no validation on the way).
-    await riel(page).getByRole("button", { name: /Inmueble y ubicación/ }).click();
+    // Go back to step 3, empty the address, and jump to the review through the rail (no validation on the way).
+    await riel(page).getByRole("button", { name: /Vivienda/ }).click();
     await page.getByLabel("Dirección del inmueble", { exact: true }).fill("");
-    await riel(page).getByRole("button", { name: /Resumen/ }).click();
+    await riel(page).getByRole("button", { name: /Revisión y firma/ }).click();
 
     await expect(page.getByText("Faltan datos en 1 sección: Inmueble y ubicación.")).toBeVisible();
     await expect(page.getByText("Ingrese la dirección")).toBeVisible();
     // The edit link takes the person to the step that needs fixing.
-    await page.getByRole("button", { name: "Editar Inmueble y ubicación (paso 4)", exact: true }).click();
-    await expect(tituloPaso(page, 4)).toBeVisible();
+    await page.getByRole("button", { name: "Editar Inmueble y ubicación (paso 3)", exact: true }).click();
+    await expect(tituloPaso(page, 3)).toBeVisible();
   });
 
-  test("el resumen no envía: lista lo pendiente (la firma), muestra la autorización y no expone la firma", async ({ page }) => {
+  test("la revisión no deja enviar antes de firmar: lista lo pendiente, muestra la autorización y no expone la firma", async ({ page }) => {
     await nuevoRegistro(page);
-    await avanzarHasta(page, generarCasos(HOY)[0], RESUMEN as NumeroPaso);
-    await expect(page.getByRole("button", { name: /^Enviar/i })).toHaveCount(0);
-    // "Siguiente" only leads to the last step ("Firma y envío").
-    await expect(page.getByRole("button", { name: "Siguiente", exact: true })).toHaveCount(1);
-    const pendiente = page.getByRole("region", { name: "Pendiente para poder enviar", exact: true });
+    await avanzarHasta(page, generarCasos(HOY)[0], 6);
+    // Last step: no "Siguiente"; the send action is locked until the signature exists.
+    await expect(page.getByRole("button", { name: "Siguiente", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Enviar registro", exact: true })).toBeDisabled();
+    const pendiente = page.getByRole("region", { name: "Requisitos para enviar", exact: true });
     await expect(pendiente).toContainText("Firma del solicitante");
     await expect(pendiente).toContainText("Autorización de tratamiento de datos: Autorizada.");
     await expect(pendiente).toContainText("Fotos del documento de identidad: Frente y reverso capturados.");
     await expect(page.getByRole("region", { name: "Autorización de datos", exact: true })).toContainText("Autorizado");
-    await expect(page.getByRole("img", { name: /firma/i })).toHaveCount(0);
+    await expect(page.locator("img[alt*='Firma']")).toHaveCount(0); // the pad is a canvas; no preview image yet
   });
 
-  test("el borrador conserva los pasos 4-7 al recargar", async ({ page }) => {
+  test("el borrador conserva la vivienda al recargar", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY).find((x) => x.extra.vivienda.division?.codigo === "19")!;
-    await avanzarHasta(page, c, 5);
+    await avanzarHasta(page, c, 4);
     await expect(page.getByRole("status")).toContainText("Borrador guardado");
     await page.reload();
-    await expect(tituloPaso(page, 5)).toBeVisible();
-    await riel(page).getByRole("button", { name: /Inmueble y ubicación/ }).click();
-    await verificarPaso4(page, c);
+    await expect(tituloPaso(page, 4)).toBeVisible();
+    await riel(page).getByRole("button", { name: /Vivienda/ }).click();
+    await verificarInmueble(page, c);
+  });
+});
+
+test.describe("registro pasos 3-6: Editar lleva a la sección", () => {
+  test("cada Editar del resumen abre su paso, baja a la sección y deja el foco en su título", async ({ page }) => {
+    await nuevoRegistro(page);
+    await avanzarHasta(page, generarCasos(HOY)[0], 6);
+    const destinos = [
+      { boton: "Editar Titularidad (paso 3)", paso: 3, titulo: "Titularidad" },
+      { boton: "Editar Riesgo y dictamen técnico (paso 3)", paso: 3, titulo: "Riesgo y dictamen técnico" },
+      { boton: "Editar Composición familiar (paso 2)", paso: 2, titulo: "Composición familiar e ingresos" },
+      { boton: "Editar Autorización de datos", paso: 5, titulo: "Autorización de datos" },
+    ] as const;
+    for (const d of destinos) {
+      await page.getByRole("button", { name: d.boton, exact: true }).click();
+      await expect(tituloPaso(page, d.paso)).toBeVisible();
+      const titulo = page.getByRole("heading", { level: 3, name: d.titulo, exact: true });
+      await expect(titulo).toBeInViewport();
+      await expect(titulo).toBeFocused();
+      await riel(page).getByRole("button", { name: /Revisión y firma/ }).click();
+      await expect(tituloPaso(page, 6)).toBeVisible();
+    }
   });
 });

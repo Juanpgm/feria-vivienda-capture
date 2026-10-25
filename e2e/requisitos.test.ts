@@ -33,7 +33,7 @@ describe("calcularRequisitos", () => {
     v.inmueble = { ...v.inmueble, direccion: "" };
     const r = await calcularRequisitos(firmado(v));
     expect(r.listo).toBe(false);
-    expect(r.items.filter((i) => !i.ok).map((i) => [i.id, i.paso])).toEqual([["datos", "inmueble"], ["consentimiento", "consentimiento"], ["documentos", "documentos"]]);
+    expect(r.items.filter((i) => !i.ok).map((i) => [i.id, i.paso, i.ancla])).toEqual([["datos", "vivienda", "seccion-inmueble"], ["consentimiento", "autorizacion", "seccion-consentimiento"], ["documentos", "autorizacion", "seccion-documentos"]]);
   });
 
   it("consent given on an outdated wording does not count", async () => {

@@ -29,11 +29,11 @@ type Seccion = {
 };
 
 export const SECCIONES: readonly Seccion[] = [
-  { id: "solicitante", titulo: "Datos del hogar", paso: "hogar", schema: () => import("@/modules/hogar/domain/schema").then((m) => m.hogarSchema) },
-  { id: "composicion", titulo: "Composición familiar", paso: "composicion", schema: () => import("@/modules/composicion/domain/schema").then((m) => m.composicionSchema) },
-  { id: "inmueble", titulo: "Inmueble y ubicación", paso: "inmueble", schema: () => import("@/modules/inmueble/domain/schema").then((m) => m.inmuebleSchema) },
-  { id: "riesgo", titulo: "Riesgo y dictamen técnico", paso: "riesgo", schema: () => import("@/modules/riesgo/domain/schema").then((m) => m.riesgoSchema) },
-  { id: "titularidad", titulo: "Titularidad", paso: "titularidad", schema: () => import("@/modules/titularidad/domain/schema").then((m) => m.titularidadSchema) },
+  { id: "solicitante", titulo: "Solicitante", paso: "solicitante", schema: () => import("@/modules/hogar/domain/schema").then((m) => m.hogarSchema) },
+  { id: "composicion", titulo: "Composición familiar", paso: "hogar", schema: () => import("@/modules/composicion/domain/schema").then((m) => m.composicionSchema) },
+  { id: "inmueble", titulo: "Inmueble y ubicación", paso: "vivienda", schema: () => import("@/modules/inmueble/domain/schema").then((m) => m.inmuebleSchema) },
+  { id: "riesgo", titulo: "Riesgo y dictamen técnico", paso: "vivienda", schema: () => import("@/modules/riesgo/domain/schema").then((m) => m.riesgoSchema) },
+  { id: "titularidad", titulo: "Titularidad", paso: "vivienda", schema: () => import("@/modules/titularidad/domain/schema").then((m) => m.titularidadSchema) },
   { id: "cierre_financiero", titulo: "Cierre financiero", paso: "financiero", schema: () => import("@/modules/cierre-financiero/domain/schema").then((m) => m.cierreFinancieroSchema) },
 ];
 

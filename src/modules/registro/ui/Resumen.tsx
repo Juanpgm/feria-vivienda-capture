@@ -4,24 +4,19 @@ import { useEffect, useState } from "react";
 import { useFormContext, type FieldValues } from "react-hook-form";
 import { fechaBogota } from "@/shared/tiempo";
 import { ListaFilas } from "./ListaFilas";
-import { ListaRequisitos } from "./ListaRequisitos";
-import { PASOS, type Valores } from "./pasos";
+import { anclaDe, PASOS, type Valores } from "./pasos";
 import { evaluarRegistro, filasConsentimiento, filasDe, SECCIONES, type Evaluacion } from "./datosResumen";
-import { calcularRequisitos, type Requisitos } from "./requisitos";
 
 /**
- * Read-only review of everything entered, the authorization status and what is still pending. The signature
- * (never shown here) and the send action live in the last step, "Firma y envío".
+ * Read-only review of everything entered and the authorization status; the first block of the last step. The
+ * pending requirements, the signature and the send action follow it (EnvioRegistro).
  */
-export function Resumen({ irAPaso }: { irAPaso: (id: string) => void }) {
+export function Resumen({ irAPaso }: { irAPaso: (id: string, ancla?: string) => void }) {
   const { getValues } = useFormContext<FieldValues>();
   const [evaluacion, setEvaluacion] = useState<Record<string, Evaluacion<unknown>> | null>(null);
 
-  const [req, setReq] = useState<Requisitos | null>(null);
-
   useEffect(() => {
     evaluarRegistro(getValues() as Valores).then(setEvaluacion);
-    calcularRequisitos(getValues() as Valores).then(setReq);
   }, [getValues]);
 
   if (!evaluacion) return <p role="status">Preparando el resumen…</p>;
@@ -47,7 +42,7 @@ export function Resumen({ irAPaso }: { irAPaso: (id: string) => void }) {
               </h3>
               <button
                 type="button"
-                onClick={() => irAPaso(s.paso)}
+                onClick={() => irAPaso(s.paso, anclaDe(s.id))}
                 aria-label={`Editar ${s.titulo} (paso ${indice})`}
                 className="min-h-11 rounded-lg px-2 text-sm font-semibold text-primary underline underline-offset-2"
               >
@@ -76,7 +71,7 @@ export function Resumen({ irAPaso }: { irAPaso: (id: string) => void }) {
           </h3>
           <button
             type="button"
-            onClick={() => irAPaso("consentimiento")}
+            onClick={() => irAPaso("autorizacion", anclaDe("consentimiento"))}
             aria-label="Editar Autorización de datos"
             className="min-h-11 rounded-lg px-2 text-sm font-semibold text-primary underline underline-offset-2"
           >
@@ -84,18 +79,6 @@ export function Resumen({ irAPaso }: { irAPaso: (id: string) => void }) {
           </button>
         </div>
         <ListaFilas filas={filasConsentimiento((getValues("consentimiento") ?? {}) as Record<string, unknown>)} />
-      </section>
-
-      <section aria-labelledby="resumen-pendientes">
-        <h3 id="resumen-pendientes" className="mb-2 border-b border-border pb-1 text-lg font-bold text-primary-strong">
-          Pendiente para poder enviar
-        </h3>
-        {!req ? (
-          <p role="status">Revisando requisitos…</p>
-        ) : (
-          <ListaRequisitos items={req.items} irAPaso={irAPaso} />
-        )}
-        <p className="mt-3 text-sm text-muted">La firma del solicitante y el envío se hacen en el último paso, «Firma y envío».</p>
       </section>
     </div>
   );

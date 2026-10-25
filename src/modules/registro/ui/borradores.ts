@@ -7,7 +7,7 @@ import { descartarFotos } from "@/modules/documentos/ui/fotos";
 import { PASOS, type Marca, type Valores } from "./pasos";
 
 /** Bump when the shape of `valores` changes and add the step to `migrarBorrador`. */
-export const VERSION_BORRADOR = 2;
+export const VERSION_BORRADOR = 3;
 
 export type Borrador = {
   /** Client-generated at draft start; later the record id (create idempotency key). */
@@ -36,6 +36,32 @@ export function partirNombre(completo: string): { primer_nombre: string; segundo
   return { primer_nombre: p[0] ?? "", segundo_nombre: "", primer_apellido: p[1] ?? "", segundo_apellido: "" };
 }
 
+/** Step ids of drafts saved with the 11-step form (versions 1 and 2), in their old order. */
+const PASOS_V2 = ["hogar", "composicion", "proteccion", "inmueble", "riesgo", "titularidad", "financiero", "consentimiento", "documentos", "resumen", "firma"] as const;
+/** Old step -> the step of the 6-step form that now holds it. */
+const PASO_NUEVO: Record<string, string> = {
+  hogar: "solicitante", composicion: "hogar", proteccion: "hogar", inmueble: "vivienda", riesgo: "vivienda", titularidad: "vivienda",
+  financiero: "financiero", consentimiento: "autorizacion", documentos: "autorizacion", resumen: "revision", firma: "revision",
+};
+
+/**
+ * Maps the position and the step marks of an 11-step draft onto the 6 steps. A merged step is "completo" only when every
+ * old step it absorbed was; any "errores" wins. The last step carries no mark (it has no Next, as before).
+ */
+export function migrarPasos(paso: unknown, maximo: unknown, marcas: Record<string, Marca>): { paso: string; maximo: number; marcas: Record<string, Marca> } {
+  const idNuevo = (viejo: unknown) => (typeof viejo === "string" ? PASO_NUEVO[viejo] : undefined);
+  const nuevas: Record<string, Marca> = {};
+  for (const p of PASOS) {
+    const miembros = PASOS_V2.filter((v) => PASO_NUEVO[v] === p.id && v !== "firma" && v !== "resumen");
+    if (!miembros.length || p.id === "revision") continue;
+    if (miembros.some((v) => marcas[v] === "errores")) nuevas[p.id] = "errores";
+    else if (miembros.every((v) => marcas[v] === "completo")) nuevas[p.id] = "completo";
+  }
+  const viejoMax = typeof maximo === "number" ? PASOS_V2[Math.min(Math.max(Math.trunc(maximo), 0), PASOS_V2.length - 1)] : undefined;
+  const indiceMax = PASOS.findIndex((p) => p.id === idNuevo(viejoMax));
+  return { paso: idNuevo(paso) ?? PASOS[0].id, maximo: Math.max(indiceMax, 0), marcas: nuevas };
+}
+
 const esObjeto = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Brings a stored draft to the current shape; null when it is not a usable draft. Never throws. */
@@ -61,14 +87,14 @@ export function migrarBorrador(raw: unknown): Borrador | null {
     delete marcas.titularidad;
   }
 
-  const pasoValido = PASOS.some((p) => p.id === raw.paso);
+  const { paso, maximo, marcas: marcasActuales } = version < 3 ? migrarPasos(raw.paso, raw.maximo, marcas) : { paso: raw.paso, maximo: raw.maximo, marcas };
   return {
     id: raw.id,
     version: VERSION_BORRADOR,
     valores,
-    paso: pasoValido ? (raw.paso as string) : PASOS[0].id,
-    maximo: typeof raw.maximo === "number" ? raw.maximo : 0,
-    marcas,
+    paso: PASOS.some((p) => p.id === paso) ? (paso as string) : PASOS[0].id,
+    maximo: typeof maximo === "number" ? Math.min(Math.max(maximo, 0), PASOS.length - 1) : 0,
+    marcas: marcasActuales,
     guardado_en: typeof raw.guardado_en === "string" ? raw.guardado_en : "",
   };
 }

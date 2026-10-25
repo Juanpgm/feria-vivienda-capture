@@ -52,13 +52,13 @@ for (const esquema of ["light", "dark"] as const) {
         await page.addInitScript(() => localStorage.removeItem("tema"));
         await simularServidor(page);
         await nuevoRegistro(page);
-        await avanzarHasta(page, generarCasos(HOY)[0], PASO.consentimiento);
-        await expect(tituloPaso(page, PASO.consentimiento)).toBeVisible();
+        await avanzarHasta(page, generarCasos(HOY)[0], PASO.autorizacion);
+        await expect(tituloPaso(page, PASO.autorizacion)).toBeVisible();
         // Desktop shows the rail (aria-current on the active step); mobile shows "Paso n de N" instead.
         if (vista === "escritorio") {
-          await expect(page.getByRole("navigation", { name: "Pasos del registro" }).locator('[aria-current="step"]')).toContainText("Consentimiento");
+          await expect(page.getByRole("navigation", { name: "Pasos del registro" }).locator('[aria-current="step"]')).toContainText("Autorización y documento");
         } else {
-          await expect(page.getByText(`Paso ${PASO.consentimiento} de ${N_PASOS}`, { exact: true })).toBeVisible();
+          await expect(page.getByText(`Paso ${PASO.autorizacion} de ${N_PASOS}`, { exact: true })).toBeVisible();
         }
         expect(await sinHorizontal(page), "scroll horizontal").toBe(true);
         expect(await auditarControles(page), "controles").toEqual([]);

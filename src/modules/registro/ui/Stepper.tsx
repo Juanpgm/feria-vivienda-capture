@@ -2,45 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, set, useForm, type FieldErrors, type FieldValues, type Resolver } from "react-hook-form";
-import { PasoComposicion } from "@/modules/composicion/ui/PasoComposicion";
-import { PasoProteccion } from "@/modules/composicion/ui/PasoProteccion";
-import { PasoCierreFinanciero } from "@/modules/cierre-financiero/ui/PasoCierreFinanciero";
-import { PasoConsentimiento } from "@/modules/consentimiento/ui/PasoConsentimiento";
-import { PasoDocumentos } from "@/modules/documentos/ui/PasoDocumentos";
-import { PasoHogar } from "@/modules/hogar/ui/PasoHogar";
-import { PasoInmueble } from "@/modules/inmueble/ui/PasoInmueble";
-import { PasoRiesgo } from "@/modules/riesgo/ui/PasoRiesgo";
-import { PasoTitularidad } from "@/modules/titularidad/ui/PasoTitularidad";
 import { FIRMA_VACIA } from "@/modules/firma/domain/schema";
 import { Button } from "@/shared/ui/Button";
 import { Confirmacion, type DatosConfirmacion } from "./Confirmacion";
-import { EnvioRegistro } from "./EnvioRegistro";
-import { Resumen } from "./Resumen";
 import { cargarBorrador, descartarBorrador, guardarBorrador, VERSION_BORRADOR, type Borrador } from "./borradores";
+import { VISTAS } from "./vistas";
 import { ETIQUETA_ESTADO, estadoPaso, PASOS, validarPaso, type Marca, type Valores } from "./pasos";
-
-type PropsVista = {
-  irAPaso: (id: string) => void;
-  borradorId: string;
-  /** Last step only: submit finished (the owner deletes the draft and shows the confirmation) / submit running. */
-  alEnviado?: (d: DatosConfirmacion) => void;
-  alBloquear?: (ocupado: boolean) => void;
-};
-const VISTAS: Record<string, ComponentType<PropsVista>> = {
-  hogar: PasoHogar,
-  composicion: PasoComposicion,
-  proteccion: PasoProteccion,
-  inmueble: PasoInmueble,
-  riesgo: PasoRiesgo,
-  titularidad: PasoTitularidad,
-  financiero: PasoCierreFinanciero,
-  consentimiento: PasoConsentimiento,
-  documentos: PasoDocumentos,
-  resumen: Resumen,
-  firma: EnvioRegistro,
-};
 
 export const nuevoBorrador = (id: string): Borrador => ({
   id,
@@ -85,6 +54,14 @@ export function Stepper({ uid, borradorId }: { uid: string; borradorId: string }
 
   if (!estado) return <p role="status">Cargando borrador…</p>;
   return <Formulario key={borradorId} uid={uid} inicial={estado.borrador} recuperado={estado.recuperado} />;
+}
+
+/** Scrolls to a section heading of the open step and moves keyboard focus there. */
+function irAlBloque(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ block: "start" });
+  el.querySelector<HTMLElement>("h3")?.focus({ preventScroll: true });
 }
 
 type Guardado = "ninguno" | "guardando" | "guardado" | "error";
@@ -162,7 +139,20 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
     if (fallos) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], fieldset[aria-describedby] input')?.focus();
   }, [fallos]);
 
-  function irA(i: number, nuevasMarcas = marcas) {
+  // "Editar" links point at a section inside a step: scroll to its heading once that step is rendered.
+  const ancla = useRef<string>(undefined);
+  useEffect(() => {
+    const id = ancla.current;
+    ancla.current = undefined;
+    if (id) irAlBloque(id);
+  }, [pasoId]);
+
+  function irA(i: number, nuevasMarcas = marcas, destino?: string) {
+    if (destino && PASOS[i].id === pasoId) {
+      irAlBloque(destino);
+      return;
+    }
+    ancla.current = destino;
     setPasoId(PASOS[i].id);
     setMaximo(Math.max(maximo, i));
     setMarcas(nuevasMarcas);
@@ -182,7 +172,7 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
     } else irA(indice + 1, nuevas);
   }
 
-  const irAPaso = (id: string) => irA(PASOS.findIndex((p) => p.id === id));
+  const irAPaso = (id: string, destino?: string) => irA(PASOS.findIndex((p) => p.id === id), marcas, destino);
 
   // Sent and confirmed by the server: drop the draft (and its photos) for good, leave the URL of the used draft.
   async function alEnviado(d: DatosConfirmacion) {

@@ -4,7 +4,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { registroSchema } from "../src/modules/registro/domain/schema";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { avanzarHasta, HOY, llenarPaso9, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
+import { avanzarHasta, HOY, llenarFotos, nuevoRegistro, siguiente, tituloPaso } from "./ayudas";
 import {
   botonEnviar, botonUsarFirma, clavesIdb, dibujarFirma, firmarEnPantalla, irAFirma, llegarAlResumen, llenarConsentimiento, N_PASOS, PASO,
   pad, simularServidor, TEXTO_SENSIBLES, TEXTO_TRATAMIENTO, verificacionManual,
@@ -21,18 +21,18 @@ const caso = (clave: string) => casos.find((c) => c.clave === clave)!;
 const ENVIABLES = ["cc-nombre-mayusculas", "ce-venezolana", "otro-ppt-peruana", "am-dos", "prot-todas", "ingreso-alto"];
 const enmascarado = (n: string) => "*".repeat(Math.max(0, n.length - 4)) + n.slice(-4);
 
-test.describe("envio completo: los 11 pasos hasta la confirmacion", () => {
+test.describe("envio completo: los 6 pasos hasta la confirmacion", () => {
   for (const clave of ENVIABLES) {
     test(`${clave}: registra, sube 3 archivos y muestra el radicado`, async ({ page }) => {
       const c = caso(clave);
       const srv = await simularServidor(page);
       await llegarAlResumen(page, c);
-      expect(PASO.firma).toBe(N_PASOS);
+      expect(PASO.revision).toBe(N_PASOS);
 
-      // Summary: consent status, nothing to send from here, no signature image.
+      // Review: consent status, the send action locked until the signature below, no signature image.
       await expect(page.getByRole("region", { name: "Autorización de datos", exact: true })).toContainText("Autorizado");
-      await expect(page.getByRole("region", { name: "Pendiente para poder enviar", exact: true })).toContainText("Firma del solicitante");
-      await expect(page.getByRole("button", { name: /enviar/i })).toHaveCount(0);
+      await expect(page.getByRole("region", { name: "Requisitos para enviar", exact: true })).toContainText("Firma del solicitante");
+      await expect(botonEnviar(page)).toBeDisabled();
       await expect(page.locator("img[alt*='Firma']")).toHaveCount(0);
 
       await irAFirma(page);
@@ -74,13 +74,16 @@ test.describe("envio completo: los 11 pasos hasta la confirmacion", () => {
   }
 });
 
-test.describe("consentimiento (paso 8)", () => {
+test.describe("autorizacion y fotos (paso 5)", () => {
   test("sin autorizar el tratamiento no se avanza y el mensaje se asocia al control", async ({ page }) => {
     await simularServidor(page);
     const c = caso("cc-nombre-mayusculas");
     await llegarAlResumenHastaConsentimiento(page, c);
+    // The photos are locked while the consent is missing: no file inputs, only the explanation.
+    await expect(page.getByText("Las fotos se habilitan cuando el titular autoriza el tratamiento de sus datos personales")).toBeVisible();
+    await expect(page.getByLabel("Archivo de imagen: frente del documento", { exact: true })).toHaveCount(0);
     await siguiente(page);
-    await expect(tituloPaso(page, PASO.consentimiento)).toBeVisible();
+    await expect(tituloPaso(page, PASO.autorizacion)).toBeVisible();
     const caja = page.getByRole("checkbox", { name: TEXTO_TRATAMIENTO, exact: true });
     await expect(page.getByText("Debe autorizar el tratamiento de datos personales para poder registrar la postulación")).toBeVisible();
     await expect(caja).toHaveAttribute("aria-invalid", "true");
@@ -91,8 +94,14 @@ test.describe("consentimiento (paso 8)", () => {
     await expect(page.getByText(/Borrador pendiente de validación jurídica/)).toBeVisible();
     await expect(page.getByRole("link", { name: /Política de tratamiento de datos personales/ })).toHaveAttribute("href", /cali\.gov\.co.*politica-de-tratamiento-de-datos-personales/);
     await caja.check();
+    // Giving the consent unlocks the photos; unticking it locks them again.
+    await expect(page.getByLabel("Archivo de imagen: frente del documento", { exact: true })).toBeVisible();
+    await caja.uncheck();
+    await expect(page.getByLabel("Archivo de imagen: frente del documento", { exact: true })).toHaveCount(0);
+    await caja.check();
+    await llenarFotos(page);
     await siguiente(page);
-    await expect(tituloPaso(page, PASO.documentos)).toBeVisible();
+    await expect(tituloPaso(page, PASO.revision)).toBeVisible();
   });
 
   test("rechazar los datos sensibles explica la consecuencia y se guarda no_autorizado", async ({ page }) => {
@@ -120,7 +129,7 @@ test.describe("consentimiento (paso 8)", () => {
   });
 });
 
-test.describe("firma y envio (paso 11)", () => {
+test.describe("firma y envio (paso 6)", () => {
   test("pad vacio: error, deshacer y borrar; firma valida se previsualiza y se puede rehacer", async ({ page }) => {
     await simularServidor(page);
     await llegarAlResumen(page, caso("cc-nombre-mayusculas"));
@@ -263,18 +272,18 @@ test.describe("firma y envio (paso 11)", () => {
 
     // Visiting an earlier step WITHOUT changing anything keeps the signature.
     const riel = page.getByRole("navigation", { name: "Pasos del registro" });
-    await riel.getByRole("button", { name: /Inmueble y ubicación/ }).click();
-    await expect(tituloPaso(page, 4)).toBeVisible();
-    await riel.getByRole("button", { name: /Firma y envío/ }).click();
+    await riel.getByRole("button", { name: /Vivienda/ }).click();
+    await expect(tituloPaso(page, 3)).toBeVisible();
+    await riel.getByRole("button", { name: /Revisión y firma/ }).click();
     await expect(page.getByText("Firma registrada.", { exact: true })).toBeVisible();
     await expect(page.getByText(/cambiaron después de firmar/)).toHaveCount(0);
 
     // Editing the address clears it.
-    await riel.getByRole("button", { name: /Inmueble y ubicación/ }).click();
+    await riel.getByRole("button", { name: /Vivienda/ }).click();
     const direccion = page.getByLabel("Dirección del inmueble", { exact: true });
     await direccion.fill("Carrera 99 # 1-23");
     await direccion.press("Tab");
-    await riel.getByRole("button", { name: /Firma y envío/ }).click();
+    await riel.getByRole("button", { name: /Revisión y firma/ }).click();
     await expect(page.getByText(/Los datos del registro cambiaron después de firmar/)).toBeVisible();
     await expect(pad(page)).toBeVisible();
     await expect(page.getByText("Firma registrada.", { exact: true })).toHaveCount(0);
@@ -323,18 +332,16 @@ test.describe("lista y detalle: archivos, autorización y firma", () => {
 
 // ---- local helpers ----
 
-/** Steps 1-7 filled; the consent step is open and untouched. */
+/** Steps 1-4 filled; the authorization step (consent + photos) is open and untouched. */
 async function llegarAlResumenHastaConsentimiento(page: Page, c: Caso) {
   await nuevoRegistro(page);
-  await avanzarHasta(page, c, PASO.consentimiento);
-  await expect(tituloPaso(page, PASO.consentimiento)).toBeVisible();
+  await avanzarHasta(page, c, PASO.autorizacion);
+  await expect(tituloPaso(page, PASO.autorizacion)).toBeVisible();
 }
 
-/** From the consent step (already answered): photos, then the summary. */
+/** From the authorization step (consent already answered): photos, then the review step. */
 async function completarDesdeConsentimiento(page: Page) {
+  await llenarFotos(page);
   await siguiente(page);
-  await expect(tituloPaso(page, PASO.documentos)).toBeVisible();
-  await llenarPaso9(page);
-  await siguiente(page);
-  await expect(tituloPaso(page, PASO.resumen)).toBeVisible();
+  await expect(tituloPaso(page, PASO.revision)).toBeVisible();
 }

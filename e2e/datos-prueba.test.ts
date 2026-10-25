@@ -20,7 +20,7 @@ describe("datos de prueba e2e", () => {
     expect(new Set(casos.map((c) => c.solicitante.tipoDocumento))).toEqual(new Set(["cc", "ce", "otro"]));
   });
 
-  it.each(casos.map((c) => [c.clave, c] as const))("%s validates in steps 1-3 and derives the expected values", async (_k, c) => {
+  it.each(casos.map((c) => [c.clave, c] as const))("%s validates in the 6 steps and derives the expected values", async (_k, c) => {
     const v = aValores(c) as unknown as Valores;
     for (const paso of PASOS) expect(await validarPaso(paso, v)).toEqual({});
 
@@ -49,7 +49,7 @@ describe("datos de prueba e2e", () => {
     expect(comp.condiciones_especiales).toEqual(c.esperado.condicionesFinales);
   });
 
-  it("steps 4-7 datasets parse with the real schemas and the declared catalog labels", async () => {
+  it("vivienda and financiero datasets parse with the real schemas and the declared catalog labels", async () => {
     for (const c of casos) {
       const v = aValores(c) as unknown as Valores;
       const inm = (await evaluarRegistro(v)).inmueble;
@@ -62,7 +62,7 @@ describe("datos de prueba e2e", () => {
     }
   });
 
-  it("covers every option of steps 4-7 in at least 20 valid cases", () => {
+  it("covers every option of vivienda and cierre financiero in at least 20 valid cases", () => {
     const ex = casos.map((c) => c.extra);
     expect(casos.length).toBeGreaterThanOrEqual(20);
     expect(new Set(ex.map((e) => e.vivienda.estrato))).toEqual(new Set([1, 2, 3, 4, 5, 6]));

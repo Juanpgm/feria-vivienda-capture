@@ -41,7 +41,7 @@ export function PasoInmueble() {
 
   return (
     <div className="flex flex-col gap-8">
-      <Seccion titulo="Dirección">
+      <Seccion sub titulo="Dirección">
         <div className="sm:col-span-2">
           <CampoTexto
             name={P + "direccion"}
@@ -52,7 +52,7 @@ export function PasoInmueble() {
         </div>
       </Seccion>
 
-      <Seccion titulo="Ubicación">
+      <Seccion sub titulo="Ubicación">
         <Controller
           control={control}
           name={P + "codigo_division"}
@@ -103,7 +103,7 @@ export function PasoInmueble() {
       </Seccion>
 
       <section className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Estrato</h3>
+        <h4 className="text-lg font-bold text-primary-strong">Estrato</h4>
         <RadioGroup legend="Estrato socioeconómico" name={P + "estrato"} options={ESTRATOS} error={error(P + "estrato")} inputProps={register(P + "estrato")} />
       </section>
     </div>

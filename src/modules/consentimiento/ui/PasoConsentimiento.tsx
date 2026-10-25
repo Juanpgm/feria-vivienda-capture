@@ -29,9 +29,9 @@ export function PasoConsentimiento() {
       <div id={idTexto} className="flex flex-col gap-6">
         {SECCIONES_TEXTO.map((s) => (
           <section key={s.id} aria-labelledby={`${idTexto}-${s.id}`} className="flex flex-col gap-2">
-            <h3 id={`${idTexto}-${s.id}`} className="text-lg font-bold text-primary-strong">
+            <h4 id={`${idTexto}-${s.id}`} className="text-lg font-bold text-primary-strong">
               {s.titulo}
-            </h3>
+            </h4>
             {s.parrafos.map((p) => (
               <p key={p}>{p}</p>
             ))}
@@ -54,9 +54,9 @@ export function PasoConsentimiento() {
       </div>
 
       <section aria-labelledby={`${idTexto}-decision`} className="flex flex-col gap-4">
-        <h3 id={`${idTexto}-decision`} className="border-b border-border pb-1 text-lg font-bold text-primary-strong">
+        <h4 id={`${idTexto}-decision`} className="border-b border-border pb-1 text-lg font-bold text-primary-strong">
           Autorización del titular
-        </h3>
+        </h4>
 
         <div className="flex flex-col gap-1">
           <label className="flex min-h-11 cursor-pointer items-start gap-3 py-2">

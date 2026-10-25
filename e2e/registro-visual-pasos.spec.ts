@@ -1,9 +1,9 @@
-// Authenticated visual/a11y pass over steps 1-8: light/dark x desktop (1440x900) / mobile (390x844).
-// Screenshots go to test-results/visual (not committed). No Firestore writes (see registro-pasos-1-3.spec.ts).
+// Authenticated visual/a11y pass over the 6 steps: light/dark x desktop (1440x900) / mobile (390x844).
+// Screenshots go to test-results/visual (not committed). No Firestore writes (see registro-pasos-solicitante-hogar.spec.ts).
 import { expect, test, type Page } from "@playwright/test";
 import { PASOS } from "../src/modules/registro/ui/pasos";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { CAMPO_FUENTES, HOY, llenarPaso1, llenarPaso2, llenarPaso3, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, nuevoRegistro, siguiente, tituloPaso, TITULO_PASO, type NumeroPaso } from "./ayudas";
+import { CAMPO_FUENTES, HOY, llenarPaso, nuevoRegistro, siguiente, tituloPaso, TITULO_PASO, type NumeroPaso } from "./ayudas";
 import { generarCasos } from "./datos-prueba";
 
 test.beforeAll(() => {
@@ -14,7 +14,6 @@ const VISTAS = {
   escritorio: { width: 1440, height: 900 },
   movil: { width: 390, height: 844 },
 } as const;
-const LLENAR = [llenarPaso1, llenarPaso2, llenarPaso3, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7] as const;
 
 /** Visible form controls shorter than 44 px, or without a bound label. */
 async function auditarControles(page: Page) {
@@ -43,7 +42,7 @@ const sinHorizontal = (page: Page) => page.evaluate(() => document.documentEleme
 
 for (const esquema of ["light", "dark"] as const) {
   for (const [vista, viewport] of Object.entries(VISTAS)) {
-    test.describe(`pasos 1-8 ${esquema} / ${vista}`, () => {
+    test.describe(`pasos 1-${PASOS.length} ${esquema} / ${vista}`, () => {
       test.use({ colorScheme: esquema, viewport });
 
       test("sin scroll horizontal, objetivos de 44 px, etiquetas, paso activo y estados de los controles", async ({ page }) => {
@@ -51,17 +50,17 @@ for (const esquema of ["light", "dark"] as const) {
         await nuevoRegistro(page);
         const c = generarCasos(HOY)[0];
 
-        for (let n = 1; n <= 8; n++) {
+        for (let n = 1; n <= PASOS.length; n++) {
           const paso = n as NumeroPaso;
           await expect(tituloPaso(page, paso)).toBeVisible();
-          // Desktop shows the rail (aria-current on the active step); mobile shows "Paso n de 8" instead.
+          // Desktop shows the rail (aria-current on the active step); mobile shows "Paso n de N" instead.
           if (vista === "escritorio") {
             await expect(page.getByRole("navigation", { name: "Pasos del registro" }).locator('[aria-current="step"]')).toContainText(TITULO_PASO[paso]);
           } else {
             await expect(page.getByText(`Paso ${n} de ${PASOS.length}`, { exact: true })).toBeVisible();
           }
 
-          if (n === 5) {
+          if (n === 3) {
             // Segmented control: the chosen segment is visibly different (fill + weight) and the radio is checked.
             const rud = page.getByRole("group", { name: "¿Está registrado en el RUD?" });
             await rud.getByRole("radio", { name: "Sí", exact: true }).check();
@@ -81,23 +80,29 @@ for (const esquema of ["light", "dark"] as const) {
             await rud.getByRole("radio", { name: "No", exact: true }).check();
             await expect(page.getByLabel("Número de RUD", { exact: true })).toHaveCount(0);
           }
-          if (n === 7) {
+          if (n === 4) {
             // Multi-select: open list marks chosen options, chips mirror the selection.
             const combo = page.getByRole("combobox", { name: CAMPO_FUENTES, exact: true });
             await combo.click();
             await page.getByRole("option", { name: "Recursos propios", exact: true }).click();
             await expect(page.getByRole("option", { name: "Recursos propios", exact: true })).toHaveAttribute("aria-selected", "true");
             await expect(page.getByRole("option", { name: "Ninguna", exact: true })).toHaveAttribute("aria-selected", "false");
-            await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso7-lista.png`, fullPage: true });
+            await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso4-lista.png`, fullPage: true });
             await combo.press("Escape");
             await page.getByRole("button", { name: "Quitar Recursos propios", exact: true }).click();
           }
 
-          if (n < 8) await LLENAR[n - 1](page, c);
+          if (n === 5) {
+            // The photos stay locked until the consent is given (consent comes first on the page).
+            await expect(page.getByText("Las fotos se habilitan cuando el titular autoriza")).toBeVisible();
+            expect(await sinHorizontal(page), "scroll horizontal en paso 5 (fotos bloqueadas)").toBe(true);
+            await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso5-bloqueado.png`, fullPage: true });
+          }
+          if (n < PASOS.length) await llenarPaso(page, n as Exclude<NumeroPaso, 6>, c);
           expect(await sinHorizontal(page), `scroll horizontal en paso ${n}`).toBe(true);
           expect(await auditarControles(page), `controles del paso ${n}`).toEqual([]);
           await page.screenshot({ path: `test-results/visual/${esquema}-${vista}-paso${n}.png`, fullPage: true });
-          if (n < 8) await siguiente(page);
+          if (n < PASOS.length) await siguiente(page);
         }
       });
     });
