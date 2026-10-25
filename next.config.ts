@@ -21,6 +21,8 @@ const csp = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Generic framework guidance only; stop `next dev` from regenerating AGENTS.md.
+  agentRules: false,
   async headers() {
     return [
       {

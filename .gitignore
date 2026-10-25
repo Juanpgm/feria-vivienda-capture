@@ -10,3 +10,8 @@ next-env.d.ts
 .firebase
 firebase-debug.log
 firestore-debug.log
+
+# Playwright
+playwright-report
+test-results
+.auth

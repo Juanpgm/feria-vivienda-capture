@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   description: "Captura de datos de la Feria de Vivienda - Alcaldía de Santiago de Cali",
 };
 
-// Runs before first paint: stored choice wins, otherwise follow the OS preference.
-const themeScript = `(function(){try{var t=localStorage.getItem("tema");var d=t?t==="oscuro":matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d)}catch(e){}})()`;
+// Runs before first paint: stored choice wins, otherwise follow the OS preference (same rule as shared/tema.ts).
+const themeScript = `(function(){try{var t=localStorage.getItem("tema");var d=t==="oscuro"||(t!=="claro"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d)}catch(e){}})()`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -28,7 +28,7 @@ export function PasoProteccion() {
         >
           <input
             type="checkbox"
-            className="size-5 shrink-0 accent-primary"
+            className="check"
             checked={elegidas.includes(codigo)}
             onChange={(e) => alternar(codigo, e.target.checked)}
           />

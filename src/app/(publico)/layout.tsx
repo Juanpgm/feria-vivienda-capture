@@ -8,7 +8,7 @@ export default function PublicoLayout({ children }: { children: ReactNode }) {
     <div className="grid min-h-dvh md:grid-cols-[2fr_3fr]">
       <aside className="flex flex-col justify-between gap-8 bg-[#00365f] p-6 text-white md:p-12">
         <span className="w-fit rounded-md bg-white p-1">
-          <Image src="/brand/logo-alcaldia.png" alt="Alcaldía de Santiago de Cali" width={112} height={40} priority className="h-10 w-auto" />
+          <Image src="/brand/logo-alcaldia.png" alt="Alcaldía de Santiago de Cali" width={401} height={313} priority style={{ width: "auto", height: "2.5rem" }} />
         </span>
         <div className="max-w-md">
           <span aria-hidden className="mb-4 block h-1 w-12 bg-accent" />

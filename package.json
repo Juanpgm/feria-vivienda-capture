@@ -10,10 +10,13 @@
     "build:catalog": "node scripts/build-geo-catalog.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --only firestore \"vitest run tests/rules\""
+    "test:rules": "firebase emulators:exec --only firestore \"vitest run tests/rules\"",
+    "e2e": "playwright test",
+    "e2e:login": "node e2e/login.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",

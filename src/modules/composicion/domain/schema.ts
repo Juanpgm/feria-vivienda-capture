@@ -16,7 +16,8 @@ export const composicionSchema = z
   .object({
     cantidad_personas_hogar: entero().pipe(z.number().min(1, "Debe ser al menos 1")),
     tiene_adulto_mayor: z.boolean({ error: "Seleccione Sí o No" }),
-    cantidad_adultos_mayores: entero().nullish(),
+    // Empty input means "not answered": let the cross-field rule explain it instead of "must be an integer".
+    cantidad_adultos_mayores: z.preprocess((v) => (v === "" ? undefined : v), entero().nullish()),
     adultos_mayores: z.array(z.object({ edad: entero().pipe(z.number().min(60, "Edad mínima 60").max(120, "Edad máxima 120")) })).nullish(),
     condiciones_especiales: listaExclusiva(CONDICIONES_ESPECIALES),
     ingreso_hogar_cop: ingresoCop,

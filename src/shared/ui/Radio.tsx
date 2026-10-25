@@ -25,7 +25,7 @@ export function RadioGroup({
             key={o.value}
             className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border px-3 has-checked:border-primary has-checked:bg-surface"
           >
-            <input type="radio" name={name} value={o.value} className="size-5 accent-primary" {...inputProps} />
+            <input type="radio" name={name} value={o.value} className="radio" {...inputProps} />
             {o.label}
           </label>
         ))}

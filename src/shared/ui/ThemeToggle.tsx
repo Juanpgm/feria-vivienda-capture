@@ -1,6 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { guardarTema, leerTemaGuardado, resolverTemaOscuro } from "@/shared/tema";
 
 const subscribe = (cb: () => void) => {
   const mo = new MutationObserver(cb);
@@ -15,10 +16,21 @@ export function ThemeToggle() {
     () => false,
   );
 
+  // Live OS changes apply only while the user has not made an explicit choice.
+  useEffect(() => {
+    const mq = matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () =>
+      document.documentElement.classList.toggle("dark", resolverTemaOscuro(leerTemaGuardado(), mq.matches));
+    // Re-sync once mounted in case the inline script ran before the scheme settled.
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   function toggle() {
     const next = !dark;
     document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("tema", next ? "oscuro" : "claro");
+    guardarTema(next);
   }
 
   return (
