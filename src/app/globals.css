@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Class-based dark mode; default follows prefers-color-scheme via the inline script in layout.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tokens from Manual de Identidad Visual 2024 (palette p.26 + escudo p.12). Contrast checked for WCAG AA. */
+:root {
+  --bg: #ffffff;
+  --surface: #f4f5f9;
+  --text: #222221;
+  --muted: #4d4d4d;
+  --primary: #005492;
+  --on-primary: #ffffff;
+  --primary-strong: #00365f;
+  --accent: #d5b16c; /* decorative only, never text on light */
+  --success: #488148;
+  --danger: #b7322d;
+  --warning-text: #5b4239;
+  --warning-bg: #fbf3e6;
+  --border: #e4e6eb;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0b1620;
+  --surface: #13212e;
+  --text: #e8ecf2;
+  --muted: #a9b4c2;
+  --primary: #7fb2e5;
+  --on-primary: #0b1620;
+  --primary-strong: #a9cdf0;
+  --success: #8fc98f;
+  --danger: #f08a84;
+  --warning-text: #efc981;
+  --warning-bg: #2a2214;
+  --border: #2a3a4a;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning-text: var(--warning-text);
+  --color-warning-bg: var(--warning-bg);
+  --color-border: var(--border);
+  --font-sans: var(--font-montserrat), Arial, sans-serif;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}

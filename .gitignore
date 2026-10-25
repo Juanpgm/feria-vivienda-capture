@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
+.env
+.env*.local
+*service-account*.json
+*-firebase-adminsdk-*.json
+.firebase
+firebase-debug.log
+firestore-debug.log
