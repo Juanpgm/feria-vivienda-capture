@@ -1,4 +1,5 @@
-export type OpcionBusqueda = { value: string; label: string; keywords?: string };
+/** `corta`: compact text shown in the closed control (the list always shows `label`). */
+export type OpcionBusqueda = { value: string; label: string; keywords?: string; corta?: string };
 
 /** Lowercase, strip diacritics, collapse whitespace: "  ÁNGEL  María " -> "angel maria". */
 export function normalizarBusqueda(s: string): string {

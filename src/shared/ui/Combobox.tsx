@@ -9,13 +9,17 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | 
   /** Selected option value ("" = none). */
   value: string;
   onChange: (value: string) => void;
+  /** Width classes of the list; wider than the control for narrow selectors. */
+  listaClass?: string;
+  /** Max options listed (default 50; raise it for catalogs that should be scrollable in full). */
+  limite?: number;
 };
 
 /**
  * Searchable single-select following the ARIA 1.2 combobox pattern (editable, list autocomplete).
  * Typing filters accent/case-insensitively; Arrow keys move, Enter selects, Escape closes/clears the query.
  */
-export function Combobox({ options, value, onChange, onBlur, onFocus, ...props }: Props) {
+export function Combobox({ options, value, onChange, onBlur, onFocus, listaClass = "w-full", limite = 50, ...props }: Props) {
   const listId = useId();
   const seleccion = options.find((o) => o.value === value);
   const [consulta, setConsulta] = useState<string | null>(null); // null = show the selected label
@@ -23,8 +27,8 @@ export function Combobox({ options, value, onChange, onBlur, onFocus, ...props }
   const [activo, setActivo] = useState(0);
   const listaRef = useRef<HTMLUListElement>(null);
 
-  const texto = consulta ?? seleccion?.label ?? "";
-  const visibles = useMemo(() => filtrarOpciones(options, consulta ?? ""), [options, consulta]);
+  const texto = consulta ?? seleccion?.corta ?? seleccion?.label ?? "";
+  const visibles = useMemo(() => filtrarOpciones(options, consulta ?? "", limite), [options, consulta, limite]);
   const indiceActivo = Math.min(activo, visibles.length - 1);
 
   function elegir(o: OpcionBusqueda) {
@@ -91,7 +95,7 @@ export function Combobox({ options, value, onChange, onBlur, onFocus, ...props }
         ref={listaRef}
         role="listbox"
         hidden={!abierto}
-        className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-border bg-surface py-1 shadow-lg"
+        className={`absolute z-20 mt-1 max-h-64 ${listaClass} overflow-auto rounded-lg border border-border bg-surface py-1 shadow-lg`}
       >
         {visibles.map((o, i) => (
           <li

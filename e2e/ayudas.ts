@@ -1,7 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 import { BANDAS_ADULTO_MAYOR, BANDAS_HOGAR, CONDICIONES_ESPECIALES, DICTAMENES, FUENTES_FINANCIACION, TITULARIDADES } from "../src/shared/constantes";
 import { fechaBogota } from "../src/shared/tiempo";
-import { type Caso, type CasoInvalido, condicionesFinales, ETIQUETA_RANGO } from "./datos-prueba";
+import { parsePhoneNumberFromString } from "libphonenumber-js/min";
+import { type Caso, type CasoInvalido, condicionesFinales, ETIQUETA_RANGO, type PaisTel } from "./datos-prueba";
 
 export const HOY = fechaBogota();
 const RUTA = process.env.E2E_RUTA_NUEVO ?? "/registros/nuevo";
@@ -53,6 +54,34 @@ async function escribir(page: Page, etiqueta: string, valor: string | undefined)
   await campo.press("Tab");
 }
 
+/** Dates are typed as digits only (the field adds the slashes); a literal "DD/MM/AAAA" is typed as given. */
+export const digitosDeFecha = (valor: string) => (/^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor.split("-").reverse().join("") : valor);
+export const fechaMascara = (iso: string) => iso.split("-").reverse().join("/");
+
+async function escribirFecha(page: Page, etiqueta: string, valor: string | undefined) {
+  if (!valor) return;
+  const campo = page.getByLabel(etiqueta, exacto);
+  await campo.fill(digitosDeFecha(valor));
+  await campo.press("Tab");
+}
+
+const selectorPais = (page: Page, alterno: boolean) =>
+  page.getByRole("combobox", { name: alterno ? "Código de país del teléfono alterno" : "Código de país del teléfono principal", ...exacto });
+
+/** Picks a country in the code selector by typing its Spanish name. */
+async function elegirPais(page: Page, alterno: boolean, pais: PaisTel) {
+  const combo = selectorPais(page, alterno);
+  await combo.fill(pais.nombre);
+  await combo.press("Enter");
+  await combo.press("Tab");
+  await expect(combo).toHaveValue(new RegExp(`\\+${pais.codigo}$`));
+}
+
+async function escribirTelefono(page: Page, alterno: boolean, valor: string | undefined, pais: PaisTel | undefined) {
+  if (pais) await elegirPais(page, alterno, pais);
+  await escribir(page, alterno ? "Teléfono alterno (opcional)" : "Teléfono principal", valor);
+}
+
 export async function llenarPaso1(page: Page, c: Pick<Caso, "solicitante"> | Pick<CasoInvalido, "solicitante">) {
   const s = c.solicitante;
   await escribir(page, "Nombre completo", s.nombre);
@@ -68,13 +97,20 @@ export async function llenarPaso1(page: Page, c: Pick<Caso, "solicitante"> | Pic
     await nacionalidad.press("Tab");
   }
   await escribir(page, "Número de documento", s.documento);
-  await escribir(page, "Fecha de expedición", s.expedicion);
-  await escribir(page, "Teléfono principal", s.telefono1);
-  await escribir(page, "Teléfono alterno (opcional)", s.telefono2);
+  await escribirFecha(page, "Fecha de expedición", s.expedicion);
+  await escribirTelefono(page, false, s.telefono1, s.codigoPais1);
+  await escribirTelefono(page, true, s.telefono2, s.codigoPais2);
   await escribir(page, "Correo electrónico", s.correo);
-  await escribir(page, "Fecha de nacimiento", s.nacimiento);
+  await escribirFecha(page, "Fecha de nacimiento", s.nacimiento);
   await page.getByLabel("Estado civil", exacto).selectOption(s.estadoCivil);
   await escribir(page, "Años de residencia", s.aniosResidencia);
+}
+
+/** The selector shows +<code> and the field the national digits of the stored E.164 number. */
+async function verificarTelefono(page: Page, alterno: boolean, e164: string) {
+  const p = parsePhoneNumberFromString(e164)!;
+  await expect(selectorPais(page, alterno)).toHaveValue(new RegExp(`\\+${p.countryCallingCode}$`));
+  await expect(page.getByLabel(alterno ? "Teléfono alterno (opcional)" : "Teléfono principal", exacto)).toHaveValue(p.nationalNumber);
 }
 
 /** What the person sees after blur: normalized text and derived hints. */
@@ -82,8 +118,10 @@ export async function verificarPaso1(page: Page, c: Caso) {
   const e = c.esperado;
   await expect(page.getByLabel("Nombre completo", exacto)).toHaveValue(e.nombre);
   await expect(page.getByLabel("Número de documento", exacto)).toHaveValue(e.documento);
-  await expect(page.getByLabel("Teléfono principal", exacto)).toHaveValue(e.telefono1);
-  if (e.telefono2) await expect(page.getByLabel("Teléfono alterno (opcional)", exacto)).toHaveValue(e.telefono2);
+  await verificarTelefono(page, false, e.telefono1);
+  if (e.telefono2) await verificarTelefono(page, true, e.telefono2);
+  await expect(page.getByLabel("Fecha de nacimiento", exacto)).toHaveValue(fechaMascara(c.solicitante.nacimiento));
+  await expect(page.getByLabel("Fecha de expedición", exacto)).toHaveValue(fechaMascara(c.solicitante.expedicion));
   await expect(page.getByLabel("Correo electrónico", exacto)).toHaveValue(e.correo);
   await expect(page.getByLabel("Años de residencia", exacto)).toHaveValue(e.anios);
   await expect(page.getByRole("combobox", { name: "Nacionalidad", ...exacto })).toHaveValue(e.nacionalidad);

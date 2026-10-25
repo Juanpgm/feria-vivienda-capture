@@ -12,12 +12,13 @@ import { Combobox } from "@/shared/ui/Combobox";
 import { Field } from "@/shared/ui/Field";
 import { RadioGroup } from "@/shared/ui/Radio";
 import { Select } from "@/shared/ui/Select";
+import { regionPorDefecto } from "@/shared/normalizacion/telefono";
+import { CampoFecha } from "@/modules/registro/ui/CampoFecha";
+import { CampoTelefono } from "@/modules/registro/ui/CampoTelefono";
 import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
 
 const P = "solicitante.";
 const opciones = (o: Record<string, string>) => Object.entries(o).map(([value, label]) => ({ value, label }));
-
-const telefono = async (v: string) => (await import("@/shared/normalizacion/telefono")).normalizarTelefono(v);
 
 export function PasoHogar() {
   const { register, setValue, control } = useFormContext<FieldValues>();
@@ -25,7 +26,10 @@ export function PasoHogar() {
   const [paises, setPaises] = useState<OpcionBusqueda[]>([]);
   const tipo = useWatch({ control, name: P + "tipo_documento" });
   const nacimiento = useWatch({ control, name: P + "fecha_nacimiento" }) as string | undefined;
+  const nacionalidad = useWatch({ control, name: P + "codigo_pais_nacionalidad" }) as string | undefined;
   const hoy = fechaBogota();
+  const ayer = new Date(Date.parse(hoy) - 864e5).toISOString().slice(0, 10);
+  const regionTelefono = regionPorDefecto(tipo, nacionalidad);
 
   useEffect(() => {
     import("../catalogo/nacionalidades.json").then((m) =>
@@ -74,12 +78,12 @@ export function PasoHogar() {
           )}
         />
         <CampoTexto name={P + "numero_documento"} label="Número de documento" inputMode="text" autoComplete="off" normalizar={normalizarDocumento} />
-        <CampoTexto name={P + "fecha_expedicion_documento"} label="Fecha de expedición" type="date" max={hoy} />
+        <CampoFecha name={P + "fecha_expedicion_documento"} label="Fecha de expedición" max={hoy} mensajeMax="La fecha de expedición no puede ser futura" />
       </Seccion>
 
       <Seccion titulo="Contacto">
-        <CampoTexto name={P + "telefono_1"} label="Teléfono principal" type="tel" hint="Ejemplo: 300 123 4567" normalizar={telefono} />
-        <CampoTexto name={P + "telefono_2"} label="Teléfono alterno (opcional)" type="tel" normalizar={telefono} />
+        <CampoTelefono name={P + "telefono_1"} label="Teléfono principal" etiquetaPais="Código de país del teléfono principal" regionInicial={regionTelefono} conEjemplo />
+        <CampoTelefono name={P + "telefono_2"} label="Teléfono alterno (opcional)" etiquetaPais="Código de país del teléfono alterno" regionInicial={regionTelefono} />
         <div className="sm:col-span-2">
           <CampoTexto
             name={P + "correo_solicitante"}
@@ -92,11 +96,11 @@ export function PasoHogar() {
       </Seccion>
 
       <Seccion titulo="Datos personales">
-        <CampoTexto
+        <CampoFecha
           name={P + "fecha_nacimiento"}
           label="Fecha de nacimiento"
-          type="date"
-          max={hoy}
+          max={ayer}
+          mensajeMax="La fecha de nacimiento debe ser anterior a hoy"
           hint={edad !== null ? `Edad: ${edad} años` : undefined}
         />
         <Field label="Estado civil" error={error(P + "estado_civil")}>

@@ -3,7 +3,10 @@
 //
 // The same cases can later drive a full submit test (steps 8-10 + POST /api/registros): `Caso` carries everything
 // the steps 1-7 UI needs (`extra` holds steps 4-7).
+import type { CountryCode } from "libphonenumber-js/min";
 import { DICTAMENES, TITULARIDADES } from "../src/shared/constantes";
+import { aMascara, parseMascara } from "../src/shared/fecha";
+import { regionPorDefecto, resolverTelefono } from "../src/shared/normalizacion/telefono";
 
 /** Fixed SMLMV 2026 used as an independent oracle (the app reads it from src/modules/cierre-financiero/domain/smlmv.ts). */
 export const SMLMV_ORACULO = 1_750_905;
@@ -16,6 +19,8 @@ export const ETIQUETA_RANGO = {
 export type CodigoRango = keyof typeof ETIQUETA_RANGO;
 
 export type Nacionalidad = { codigo: string; nombre: string };
+/** Country as the phone selector lists it: searched by Spanish name, shown as "+<codigo>". */
+export type PaisTel = { iso: string; nombre: string; codigo: string };
 
 /** Values exactly as a person would type them (before blur normalization). */
 export type Solicitante = {
@@ -25,9 +30,13 @@ export type Solicitante = {
   /** CC forces Colombiana (the combobox is disabled); CE / Otro pick from the catalog. */
   nacionalidad: Nacionalidad;
   documento: string;
+  /** Typed digits: an ISO date (typed as DDMMAAAA) or a literal "DD/MM/AAAA" for malformed input. */
   expedicion: string;
   telefono1: string;
+  /** Country picked in the selector before typing; omitted = keep the preselected one (+57, or the nationality code). */
+  codigoPais1?: PaisTel;
   telefono2?: string;
+  codigoPais2?: PaisTel;
   correo: string;
   aniosResidencia: string;
   nacimiento: string;
@@ -122,6 +131,8 @@ export function edadEn(nacimiento: string, hoy: string): number {
 }
 
 const COLOMBIANA: Nacionalidad = { codigo: "CO", nombre: "Colombiana" };
+const TEL_CO: PaisTel = { iso: "CO", nombre: "Colombia", codigo: "57" };
+const TEL_US: PaisTel = { iso: "US", nombre: "Estados Unidos", codigo: "1" };
 
 /** Mirrors the exclusivity rule of step 3 so the expected final state is independent of the UI code. */
 export function condicionesFinales(clicks: readonly string[]): string[] {
@@ -273,31 +284,68 @@ export function generarCasos(hoy: string): Caso[] {
       e: { nombre: "Prueba E2e Carlos-Andrés O'Brien", documento: "90000045", telefono1: "+573045550104" },
     }),
     // --- CE / Otro with nationality from the catalog ---
-    caso("ce-venezolana", "CE con nacionalidad Venezolana, prefijo 57 sin signo", {
-      s: { nombre: "PRUEBA E2E JOSÉ GREGORIO", tipoDocumento: "ce", nacionalidad: ven, documento: "ce-9000005", telefono1: "57 310 555 0105" },
+    caso("ce-venezolana", "CE con nacionalidad Venezolana, numero colombiano pegado con +57 (gana sobre +58)", {
+      s: { nombre: "PRUEBA E2E JOSÉ GREGORIO", tipoDocumento: "ce", nacionalidad: ven, documento: "ce-9000005", telefono1: "+57 310 555 0105" },
       e: { nombre: "Prueba E2e José Gregorio", documento: "CE9000005", telefono1: "+573105550105" },
     }),
-    caso("ce-ecuatoriana", "CE con nacionalidad Ecuatoriana, telefono alterno", {
-      s: { nombre: "prueba e2e maría belén", tipoDocumento: "ce", nacionalidad: ecu, documento: "9.000.006", telefono1: "311 555 0106", telefono2: "312-555-0107" },
+    caso("ce-ecuatoriana", "CE con nacionalidad Ecuatoriana, telefonos colombianos elegidos con el selector", {
+      s: { nombre: "prueba e2e maría belén", tipoDocumento: "ce", nacionalidad: ecu, documento: "9.000.006", telefono1: "311 555 0106", codigoPais1: TEL_CO, telefono2: "312-555-0107", codigoPais2: TEL_CO },
       e: { nombre: "Prueba E2e María Belén", documento: "9000006", telefono1: "+573115550106", telefono2: "+573125550107" },
     }),
     caso("otro-ppt-peruana", "Otro con texto libre (PPT), nacionalidad Peruana", {
       s: {
         nombre: "PRUEBA E2E ROSA ELENA", tipoDocumento: "otro", tipoDocumentoOtro: "Permiso por Protección Temporal (PPT)",
-        nacionalidad: per, documento: "ppt-9000.07", telefono1: "313 555 0108",
+        nacionalidad: per, documento: "ppt-9000.07", telefono1: "313 555 0108", codigoPais1: TEL_CO,
       },
       e: { nombre: "Prueba E2e Rosa Elena", documento: "PPT900007", telefono1: "+573135550108" },
     }),
     caso("otro-haitiana", "Otro con texto libre, nacionalidad Haitiana", {
       s: {
         nombre: "PRUEBA E2E JEAN PIERRE", tipoDocumento: "otro", tipoDocumentoOtro: "Salvoconducto de permanencia",
-        nacionalidad: hai, documento: "SC 9000 08", telefono1: "314 555 0109",
+        nacionalidad: hai, documento: "SC 9000 08", telefono1: "+57 314 555 0109",
       },
       e: { nombre: "Prueba E2e Jean Pierre", documento: "SC900008", telefono1: "+573145550109" },
     }),
     caso("ce-espanola", "CE con nacionalidad Española, correo con espacios y mayusculas", {
-      s: { nombre: "PRUEBA E2E LUCÍA MARTÍN", tipoDocumento: "ce", nacionalidad: esp, documento: "9000009", correo: "  LUCIA.E2E@EXAMPLE.TEST " },
+      s: { nombre: "PRUEBA E2E LUCÍA MARTÍN", tipoDocumento: "ce", nacionalidad: esp, documento: "9000009", correo: "  LUCIA.E2E@EXAMPLE.TEST ", codigoPais1: TEL_CO },
       e: { nombre: "Prueba E2e Lucía Martín", documento: "9000009", correo: "lucia.e2e@example.test" },
+    }),
+    // --- phones with the nationality code, another code pasted, or picked in the selector ---
+    caso("ce-venezolana-tel-ve", "CE Venezolana: el selector ya trae +58 y se escribe el numero nacional", {
+      s: { nombre: "PRUEBA E2E MARÍA GABRIELA", tipoDocumento: "ce", nacionalidad: ven, documento: "9000037", telefono1: "412 123 4567" },
+      e: { nombre: "Prueba E2e María Gabriela", documento: "9000037", telefono1: "+584121234567" },
+    }),
+    caso("ce-espanola-tel-es", "CE Española: +34 preseleccionado", {
+      s: { nombre: "PRUEBA E2E PABLO RUIZ", tipoDocumento: "ce", nacionalidad: esp, documento: "9000038", telefono1: "612 34 56 78" },
+      e: { nombre: "Prueba E2e Pablo Ruiz", documento: "9000038", telefono1: "+34612345678" },
+    }),
+    caso("ce-ecuatoriana-tel-pegado", "CE Ecuatoriana: +593 preseleccionado y alterno pegado con +57", {
+      s: {
+        nombre: "PRUEBA E2E ANDREA SALAZAR", tipoDocumento: "ce", nacionalidad: ecu, documento: "9000039",
+        telefono1: "99 123 4567", telefono2: "+57 311 555 0110",
+      },
+      e: { nombre: "Prueba E2e Andrea Salazar", documento: "9000039", telefono1: "+593991234567", telefono2: "+573115550110" },
+    }),
+    caso("otro-peruana-tel-pe", "Otro Peruana: +51 preseleccionado", {
+      s: { nombre: "PRUEBA E2E LUIS TORRES", tipoDocumento: "otro", tipoDocumentoOtro: "PPT", nacionalidad: per, documento: "9000040", telefono1: "912 345 678" },
+      e: { nombre: "Prueba E2e Luis Torres", documento: "9000040", telefono1: "+51912345678" },
+    }),
+    caso("cc-tel-alterno-pegado-ve", "CC: alterno pegado con +58 cambia el selector del alterno, el principal sigue +57", {
+      s: { documento: "9000041", telefono2: "+58 412 123 4567" },
+      e: { documento: "9000041", telefono2: "+584121234567" },
+    }),
+    caso("cc-tel-selector-us", "CC: se elige +1 (Estados Unidos) en el selector", {
+      s: { documento: "9000042", telefono1: "202 555 0123", codigoPais1: TEL_US },
+      e: { documento: "9000042", telefono1: "+12025550123" },
+    }),
+    // --- dates: leap day, expedition today ---
+    caso("fecha-nacimiento-bisiesta", "Nacimiento el 29 de febrero de un año bisiesto", {
+      s: { documento: "9000043", nacimiento: "1996-02-29" },
+      e: { documento: "9000043" },
+    }),
+    caso("fecha-expedicion-hoy", "Expedicion hoy (permitida) y nacimiento hace 30 años", {
+      s: { documento: "9000044", expedicion: hoy, nacimiento: sumarDias(restarAnios(hoy, 30), -1) },
+      e: { documento: "9000044" },
     }),
     // --- years of residence with comma decimals ---
     caso("anios-coma", "Años de residencia con coma decimal", {
@@ -390,7 +438,7 @@ export function generarCasos(hoy: string): Caso[] {
     caso("menor-de-edad", "Solicitante menor de edad (advertencia, no bloquea)", {
       s: {
         nombre: "PRUEBA E2E MENOR QUINCE", tipoDocumento: "ce", nacionalidad: ven, documento: "9000036",
-        nacimiento: sumarDias(restarAnios(hoy, 15), -1), expedicion: sumarDias(hoy, -30),
+        nacimiento: sumarDias(restarAnios(hoy, 15), -1), expedicion: sumarDias(hoy, -30), codigoPais1: TEL_CO,
       },
       e: { nombre: "Prueba E2e Menor Quince", documento: "9000036" },
     }),
@@ -426,14 +474,31 @@ export function generarCasosInvalidos(hoy: string): CasoInvalido[] {
     inv("correo-sin-dominio", "Correo incompleto", 1, ["Correo inválido"], { s: { correo: "persona@" } }),
     inv("telefono-corto", "Telefono demasiado corto", 1, ["Teléfono inválido"], { s: { telefono1: "12345" } }),
     inv("telefono-letras", "Telefono con letras", 1, ["Teléfono inválido"], { s: { telefono1: "abc def" } }),
+    inv("telefono-venezolano-bajo-57", "Numero venezolano bajo el selector +57", 1, ["Teléfono inválido"], { s: { telefono1: "412 123 4567" } }),
     inv("telefono-alterno-invalido", "Telefono alterno invalido", 1, ["Teléfono inválido"], { s: { telefono2: "999" } }),
     inv("expedicion-futura", "Fecha de expedicion futura", 1, ["La fecha de expedición no puede ser futura"], { s: { expedicion: sumarDias(hoy, 5) } }),
     inv("expedicion-antes-nacimiento", "Expedicion anterior al nacimiento", 1, ["La expedición no puede ser anterior al nacimiento"], {
       s: { nacimiento: restarAnios(hoy, 30), expedicion: restarAnios(hoy, 31) },
     }),
     inv("nacimiento-hoy", "Nacimiento hoy (debe ser anterior)", 1, ["La fecha de nacimiento debe ser anterior a hoy"], { s: { nacimiento: hoy } }),
+    inv("nacimiento-31-feb", "Nacimiento 31/02 (dia inexistente)", 1, ["Fecha inválida"], {
+      s: { nacimiento: "31/02/1990" },
+      ui: ["Esa fecha no existe: el mes 02 de 1990 no tiene el día 31"],
+    }),
+    inv("nacimiento-29-feb-no-bisiesto", "Nacimiento 29/02 en año no bisiesto", 1, ["Fecha inválida"], {
+      s: { nacimiento: "29/02/2023" },
+      ui: ["Esa fecha no existe: el mes 02 de 2023 no tiene el día 29"],
+    }),
+    inv("nacimiento-mes-13", "Nacimiento con mes 13", 1, ["Fecha inválida"], {
+      s: { nacimiento: "10/13/1990" },
+      ui: ["El mes debe estar entre 01 y 12"],
+    }),
+    inv("expedicion-incompleta", "Expedicion con el año sin terminar", 1, ["Fecha inválida"], {
+      s: { expedicion: "15/03/20" },
+      ui: ["Escriba la fecha completa: día, mes y año (DD/MM/AAAA)"],
+    }),
     inv("otro-sin-descripcion", "Documento Otro sin indicar cual", 1, ["Indique el tipo de documento"], {
-      s: { tipoDocumento: "otro", tipoDocumentoOtro: "", nacionalidad: { codigo: "VE", nombre: "Venezolana" } },
+      s: { tipoDocumento: "otro", tipoDocumentoOtro: "", nacionalidad: { codigo: "VE", nombre: "Venezolana" }, codigoPais1: TEL_CO },
     }),
     inv("anios-negativos", "Años de residencia negativos", 1, ["No puede ser negativo"], { s: { aniosResidencia: "-1" } }),
     inv("paso2-vacio", "Paso 2 sin ningun dato", 2, ["Debe ser un número entero", "Seleccione Sí o No", "Ingrese un valor numérico en pesos"], {
@@ -483,8 +548,21 @@ export function generarCasosInvalidos(hoy: string): CasoInvalido[] {
 }
 
 /** Raw form values (what the stepper holds in RHF) for a case, with the final protection selection applied. */
+/** What the date field keeps in the form for the typed text: ISO when it is a real date, the masked text otherwise. */
+const valorFecha = (typed: string) => {
+  const m = aMascara(typed);
+  const r = parseMascara(m);
+  return "iso" in r ? r.iso : m;
+};
+
 export function aValores(c: Pick<Caso, "solicitante" | "composicion" | "extra">) {
   const { solicitante: s, composicion: k, extra: x } = c;
+  const tel = (texto: string | undefined, pais: PaisTel | undefined) => {
+    const r = resolverTelefono(texto ?? "", (pais?.iso ?? regionPorDefecto(s.tipoDocumento, s.nacionalidad.codigo)) as CountryCode);
+    return { valor: r.valor, pais: r.region };
+  };
+  const t1 = tel(s.telefono1, s.codigoPais1);
+  const t2 = tel(s.telefono2, s.codigoPais2);
   return {
     solicitante: {
       nombre_completo: s.nombre,
@@ -492,12 +570,14 @@ export function aValores(c: Pick<Caso, "solicitante" | "composicion" | "extra">)
       tipo_documento_otro: s.tipoDocumentoOtro ?? "",
       codigo_pais_nacionalidad: s.nacionalidad.codigo,
       numero_documento: s.documento,
-      fecha_expedicion_documento: s.expedicion,
-      telefono_1: s.telefono1,
-      telefono_2: s.telefono2 ?? "",
+      fecha_expedicion_documento: valorFecha(s.expedicion),
+      telefono_1: t1.valor,
+      telefono_1_pais: t1.pais,
+      telefono_2: t2.valor,
+      telefono_2_pais: t2.pais,
       correo_solicitante: s.correo,
       anios_residencia: s.aniosResidencia,
-      fecha_nacimiento: s.nacimiento,
+      fecha_nacimiento: valorFecha(s.nacimiento),
       estado_civil: s.estadoCivil,
     },
     composicion: {

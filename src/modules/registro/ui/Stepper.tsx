@@ -35,7 +35,7 @@ const nuevoBorrador = (): Borrador => ({
   valores: {
     solicitante: {
       nombre_completo: "", tipo_documento: "", tipo_documento_otro: "", codigo_pais_nacionalidad: "", numero_documento: "",
-      fecha_expedicion_documento: "", telefono_1: "", telefono_2: "", correo_solicitante: "", anios_residencia: "",
+      fecha_expedicion_documento: "", telefono_1: "", telefono_1_pais: "CO", telefono_2: "", telefono_2_pais: "CO", correo_solicitante: "", anios_residencia: "",
       fecha_nacimiento: "", estado_civil: "",
     },
     composicion: {
