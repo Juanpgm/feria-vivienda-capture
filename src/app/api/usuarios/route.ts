@@ -20,7 +20,10 @@ export function POST(req: Request) {
   return conErrores(async () => {
     const actor = await requireSesion("admin");
     const datos = body.parse(await req.json().catch(() => ({})));
-    if (!correoEnDominio(datos.correo)) return respuesta(422, { error: "Solo se permiten cuentas @cali.gov.co" });
+    // Email+password accounts may use any domain; without a password the person can only use Google, which needs the domain.
+    if (!datos.password && !correoEnDominio(datos.correo)) {
+      return respuesta(422, { error: "Sin contraseña solo se permiten cuentas @cali.gov.co (ingresan con Google). Defina una contraseña." });
+    }
     if (!puedeGestionar(actor.rol, datos.rol)) return respuesta(403, { error: "No puede crear ese rol" });
 
     const auth = adminAuth();

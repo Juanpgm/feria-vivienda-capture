@@ -37,10 +37,13 @@ export function FormCrearUsuario({ puedeElegirRol }: { puedeElegirRol: boolean }
   return (
     <form onSubmit={enviar} className="grid gap-4 md:grid-cols-2">
       <Field label="Nombre completo">{(a) => <TextInput {...a} name="nombre" required />}</Field>
-      <Field label="Correo institucional" hint={`Debe terminar en @${ALLOWED_EMAIL_DOMAIN}`}>
+      <Field label="Correo" hint="Cualquier correo es válido si se define una contraseña.">
         {(a) => <TextInput {...a} name="correo" type="email" required />}
       </Field>
-      <Field label="Contraseña" hint="Opcional. Sin contraseña, la persona solo podrá ingresar con Google.">
+      <Field
+        label="Contraseña"
+        hint={`Opcional solo con correo @${ALLOWED_EMAIL_DOMAIN}: sin contraseña, la persona ingresa con Google.`}
+      >
         {(a) => <TextInput {...a} name="clave" type="password" minLength={8} autoComplete="new-password" />}
       </Field>
       {puedeElegirRol && (

@@ -28,14 +28,14 @@ const ERRORES_FIREBASE: Record<string, string> = {
   "auth/popup-blocked": "El navegador bloqueó la ventana de Google. Permita las ventanas emergentes e intente de nuevo.",
 };
 
-const ERROR_DOMINIO = `Solo se permiten correos @${ALLOWED_EMAIL_DOMAIN}. Use su correo institucional.`;
+const ERROR_DOMINIO = `El acceso con Google solo está disponible para cuentas @${ALLOWED_EMAIL_DOMAIN}. Use correo y contraseña si su correo es de otro dominio.`;
 
 /** Exchanges the Firebase ID token for a session cookie. Retries once with a fresh token (claims may lag). */
-async function abrirSesion(user: User): Promise<"pendiente" | "aprobado"> {
+async function abrirSesion(user: User): Promise<"pendiente" | "aprobado" | "lectura"> {
   let error = "No se pudo iniciar sesión.";
   for (const refrescar of [false, true]) {
     const r = await post("/api/auth/sesion", { idToken: await user.getIdToken(refrescar) });
-    if (!r.error) return r.data.estado as "pendiente" | "aprobado";
+    if (!r.error) return r.data.estado as "pendiente" | "aprobado" | "lectura";
     error = r.error;
   }
   throw new Error(error);
@@ -68,7 +68,6 @@ export function FormAuth({ modo }: { modo: "login" | "registro" }) {
     const correo = String(f.get("correo")).trim().toLowerCase();
     const clave = String(f.get("clave"));
     const nombre = String(f.get("nombre") ?? "").trim();
-    if (!correoEnDominio(correo)) return setError(ERROR_DOMINIO);
     if (registro && nombre.length < 2) return setError("Escriba su nombre completo.");
     void ejecutar(async () => {
       const auth = clienteAuth();
@@ -83,7 +82,10 @@ export function FormAuth({ modo }: { modo: "login" | "registro" }) {
     void ejecutar(async () => {
       const proveedor = new GoogleAuthProvider();
       proveedor.setCustomParameters({ hd: ALLOWED_EMAIL_DOMAIN }); // hint only; the server enforces the domain
-      return (await signInWithPopup(clienteAuth(), proveedor)).user;
+      const { user } = await signInWithPopup(clienteAuth(), proveedor);
+      // Early UX check only; the server enforces the rule (and deletes the account) regardless.
+      if (!correoEnDominio(user.email)) throw new Error(ERROR_DOMINIO);
+      return user;
     });
   }
 
@@ -95,7 +97,7 @@ export function FormAuth({ modo }: { modo: "login" | "registro" }) {
             {(a) => <TextInput {...a} name="nombre" autoComplete="name" required />}
           </Field>
         )}
-        <Field label="Correo institucional" hint={`Debe terminar en @${ALLOWED_EMAIL_DOMAIN}`}>
+        <Field label="Correo">
           {(a) => <TextInput {...a} name="correo" type="email" autoComplete="username" required />}
         </Field>
         <Field label="Contraseña" hint={registro ? "Mínimo 8 caracteres" : undefined}>

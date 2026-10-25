@@ -1,11 +1,10 @@
 // Creates (or repairs) the first superadmin. Idempotent: safe to run again.
-// Usage: node --env-file=.env.local scripts/bootstrap-superadmin.mjs --email nombre@cali.gov.co [--password 'min 8 chars']
-// Without --password the account can only sign in with Google.
+// Usage: node --env-file=.env.local scripts/bootstrap-superadmin.mjs --email correo@ejemplo.com [--password 'min 8 chars']
+// Any email domain is accepted. Without --password the account can only sign in with Google,
+// which requires an @cali.gov.co email: for any other domain, pass --password.
 import { cert, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-
-const DOMAIN = "cali.gov.co"; // keep in sync with src/shared/config.ts
 
 const arg = (name) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -14,8 +13,8 @@ const arg = (name) => {
 
 const email = arg("email")?.trim().toLowerCase();
 const password = arg("password");
-if (!email?.endsWith(`@${DOMAIN}`)) {
-  console.error(`Falta --email o no termina en @${DOMAIN}.`);
+if (!email?.includes("@")) {
+  console.error("Falta --email o no es un correo válido.");
   process.exit(1);
 }
 if (password && password.length < 8) {

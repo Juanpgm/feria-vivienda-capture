@@ -8,7 +8,7 @@ export default function RegistroPage() {
     <>
       <div>
         <h1 className="text-2xl font-bold text-primary-strong">Crear cuenta</h1>
-        <p className="mt-1 text-sm text-muted">Un administrador debe aprobar la cuenta antes del primer ingreso.</p>
+        <p className="mt-1 text-sm text-muted">Cualquier correo es válido. Un administrador debe aprobar la cuenta antes de ingresar datos.</p>
       </div>
       <FormAuth modo="registro" />
       <p className="text-sm">

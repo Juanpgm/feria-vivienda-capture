@@ -8,7 +8,7 @@ import { AppShell } from "@/shared/ui/AppShell";
 export const dynamic = "force-dynamic"; // always check the session cookie
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const sesion = await sesionOLogin();
+  const sesion = await sesionOLogin("usuario", { soloLectura: true }); // pages that need approval guard themselves
   const nav = (
     <nav aria-label="Principal" className="flex flex-wrap items-center gap-2">
       {tieneRol(sesion.rol, "admin") && (
@@ -23,5 +23,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <BotonSalir />
     </nav>
   );
-  return <AppShell nav={nav}>{children}</AppShell>;
+  return (
+    <AppShell nav={nav}>
+      {!sesion.aprobado && (
+        <p role="status" className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm">
+          Su cuenta aún no está aprobada: puede consultar, pero no ingresar datos. Cuando un administrador la apruebe,
+          cierre sesión e ingrese de nuevo.
+        </p>
+      )}
+      {children}
+    </AppShell>
+  );
 }

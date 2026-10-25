@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COOKIE_SESION, correoEnDominio } from "@/modules/auth/domain/roles";
+import { COOKIE_SESION, rechazoPorProveedor } from "@/modules/auth/domain/roles";
 import { conErrores, respuesta } from "@/modules/auth/server/api";
 import { crearUsuario, obtenerUsuario } from "@/modules/auth/server/usuarios.repo";
 import { adminAuth } from "@/shared/firebase/admin";
@@ -19,14 +19,16 @@ export function POST(req: Request) {
     const correo = (decoded.email ?? "").toLowerCase();
     const google = decoded.firebase.sign_in_provider === "google.com";
 
-    // Domain is enforced here (authoritative), not only in the UI.
-    if (!correoEnDominio(correo)) {
+    // Admission is decided here (authoritative) from the provider in the verified token, not the UI.
+    const rechazo = rechazoPorProveedor(decoded.firebase.sign_in_provider, correo, decoded.email_verified);
+    if (rechazo === "dominio") {
       await auth.deleteUser(decoded.uid).catch(() => undefined);
-      return respuesta(403, { error: "Solo se permiten cuentas @cali.gov.co" });
+      return respuesta(403, { error: "El acceso con Google solo está disponible para cuentas @cali.gov.co" });
     }
-    if (google && decoded.email_verified !== true) {
+    if (rechazo === "no_verificado") {
       return respuesta(403, { error: "El correo de Google no está verificado" });
     }
+    if (rechazo) return respuesta(403, { error: "Método de acceso no permitido" });
 
     let usuario = await obtenerUsuario(decoded.uid);
     if (!usuario) {
@@ -39,16 +41,18 @@ export function POST(req: Request) {
       };
       await crearUsuario(decoded.uid, usuario);
     }
-    if (!usuario.esta_aprobado) return respuesta(200, { estado: "pendiente" });
+    // Unapproved: password accounts get no cookie; Google+institutional ones get a read-only session
+    // (requireSesion stays strict, so every data-entry route still rejects them).
+    if (!usuario.esta_aprobado && !google) return respuesta(200, { estado: "pendiente" });
 
     // Token claims lag behind the users doc (e.g. just approved): sync and ask to sign in again.
-    if (decoded.aprobado !== true || decoded.rol !== usuario.rol) {
+    if (usuario.esta_aprobado && (decoded.aprobado !== true || decoded.rol !== usuario.rol)) {
       await auth.setCustomUserClaims(decoded.uid, { rol: usuario.rol, aprobado: true });
       return respuesta(401, { error: "Vuelva a iniciar sesión" });
     }
 
     const cookie = await auth.createSessionCookie(idToken, { expiresIn: CINCO_DIAS_MS });
-    const res = respuesta(200, { estado: "aprobado", rol: usuario.rol });
+    const res = respuesta(200, { estado: usuario.esta_aprobado ? "aprobado" : "lectura", rol: usuario.rol });
     res.cookies.set(COOKIE_SESION, cookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

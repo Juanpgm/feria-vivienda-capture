@@ -44,14 +44,23 @@ Never commit the service account file or its contents.
 After step 2, with the dependencies installed (`npm install`):
 
 ```bash
-node --env-file=.env.local scripts/bootstrap-superadmin.mjs --email nombre@cali.gov.co
+node --env-file=.env.local scripts/bootstrap-superadmin.mjs --email correo@ejemplo.com --password 'at least 8 chars'
 ```
 
-- Add `--password 'at least 8 chars'` to create a password login. Without it, the account signs in with Google.
+- Any email domain is accepted. Use `--password` for non-`@cali.gov.co` emails: without it the account can only sign in with Google, which is restricted to `@cali.gov.co`.
 - Safe to re-run: it reuses the existing Auth user and rewrites the claims and the `usuarios` document.
 - The person must sign out and sign in again to receive the claims.
 
 From then on, superadmins approve accounts and create admins at `/admin/usuarios`.
+
+Access rule (enforced server-side in `/api/auth/sesion` from the ID token's `firebase.sign_in_provider`):
+
+- Google sign-in requires a verified `@cali.gov.co` email; other Google accounts are rejected and deleted.
+- Email+password accounts (self-registered or admin-created) may use any domain.
+- Every account, whatever the provider, needs approval by an admin (usuarios only) or superadmin (any role) before it can enter data.
+- Unapproved Google `@cali.gov.co` users get a session cookie and can see the read-only pages (`RUTAS_SOLO_LECTURA` in `roles.ts`); unapproved password users get no cookie and land on `/pendiente`.
+- `requireSesion` is strict by default (approval required). Read-only API routes must opt in with `{ permitirPendiente: true }`.
+- After approval, a user holding an old pending session must sign out and in again to receive the new claims.
 
 ## 4. Firestore rules and indexes
 
