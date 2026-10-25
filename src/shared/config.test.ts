@@ -35,6 +35,14 @@ describe("parseServiceAccount", () => {
     expect(parseServiceAccount(`"${b64}"`)).toEqual(esperado);
   });
 
+  it("ignora el prefijo NOMBRE= cuando se pegó la línea completa del .env", () => {
+    const json = JSON.stringify(cuenta);
+    expect(parseServiceAccount(`FIREBASE_SERVICE_ACCOUNT=${json}`)).toEqual(esperado);
+    expect(parseServiceAccount(`FIREBASE_SERVICE_ACCOUNT='${json}'`)).toEqual(esperado);
+    const b64 = Buffer.from(json).toString("base64");
+    expect(parseServiceAccount(`FIREBASE_SERVICE_ACCOUNT=${b64}`)).toEqual(esperado);
+  });
+
   it("restaura los saltos de línea cuando la clave llega con \\n literales", () => {
     const doble = { ...cuenta, private_key: CLAVE.replace(/\n/g, "\\n") };
     expect(parseServiceAccount(JSON.stringify(doble)).private_key).toBe(CLAVE);

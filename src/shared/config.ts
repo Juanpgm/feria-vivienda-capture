@@ -66,7 +66,11 @@ function intentarJson(texto: string): unknown {
  * key and base64. On failure it throws a structural hint only (never any part of the value).
  */
 export function parseServiceAccount(valor: string): CuentaServicio {
-  const crudo = valor.replace(/^﻿/, "").trim();
+  // A whole `NAME=value` .env line is a common paste mistake in dashboards: drop the `NAME=` prefix.
+  const crudo = valor
+    .replace(/^﻿/, "")
+    .trim()
+    .replace(/^(?:export\s+)?[A-Z][A-Z0-9_]*\s*=\s*/, ""); // upper case only: base64 padding must never match
   const candidatos: string[] = [crudo];
   const comillas = crudo.length > 1 && (crudo[0] === '"' || crudo[0] === "'") && crudo.at(-1) === crudo[0];
   if (comillas) candidatos.push(crudo.slice(1, -1));
