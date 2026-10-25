@@ -1,0 +1,27 @@
+{
+ "fuente": "Curated by hand from general knowledge; Superfinanciera registry NOT consulted",
+ "verificado": false,
+ "fecha": "2026-10-25",
+ "items": [
+  {"codigo": "allianz_seguros", "nombre": "Allianz Seguros"},
+  {"codigo": "aseguradora_solidaria_de_colombia", "nombre": "Aseguradora Solidaria de Colombia"},
+  {"codigo": "axa_colpatria_seguros", "nombre": "AXA Colpatria Seguros"},
+  {"codigo": "bbva_seguros_colombia", "nombre": "BBVA Seguros Colombia"},
+  {"codigo": "cardif_colombia_seguros_generales", "nombre": "Cardif Colombia Seguros Generales"},
+  {"codigo": "chubb_seguros_colombia", "nombre": "Chubb Seguros Colombia"},
+  {"codigo": "hdi_seguros", "nombre": "HDI Seguros"},
+  {"codigo": "la_equidad_seguros", "nombre": "La Equidad Seguros"},
+  {"codigo": "la_previsora_seguros", "nombre": "La Previsora Seguros"},
+  {"codigo": "liberty_seguros", "nombre": "Liberty Seguros"},
+  {"codigo": "mapfre_seguros", "nombre": "Mapfre Seguros"},
+  {"codigo": "positiva_compania_de_seguros", "nombre": "Positiva Compañía de Seguros"},
+  {"codigo": "seguros_alfa", "nombre": "Seguros Alfa"},
+  {"codigo": "seguros_bolivar", "nombre": "Seguros Bolívar"},
+  {"codigo": "seguros_comerciales_bolivar", "nombre": "Seguros Comerciales Bolívar"},
+  {"codigo": "seguros_del_estado", "nombre": "Seguros del Estado"},
+  {"codigo": "seguros_generales_suramericana_sura", "nombre": "Seguros Generales Suramericana (SURA)"},
+  {"codigo": "seguros_mundial", "nombre": "Seguros Mundial"},
+  {"codigo": "zurich_colombia_seguros", "nombre": "Zurich Colombia Seguros"},
+  {"codigo": "otra", "nombre": "Otra"}
+ ]
+}
