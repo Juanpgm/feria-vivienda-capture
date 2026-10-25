@@ -18,7 +18,10 @@ export async function conErrores(fn: () => Promise<NextResponse>): Promise<NextR
     }
     const code = (e as { code?: string }).code;
     if (code === "auth/email-already-exists") return respuesta(409, { error: "El correo ya está registrado" });
-    console.error("api error", code ?? (e as Error).name);
+    // The message is logged only for plain Errors (our own structural hints and Firebase SDK messages); never for
+    // SyntaxError, whose text can quote the parsed input.
+    const err = e as Error;
+    console.error("api error", code ?? err.name, err.name === "Error" ? String(err.message).slice(0, 240) : "");
     return respuesta(500, { error: "Error interno" });
   }
 }
