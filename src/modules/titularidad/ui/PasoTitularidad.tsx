@@ -2,7 +2,7 @@
 
 import { useFormContext } from "react-hook-form";
 import { TITULARIDADES } from "@/shared/constantes";
-import { RadioGroup } from "@/shared/ui/Radio";
+import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 
 const P = "titularidad.";
@@ -14,7 +14,7 @@ export function PasoTitularidad() {
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
         <h3 className="text-lg font-bold text-primary-strong">Relación con el inmueble</h3>
-        <RadioGroup
+        <SegmentedControl
           legend="El solicitante es"
           name={P + "tipo_titularidad"}
           options={Object.entries(TITULARIDADES).map(([value, label]) => ({ value, label }))}
@@ -22,8 +22,7 @@ export function PasoTitularidad() {
           inputProps={register(P + "tipo_titularidad")}
         />
       </section>
-      <section className="flex max-w-sm flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Matrícula inmobiliaria</h3>
+      <div className="max-w-sm">
         <CampoTexto
           name={P + "numero_matricula_inmobiliaria"}
           label="Número de matrícula (opcional)"
@@ -31,7 +30,7 @@ export function PasoTitularidad() {
           hint="Puede dejarlo vacío si no lo tiene a la mano"
           normalizar={(v) => v.trim()}
         />
-      </section>
+      </div>
     </div>
   );
 }

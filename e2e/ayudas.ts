@@ -152,17 +152,29 @@ export async function verificarPaso2(page: Page, c: Caso) {
   await expect(page.getByText(ETIQUETA_RANGO[e.rango], { exact: false })).toBeVisible();
 }
 
+/** Opens a multi-select dropdown and toggles each option in order (the list stays open), then closes it. */
+async function elegirVarias(page: Page, nombre: string, etiquetas: string[]) {
+  if (!etiquetas.length) return;
+  const combo = page.getByRole("combobox", { name: nombre, ...exacto });
+  await combo.click();
+  for (const e of etiquetas) await page.getByRole("option", { name: e, ...exacto }).click();
+  await combo.press("Escape");
+}
+
+/** Chip of a selected multi-select option (removable button). */
+export const chip = (page: Page, etiqueta: string) => page.getByRole("button", { name: `Quitar ${etiqueta}`, ...exacto });
+
+export const CAMPO_CONDICIONES = "Condiciones del solicitante o su hogar";
+export const CAMPO_FUENTES = "Fuentes de financiación";
+
 export async function llenarPaso3(page: Page, c: Pick<Caso, "composicion"> | Pick<CasoInvalido, "composicion">) {
-  for (const codigo of c.composicion.condiciones) {
-    await page.getByRole("checkbox", { name: CONDICIONES_ESPECIALES[codigo as keyof typeof CONDICIONES_ESPECIALES], ...exacto }).click();
-  }
+  await elegirVarias(page, CAMPO_CONDICIONES, c.composicion.condiciones.map((k) => CONDICIONES_ESPECIALES[k as keyof typeof CONDICIONES_ESPECIALES]));
 }
 
 export async function verificarPaso3(page: Page, c: Caso) {
   for (const [codigo, etiqueta] of Object.entries(CONDICIONES_ESPECIALES)) {
-    const caja = page.getByRole("checkbox", { name: etiqueta, ...exacto });
-    if (c.esperado.condicionesFinales.includes(codigo)) await expect(caja).toBeChecked();
-    else await expect(caja).not.toBeChecked();
+    if (c.esperado.condicionesFinales.includes(codigo)) await expect(chip(page, etiqueta)).toBeVisible();
+    else await expect(chip(page, etiqueta)).toHaveCount(0);
   }
 }
 
@@ -206,10 +218,10 @@ export async function llenarPaso5(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
   const r = c.extra.riesgo;
   if (r.rud) await grupo(page, "¿Está registrado en el RUD?").getByRole("radio", { name: r.rud === "si" ? "Sí" : "No", ...exacto }).check();
   if (r.rud === "si") {
-    if (r.noSabe) await page.getByRole("checkbox", { name: "No lo sabe", ...exacto }).check();
+    if (r.noSabe) await page.getByRole("checkbox", { name: "No lo sé", ...exacto }).check();
     else await escribir(page, "Número de RUD", r.numero);
   }
-  if (r.dictamen) await grupo(page, "Resultado del dictamen técnico").getByRole("radio", { name: DICTAMENES[r.dictamen], ...exacto }).check();
+  if (r.dictamen) await page.getByLabel("Resultado del dictamen técnico", exacto).selectOption({ label: DICTAMENES[r.dictamen] });
   if (r.dictamen === "otro") await escribir(page, "Cuál dictamen", r.dictamenOtro);
 }
 
@@ -221,9 +233,7 @@ export async function llenarPaso6(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
 
 export async function llenarPaso7(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
   const f = c.extra.financiero;
-  for (const codigo of f.fuentes) {
-    await page.getByRole("checkbox", { name: FUENTES_FINANCIACION[codigo as keyof typeof FUENTES_FINANCIACION], ...exacto }).click();
-  }
+  await elegirVarias(page, CAMPO_FUENTES, f.fuentes.map((k) => FUENTES_FINANCIACION[k as keyof typeof FUENTES_FINANCIACION]));
   if (f.seguro) await grupo(page, "¿El inmueble tenía seguro?").getByRole("radio", { name: f.seguro === "si" ? "Sí" : "No", ...exacto }).check();
   if (f.seguro === "si" && f.aseguradora) await elegirEnCombobox(page, "Aseguradora", f.aseguradora.nombre);
   if (f.aseguradora?.codigo === "otra") await escribir(page, "Nombre de la aseguradora", f.aseguradoraOtra);

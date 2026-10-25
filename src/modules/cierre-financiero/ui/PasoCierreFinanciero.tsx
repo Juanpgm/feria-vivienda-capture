@@ -6,13 +6,15 @@ import type { OpcionBusqueda } from "@/shared/busqueda";
 import { FUENTES_FINANCIACION } from "@/shared/constantes";
 import { Combobox } from "@/shared/ui/Combobox";
 import { Field } from "@/shared/ui/Field";
-import { RadioGroup } from "@/shared/ui/Radio";
-import { CampoTexto, CasillasExclusivas, useError } from "@/modules/registro/ui/campos";
+import { MultiSelect } from "@/shared/ui/MultiSelect";
+import { SegmentedControl } from "@/shared/ui/SegmentedControl";
+import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 
 const P = "cierre_financiero.";
+const FUENTES = Object.entries(FUENTES_FINANCIACION).map(([value, label]) => ({ value, label }));
 
 export function PasoCierreFinanciero() {
-  const { register, control } = useFormContext<FieldValues>();
+  const { register, control, setValue } = useFormContext<FieldValues>();
   const error = useError();
   const [aseguradoras, setAseguradoras] = useState<OpcionBusqueda[]>([]);
   const seguro = useWatch({ control, name: P + "tiene_seguro" });
@@ -24,16 +26,26 @@ export function PasoCierreFinanciero() {
 
   return (
     <div className="flex flex-col gap-8">
-      <CasillasExclusivas
+      <Controller
+        control={control}
         name={P + "fuentes_financiacion"}
-        legend="Fuentes de financiación"
-        ayuda="Marque todas las que apliquen. Si no cuenta con ninguna, marque «Ninguna»."
-        opciones={FUENTES_FINANCIACION}
+        render={({ field }) => (
+          <MultiSelect
+            label="Fuentes de financiación"
+            hint="Seleccione todas las que apliquen. Si no cuenta con ninguna, elija «Ninguna»."
+            error={error(P + "fuentes_financiacion")}
+            options={FUENTES}
+            value={field.value ?? []}
+            onChange={(v) => setValue(P + "fuentes_financiacion", v, { shouldValidate: true, shouldDirty: true })}
+            onBlur={field.onBlur}
+            exclusiva="ninguna"
+          />
+        )}
       />
 
       <section className="flex flex-col gap-4">
         <h3 className="text-lg font-bold text-primary-strong">Seguro</h3>
-        <RadioGroup
+        <SegmentedControl
           legend="¿El inmueble tenía seguro?"
           name={P + "tiene_seguro"}
           options={[

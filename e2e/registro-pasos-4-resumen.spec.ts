@@ -6,7 +6,7 @@
 import { expect, test } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import {
-  avanzarHasta, HOY, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, nuevoRegistro, siguiente, tituloPaso, verificarPaso4,
+  avanzarHasta, CAMPO_FUENTES, chip, HOY, llenarPaso4, llenarPaso5, llenarPaso6, llenarPaso7, nuevoRegistro, siguiente, tituloPaso, verificarPaso4,
   verificarResumen, type NumeroPaso,
 } from "./ayudas";
 import { generarCasos, generarCasosInvalidos } from "./datos-prueba";
@@ -104,13 +104,13 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     await expect(page.getByRole("combobox", { name: "Barrio o vereda", exact: true })).toHaveValue("");
   });
 
-  test("RUD: 'No lo sabe' deshabilita el numero; seguro Otra pide el nombre; Ninguna es exclusiva", async ({ page }) => {
+  test("RUD: 'No lo sé' deshabilita el numero; seguro Otra pide el nombre; Ninguna es exclusiva", async ({ page }) => {
     await nuevoRegistro(page);
     const c = generarCasos(HOY)[0];
     await avanzarHasta(page, c, 5);
     await page.getByRole("group", { name: "¿Está registrado en el RUD?" }).getByRole("radio", { name: "Sí", exact: true }).check();
     await page.getByLabel("Número de RUD", { exact: true }).fill("123");
-    await page.getByRole("checkbox", { name: "No lo sabe", exact: true }).check();
+    await page.getByRole("checkbox", { name: "No lo sé", exact: true }).check();
     await expect(page.getByLabel("Número de RUD", { exact: true })).toBeDisabled();
     await expect(page.getByLabel("Número de RUD", { exact: true })).toHaveValue("");
 
@@ -120,11 +120,18 @@ test.describe("registro pasos 4-7 y resumen: comportamientos puntuales", () => {
     await siguiente(page);
     await expect(tituloPaso(page, 7)).toBeVisible();
 
-    await page.getByRole("checkbox", { name: "Recursos propios", exact: true }).click();
-    await page.getByRole("checkbox", { name: "Ninguna", exact: true }).click();
-    await expect(page.getByRole("checkbox", { name: "Recursos propios", exact: true })).not.toBeChecked();
-    await page.getByRole("checkbox", { name: "Subsidio concurrente", exact: true }).click();
-    await expect(page.getByRole("checkbox", { name: "Ninguna", exact: true })).not.toBeChecked();
+    const fuentes = page.getByRole("combobox", { name: CAMPO_FUENTES, exact: true });
+    await fuentes.click();
+    await page.getByRole("option", { name: "Recursos propios", exact: true }).click();
+    await page.getByRole("option", { name: "Ninguna", exact: true }).click();
+    await expect(chip(page, "Recursos propios")).toHaveCount(0);
+    await expect(chip(page, "Ninguna")).toBeVisible();
+    await page.getByRole("option", { name: "Subsidio concurrente", exact: true }).click();
+    await expect(chip(page, "Ninguna")).toHaveCount(0);
+    await expect(chip(page, "Subsidio concurrente")).toBeVisible();
+    await chip(page, "Subsidio concurrente").click();
+    await expect(chip(page, "Subsidio concurrente")).toHaveCount(0);
+    await fuentes.press("Escape");
 
     await page.getByRole("group", { name: "¿El inmueble tenía seguro?" }).getByRole("radio", { name: "Sí", exact: true }).check();
     const aseguradora = page.getByRole("combobox", { name: "Aseguradora", exact: true });

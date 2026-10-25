@@ -1,15 +1,32 @@
 "use client";
 
+import { Controller, useFormContext, type FieldValues } from "react-hook-form";
 import { CONDICIONES_ESPECIALES } from "@/shared/constantes";
-import { CasillasExclusivas } from "@/modules/registro/ui/campos";
+import { MultiSelect } from "@/shared/ui/MultiSelect";
+import { useError } from "@/modules/registro/ui/campos";
+
+const OPCIONES = Object.entries(CONDICIONES_ESPECIALES).map(([value, label]) => ({ value, label }));
 
 export function PasoProteccion() {
+  const { control, setValue } = useFormContext<FieldValues>();
+  const name = "composicion.condiciones_especiales";
+  const error = useError()(name);
   return (
-    <CasillasExclusivas
-      name="composicion.condiciones_especiales"
-      legend="Condiciones del solicitante o su hogar"
-      ayuda="Marque todas las que apliquen. Si ninguna aplica, marque «Ninguna»."
-      opciones={CONDICIONES_ESPECIALES}
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <MultiSelect
+          label="Condiciones del solicitante o su hogar"
+          hint="Seleccione todas las que apliquen. Si ninguna aplica, elija «Ninguna»."
+          error={error}
+          options={OPCIONES}
+          value={field.value ?? []}
+          onChange={(v) => setValue(name, v, { shouldValidate: true, shouldDirty: true })}
+          onBlur={field.onBlur}
+          exclusiva="ninguna"
+        />
+      )}
     />
   );
 }
