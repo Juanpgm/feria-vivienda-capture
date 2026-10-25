@@ -11,7 +11,7 @@ import type { Riesgo } from "@/modules/riesgo/domain/schema";
 import type { Titularidad } from "@/modules/titularidad/domain/schema";
 import {
   BANDAS_ADULTO_MAYOR, BANDAS_HOGAR, CONDICIONES_ESPECIALES, DICTAMENES, ESTADOS_CIVILES, FUENTES_FINANCIACION,
-  TIPOS_DOCUMENTO, TITULARIDADES,
+  EXCEPCIONES_UNICA_PROPIEDAD, TIPOS_DOCUMENTO, TITULARIDADES,
 } from "@/shared/constantes";
 import aseguradoras from "@/modules/cierre-financiero/catalogo/aseguradoras.json";
 import { entradaDeSeccion, type Valores } from "./pasos";
@@ -45,15 +45,17 @@ export const PENDIENTES_FASE_3 = [
 
 /** Field labels, only used to name the field of a validation message. */
 const ETIQUETAS: Record<string, string> = {
-  nombre_completo: "Nombre completo", tipo_documento: "Tipo de documento", tipo_documento_otro: "Cuál documento",
+  primer_nombre: "Primer nombre", primer_apellido: "Primer apellido", segundo_nombre: "Segundo nombre", segundo_apellido: "Segundo apellido",
+  tipo_documento: "Tipo de documento", tipo_documento_otro: "Cuál documento",
   codigo_pais_nacionalidad: "Nacionalidad", numero_documento: "Número de documento", fecha_expedicion_documento: "Fecha de expedición",
   telefono_1: "Teléfono principal", telefono_2: "Teléfono alterno", correo_solicitante: "Correo electrónico",
   anios_residencia: "Años de residencia", fecha_nacimiento: "Fecha de nacimiento", estado_civil: "Estado civil",
   cantidad_personas_hogar: "Personas en el hogar", tiene_adulto_mayor: "Adultos mayores", cantidad_adultos_mayores: "Cantidad de adultos mayores",
   adultos_mayores: "Edades de adultos mayores", condiciones_especiales: "Especial protección", ingreso_hogar_cop: "Ingreso mensual",
-  direccion: "Dirección", codigo_division: "Comuna o corregimiento", id_barrio_vereda: "Barrio o vereda", barrio_vereda_otro: "Barrio o vereda",
+  direccion: "Dirección", codigo_division: "Comuna o corregimiento", id_barrio_vereda: "Barrio o vereda",
   estrato: "Estrato", esta_en_rud: "RUD", numero_rud: "Número de RUD", dictamen: "Dictamen técnico", dictamen_otro: "Cuál dictamen",
-  tipo_titularidad: "Titularidad", numero_matricula_inmobiliaria: "Matrícula inmobiliaria", fuentes_financiacion: "Fuentes de financiación",
+  tipo_titularidad: "Titularidad", numero_matricula_inmobiliaria: "Matrícula inmobiliaria",
+  es_unica_propiedad: "Única propiedad", excepcion_unica_propiedad: "Excepción", observaciones: "Observaciones", fuentes_financiacion: "Fuentes de financiación",
   tiene_seguro: "Seguro", codigo_aseguradora: "Aseguradora", aseguradora_otra: "Nombre de la aseguradora",
 };
 
@@ -118,11 +120,10 @@ export function filasDe(id: string, datos: unknown, hoy: string): Fila[] {
     }
     case "inmueble": {
       const i = datos as Inmueble;
-      const lugar = i.nombre_barrio_vereda ?? `${i.barrio_vereda_otro} (escrito a mano)`;
       return [
         { etiqueta: "Dirección", valor: i.es_direccion_norm_completa ? `${i.direccion} (${i.direccion_norm})` : i.direccion },
         { etiqueta: i.tipo_division === "comuna" ? "Comuna" : "Corregimiento", valor: i.nombre_division },
-        { etiqueta: i.sector === "rural" ? "Vereda" : "Barrio", valor: lugar },
+        { etiqueta: i.sector === "rural" ? "Vereda" : "Barrio", valor: i.nombre_barrio_vereda },
         { etiqueta: "Sector", valor: i.sector === "rural" ? "Rural" : "Urbano" },
         { etiqueta: "Estrato", valor: String(i.estrato) },
       ];
@@ -139,6 +140,10 @@ export function filasDe(id: string, datos: unknown, hoy: string): Fila[] {
       return [
         { etiqueta: "Titularidad", valor: TITULARIDADES[t.tipo_titularidad] },
         { etiqueta: "Matrícula inmobiliaria", valor: t.numero_matricula_inmobiliaria ?? "No registrada" },
+        {
+          etiqueta: "Única propiedad residencial",
+          valor: t.es_unica_propiedad ? "Sí" : `No. Excepción: ${EXCEPCIONES_UNICA_PROPIEDAD[t.excepcion_unica_propiedad!]}`,
+        },
       ];
     }
     case "cierre_financiero": {
@@ -147,6 +152,7 @@ export function filasDe(id: string, datos: unknown, hoy: string): Fila[] {
       return [
         { etiqueta: "Fuentes de financiación", valor: lista(f.fuentes_financiacion, FUENTES_FINANCIACION) },
         { etiqueta: "Seguro", valor: f.tiene_seguro ? `${siNo(true)}, ${aseg}` : siNo(false) },
+        { etiqueta: "Observaciones", valor: f.observaciones ?? "Sin observaciones" },
       ];
     }
     default:

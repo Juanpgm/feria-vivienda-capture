@@ -42,10 +42,14 @@ export function PasoHogar() {
 
   return (
     <div className="flex flex-col gap-8">
+      <Seccion titulo="Nombre">
+        <CampoTexto name={P + "primer_nombre"} label="Primer nombre" autoComplete="off" normalizar={normalizarNombre} />
+        <CampoTexto name={P + "segundo_nombre"} label="Segundo nombre (opcional)" autoComplete="off" normalizar={normalizarNombre} />
+        <CampoTexto name={P + "primer_apellido"} label="Primer apellido" autoComplete="off" normalizar={normalizarNombre} />
+        <CampoTexto name={P + "segundo_apellido"} label="Segundo apellido (opcional)" autoComplete="off" normalizar={normalizarNombre} />
+      </Seccion>
+
       <Seccion titulo="Identificación">
-        <div className="sm:col-span-2">
-          <CampoTexto name={P + "nombre_completo"} label="Nombre completo" autoComplete="off" normalizar={normalizarNombre} />
-        </div>
         <div className="sm:col-span-2">
           <RadioGroup
             legend="Tipo de documento"

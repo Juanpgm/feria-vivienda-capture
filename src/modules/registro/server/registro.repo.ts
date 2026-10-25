@@ -5,9 +5,7 @@ import { adminDb } from "@/shared/firebase/admin";
 import { fechaBogota } from "@/shared/tiempo";
 import type { RegistroDatos } from "../domain/schema";
 
-export type Advertencia =
-  | { tipo: "menor_de_edad"; edad: number }
-  | { tipo: "documento_duplicado"; id_existente?: string };
+export type Advertencia = { tipo: "documento_duplicado"; id_existente?: string };
 
 export type ResultadoCreacion = { id: string; creado: boolean; advertencias: Advertencia[] };
 
@@ -31,8 +29,7 @@ export async function crearRegistro(datos: RegistroDatos, actor: { uid: string; 
   const hoy = fechaBogota();
 
   const advertencias: Advertencia[] = [];
-  const edad = calcularEdad(datos.solicitante.fecha_nacimiento, hoy);
-  if (edad < 18) advertencias.push({ tipo: "menor_de_edad", edad });
+  const edad = calcularEdad(datos.solicitante.fecha_nacimiento, hoy); // >= 18: enforced by the schema
 
   // Duplicate document is a warning, never a block. The existing id is only revealed to admin+.
   const dup = await col()

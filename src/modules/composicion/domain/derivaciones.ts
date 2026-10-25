@@ -19,3 +19,8 @@ export function calcularEdad(fechaNacimiento: string, hoy: string): number {
   const [hy, hm, hd] = hoy.split("-").map(Number);
   return hy - ny - (hm < nm || (hm === nm && hd < nd) ? 1 : 0);
 }
+
+/** Hint rule: the applicant is 65 or older (the band that counts as older adult). Never blocking. */
+export function solicitanteEsAdultoMayor(fechaNacimiento: string, hoy: string): boolean {
+  return calcularEdad(fechaNacimiento, hoy) >= 65;
+}

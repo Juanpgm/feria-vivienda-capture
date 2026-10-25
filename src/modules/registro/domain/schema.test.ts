@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { valido } from "./fixture";
+import barrios from "@/modules/inmueble/catalogo/barrios.json";
+import divisiones from "@/modules/inmueble/catalogo/divisiones.json";
+import { fechaBogota } from "@/shared/tiempo";
 import { registroSchema } from "./schema";
 
 type Entrada = ReturnType<typeof valido>;
@@ -16,6 +19,10 @@ describe("registroSchema", () => {
   it("normalizes and derives on a valid payload", () => {
     const r = registroSchema.parse(valido());
     expect(r.solicitante).toMatchObject({
+      primer_nombre: "Ana",
+      segundo_nombre: "María",
+      primer_apellido: "Pérez",
+      segundo_apellido: null,
       nombre_completo: "Ana María Pérez",
       numero_documento: "12345678",
       telefono_1: "+573001234567",
@@ -74,16 +81,23 @@ describe("registroSchema", () => {
     expect(fallos((v) => set(v.inmueble, { codigo_division: "02" }))).toEqual(["inmueble.id_barrio_vereda"]); // barrio of comuna 01
     expect(fallos((v) => set(v.inmueble, { codigo_division: "99" }))).toEqual(["inmueble.codigo_division"]);
     expect(fallos((v) => set(v.inmueble, { id_barrio_vereda: null }))).toEqual(["inmueble.id_barrio_vereda"]);
-    expect(fallos((v) => set(v.inmueble, { id_barrio_vereda: null, barrio_vereda_otro: "Sector X" }))).toEqual([]);
-    expect(fallos((v) => set(v.inmueble, { codigo_division: "51", id_barrio_vereda: null, barrio_vereda_otro: "X" }))).toEqual([]);
+    // Territory only from the catalogs: free text is not a way out (extra keys are stripped, the barrio stays required).
+    expect(fallos((v) => set(v.inmueble, { id_barrio_vereda: null, barrio_vereda_otro: "Sector X" }))).toEqual(["inmueble.id_barrio_vereda"]);
+    expect(fallos((v) => set(v.inmueble, { id_barrio_vereda: "NO-EXISTE" }))).toEqual(["inmueble.id_barrio_vereda"]);
+    expect(fallos((v) => set(v.inmueble, { codigo_division: "51", id_barrio_vereda: "V5306" }))).toEqual(["inmueble.id_barrio_vereda"]); // barrio of 53
     // Missing estrato must not hide the cross-field errors.
     expect(fallos((v) => set(v.inmueble, { estrato: "", codigo_division: "", id_barrio_vereda: null }))).toEqual(["inmueble.estrato", "inmueble.codigo_division"]);
     for (const e of [0, 7, 2.5]) expect(fallos((v) => set(v.inmueble, { estrato: e }))).toEqual(["inmueble.estrato"]);
   });
 
+  it("every comuna and corregimiento has at least one barrio/vereda to choose (the list is the only way to fill it)", () => {
+    const con = new Set(barrios.map((b) => b.codigo_division));
+    expect(divisiones.filter((d) => !con.has(d.codigo)).map((d) => d.nombre)).toEqual([]);
+  });
+
   it("rural division derives sector rural", () => {
     const v = valido();
-    set(v.inmueble, { codigo_division: "51", id_barrio_vereda: null, barrio_vereda_otro: "X" });
+    set(v.inmueble, { codigo_division: "53", id_barrio_vereda: "V5306" });
     expect(registroSchema.parse(v).inmueble.sector).toBe("rural");
   });
 
@@ -110,7 +124,54 @@ describe("registroSchema", () => {
     expect(fallos((v) => set(v.cierre_financiero, { fuentes_financiacion: ["ninguna", "recursos_propios"] }))).toEqual(["cierre_financiero.fuentes_financiacion"]);
   });
 
-  it("under-18 applicant parses (warning is raised by the repo, not a block)", () => {
-    expect(fallos((v) => set(v.solicitante, { fecha_nacimiento: "2015-01-01", fecha_expedicion_documento: "2020-01-01" }))).toEqual([]);
+  it("names: first name and first surname required, optional ones become null, Title Case per part", () => {
+    expect(fallos((v) => set(v.solicitante, { primer_nombre: "  " }))).toEqual(["solicitante.primer_nombre"]);
+    expect(fallos((v) => set(v.solicitante, { primer_apellido: "" }))).toEqual(["solicitante.primer_apellido"]);
+    expect(fallos((v) => set(v.solicitante, { segundo_nombre: "", segundo_apellido: "   " }))).toEqual([]);
+    const r = registroSchema.parse(
+      Object.assign(valido(), { solicitante: { ...valido().solicitante, primer_nombre: "JOSÉ", segundo_nombre: null, primer_apellido: "de la  cruz", segundo_apellido: "o'brien-núñez" } }),
+    );
+    expect(r.solicitante).toMatchObject({ primer_nombre: "José", segundo_nombre: null, primer_apellido: "De La Cruz", segundo_apellido: "O'Brien-Núñez", nombre_completo: "José De La Cruz O'Brien-Núñez" });
+  });
+
+  it("only 18 or older: exactly 18 today passes, the day before the birthday fails (server side too)", () => {
+    const hoy = fechaBogota();
+    const [y, m, d] = hoy.split("-").map(Number);
+    const iso = (yy: number, mm: number, dd: number) => new Date(Date.UTC(yy, mm - 1, dd)).toISOString().slice(0, 10);
+    const cumple18 = iso(y - 18, m, d);
+    const manana = iso(y - 18, m, d + 1); // turns 18 tomorrow
+    const nac = (fecha_nacimiento: string) => set(valido().solicitante, {}) && { fecha_nacimiento, fecha_expedicion_documento: iso(y - 1, m, d) };
+    expect(fallos((v) => set(v.solicitante, nac(cumple18)))).toEqual([]);
+    expect(fallos((v) => set(v.solicitante, nac(manana)))).toEqual(["solicitante.fecha_nacimiento"]);
+    expect(fallos((v) => set(v.solicitante, nac("2015-01-01")))).toEqual(["solicitante.fecha_nacimiento"]);
+  });
+
+  it("household consistency: older adults cannot exceed the household size", () => {
+    const comp = (personas: number, edades: number[]) => ({ cantidad_personas_hogar: personas, tiene_adulto_mayor: true, cantidad_adultos_mayores: edades.length, adultos_mayores: edades.map((edad) => ({ edad })) });
+    expect(fallos((v) => set(v.composicion, comp(2, [70, 71, 72])))).toEqual(["composicion.cantidad_adultos_mayores"]);
+    expect(fallos((v) => set(v.composicion, comp(2, [70, 71])))).toEqual([]);
+    expect(fallos((v) => set(v.composicion, comp(1, [70])))).toEqual([]);
+  });
+
+  it("única propiedad: answer required; No requires one of the two exceptions; Sí clears it", () => {
+    expect(fallos((v) => set(v.titularidad, { es_unica_propiedad: undefined }))).toEqual(["titularidad.es_unica_propiedad"]);
+    expect(fallos((v) => set(v.titularidad, { es_unica_propiedad: false }))).toEqual(["titularidad.excepcion_unica_propiedad"]);
+    expect(fallos((v) => set(v.titularidad, { es_unica_propiedad: false, excepcion_unica_propiedad: "texto libre" }))).toEqual(["titularidad.excepcion_unica_propiedad"]);
+    expect(fallos((v) => set(v.titularidad, { es_unica_propiedad: false, excepcion_unica_propiedad: "dependencia_arriendo_40" }))).toEqual([]);
+    const v = valido();
+    set(v.titularidad, { es_unica_propiedad: true, excepcion_unica_propiedad: "dependencia_arriendo_40" });
+    expect(registroSchema.parse(v).titularidad).toMatchObject({ es_unica_propiedad: true, excepcion_unica_propiedad: null });
+  });
+
+  it("observaciones: optional, trimmed, max 1000, stored at the top level; estado_sgov is not a form field", () => {
+    const con = (obs: unknown) => { const v = valido(); set(v.cierre_financiero, { observaciones: obs }); return v; };
+    expect(registroSchema.parse(valido()).observaciones).toBeNull();
+    expect(registroSchema.parse(con("   ")).observaciones).toBeNull();
+    const r = registroSchema.parse(con("  Llamar por la tarde  "));
+    expect(r.observaciones).toBe("Llamar por la tarde");
+    expect(r.cierre_financiero).not.toHaveProperty("observaciones");
+    expect(fallos((v) => set(v.cierre_financiero, { observaciones: "x".repeat(1000) }))).toEqual([]);
+    expect(fallos((v) => set(v.cierre_financiero, { observaciones: "x".repeat(1001) }))).toEqual(["cierre_financiero.observaciones"]);
+    expect(registroSchema.parse(Object.assign(valido(), { inmueble: { ...valido().inmueble, estado_sgov: "habilitado" } })).inmueble).not.toHaveProperty("estado_sgov");
   });
 });

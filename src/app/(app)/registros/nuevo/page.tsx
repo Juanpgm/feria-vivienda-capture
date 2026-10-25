@@ -1,9 +1,13 @@
 import { sesionOLogin } from "@/modules/auth/server/guard";
-import { Stepper } from "@/modules/registro/ui/Stepper";
+import { EntradaRegistro } from "@/modules/registro/ui/EntradaRegistro";
 
 export const metadata = { title: "Nuevo registro" };
 
-export default async function NuevoRegistro() {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function NuevoRegistro({ searchParams }: { searchParams: Promise<{ borrador?: string | string[] }> }) {
   const sesion = await sesionOLogin();
-  return <Stepper uid={sesion.uid} />;
+  const { borrador } = await searchParams;
+  const id = typeof borrador === "string" && UUID.test(borrador) ? borrador.toLowerCase() : undefined;
+  return <EntradaRegistro uid={sesion.uid} borradorId={id} />;
 }

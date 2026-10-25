@@ -1,14 +1,15 @@
 // Authenticated e2e for /registros/nuevo steps 1-3, driven by the synthetic datasets in datos-prueba.ts.
 //
 // IMPORTANT: this spec NEVER writes to Firestore. There is no submit yet (POST /api/registros wiring arrives
-// in phase 3); the only persistence exercised is the IndexedDB draft, discarded between cases.
+// in phase 3); the only persistence exercised is the IndexedDB draft (each test runs in a fresh browser context).
 // Requires a saved session: run `npm run e2e:login` once (see playwright.config.ts).
 import { expect, test } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import {
-  digitosDeFecha, HOY, llenarPaso1, llenarPaso2, llenarPaso3, nuevoRegistro, siguiente, tituloPaso, verificarPaso1, verificarPaso2, verificarPaso3,
+  digitosDeFecha, HOY, llenarPaso1, llenarPaso2, llenarPaso3, nuevoRegistro, siguiente, tituloPaso, verificarPaso1, verificarPaso2,
+  verificarPaso3,
 } from "./ayudas";
-import { generarCasos, generarCasosInvalidos, sumarDias } from "./datos-prueba";
+import { generarCasos, generarCasosInvalidos, restarAnios, sumarDias } from "./datos-prueba";
 
 test.beforeAll(() => {
   if (!hayEstadoAuth()) throw new Error(MENSAJE_SIN_SESION);
@@ -103,15 +104,58 @@ test.describe("registro pasos 1-3: comportamientos puntuales", () => {
     await expect(nacionalidad).toBeEnabled();
   });
 
-  test("Descartar borrador limpia los datos y no queda nada al recargar", async ({ page }) => {
+  test("Descartar borrador pide confirmacion en la pagina, vuelve a la lista y no queda nada al recargar", async ({ page }) => {
+    let dialogos = 0;
+    page.on("dialog", (d) => (dialogos++, void d.dismiss()));
     await nuevoRegistro(page);
     const [c] = generarCasos(HOY);
     await llenarPaso1(page, c);
     await expect(page.getByRole("status")).toContainText("Borrador guardado");
-    await nuevoRegistro(page); // discards
+
+    await page.getByRole("button", { name: "Descartar borrador", exact: true }).click();
+    await expect(page.getByText("¿Descartar este borrador? Se borrarán los datos ingresados.")).toBeVisible();
+    await page.getByRole("button", { name: "Conservar", exact: true }).click();
+    await expect(page.getByLabel("Primer nombre", { exact: true })).toHaveValue(c.esperado.nombres[0]);
+
+    await page.getByRole("button", { name: "Descartar borrador", exact: true }).click();
+    await page.getByRole("button", { name: "Sí, descartar", exact: true }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Borradores en curso" })).toBeVisible();
+    await expect(page.getByText("No hay borradores. Inicie un registro nuevo.")).toBeVisible();
     await page.reload();
-    await expect(page.getByText("Se recuperó el borrador guardado en este equipo.")).toHaveCount(0);
-    await expect(page.getByLabel("Nombre completo", { exact: true })).toHaveValue("");
+    await expect(page.getByText("No hay borradores. Inicie un registro nuevo.")).toBeVisible();
+    expect(dialogos).toBe(0); // never window.confirm
+  });
+
+  test("nombre separado: cada parte se normaliza al salir, las opcionales pueden quedar vacias y Title Case incluye particulas", async ({ page }) => {
+    await nuevoRegistro(page);
+    const campo = (n: string) => page.getByLabel(n, { exact: true });
+    await campo("Primer nombre").fill("  JOSÉ  ");
+    await campo("Primer nombre").press("Tab");
+    await expect(campo("Primer nombre")).toHaveValue("José");
+    await campo("Primer apellido").fill("de la   cRUZ");
+    await campo("Primer apellido").press("Tab");
+    await expect(campo("Primer apellido")).toHaveValue("De La Cruz");
+    await campo("Segundo apellido (opcional)").fill("o'brien-núñez");
+    await campo("Segundo apellido (opcional)").press("Tab");
+    await expect(campo("Segundo apellido (opcional)")).toHaveValue("O'Brien-Núñez");
+    await expect(campo("Segundo nombre (opcional)")).toHaveValue("");
+
+    // Required parts report their own message; the optional ones never do.
+    await campo("Primer nombre").fill("");
+    await campo("Primer nombre").press("Tab");
+    await expect(page.getByText("Ingrese el primer nombre", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ingrese el primer apellido", { exact: true })).toHaveCount(0);
+  });
+
+  test("nombre separado: en escritorio los cuatro campos forman una cuadricula de 2x2", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await nuevoRegistro(page);
+    const caja = async (n: string) => (await page.getByLabel(n, { exact: true }).boundingBox())!;
+    const [pn, sn, pa, sa] = [await caja("Primer nombre"), await caja("Segundo nombre (opcional)"), await caja("Primer apellido"), await caja("Segundo apellido (opcional)")];
+    expect(Math.abs(pn.y - sn.y)).toBeLessThan(2);
+    expect(Math.abs(pa.y - sa.y)).toBeLessThan(2);
+    expect(sn.x).toBeGreaterThan(pn.x + pn.width - 1);
+    expect(pa.y).toBeGreaterThan(pn.y + pn.height);
   });
 
   test("fechas: se escriben solo digitos, las barras se agregan, pegar 8 digitos o dd/mm/aaaa funciona", async ({ page }) => {
@@ -232,11 +276,19 @@ test.describe("registro pasos 1-3: comportamientos puntuales", () => {
     await expect(page.getByLabel("Teléfono principal", { exact: true })).toHaveValue("2025550123");
   });
 
-  test("el menor de edad solo muestra la edad: no bloquea el paso (la advertencia llega del servidor)", async ({ page }) => {
+  test("mayores de edad: 17 anios se bloquea con mensaje claro, 18 cumplidos hoy avanza", async ({ page }) => {
     await nuevoRegistro(page);
-    const menor = generarCasos(HOY).find((x) => x.clave === "menor-de-edad")!;
-    await llenarPaso1(page, menor);
-    await verificarPaso1(page, menor);
+    const base = generarCasos(HOY)[0];
+    const sinNacimiento = { ...base, solicitante: { ...base.solicitante, nacimiento: sumarDias(restarAnios(HOY, 18), 1) } };
+    await llenarPaso1(page, sinNacimiento);
+    await expect(page.getByText("Edad: 17 años")).toBeVisible();
+    await siguiente(page);
+    await expect(page.getByText("Solo pueden registrarse personas de 18 años o más", { exact: true }).first()).toBeVisible();
+    await expect(tituloPaso(page, 1)).toBeVisible();
+
+    const nac = page.getByLabel("Fecha de nacimiento", { exact: true });
+    await nac.fill(digitosDeFecha(restarAnios(HOY, 18)));
+    await expect(page.getByText("Edad: 18 años")).toBeVisible();
     await siguiente(page);
     await expect(tituloPaso(page, 2)).toBeVisible();
   });
@@ -245,5 +297,5 @@ test.describe("registro pasos 1-3: comportamientos puntuales", () => {
 // Placeholder: the same datasets will drive a full submit once steps 4-9 and the submit button exist.
 // It must create ONE document per dataset in a test project/emulator, never in the production Firestore.
 test.fixme("envio completo de cada dataset (pasos 4-9 + POST /api/registros)", async () => {
-  // for (const c of generarCasos(HOY)) { llenar pasos 1-9; enviar; verificar 201 y advertencias (menor_de_edad) }
+  // for (const c of generarCasos(HOY)) { llenar pasos 1-9; enviar; verificar 201 y advertencias (documento_duplicado) }
 });

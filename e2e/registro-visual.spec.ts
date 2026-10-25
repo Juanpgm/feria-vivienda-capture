@@ -69,7 +69,7 @@ for (const esquema of ["light", "dark"] as const) {
         await siguiente(page);
         await expect(tituloPaso(page, 2)).toBeVisible();
         expect(await sinHorizontal(page)).toBe(true);
-        await llenarPaso2(page, { composicion: { ...c.composicion, adultoMayor: "si", edades: ["74", "80"] } });
+        await llenarPaso2(page, { composicion: { ...c.composicion, personas: "3", adultoMayor: "si", edades: ["74", "80"] } });
         expect(await sinHorizontal(page)).toBe(true);
         await siguiente(page);
         await expect(tituloPaso(page, 3)).toBeVisible();

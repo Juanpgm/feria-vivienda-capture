@@ -25,7 +25,7 @@ export const PASOS: readonly Paso[] = [
     titulo: "Datos del hogar",
     seccion: "solicitante",
     campos: [
-      "nombre_completo", "tipo_documento", "tipo_documento_otro", "codigo_pais_nacionalidad", "numero_documento",
+      "primer_nombre", "segundo_nombre", "primer_apellido", "segundo_apellido", "tipo_documento", "tipo_documento_otro", "codigo_pais_nacionalidad", "numero_documento",
       "fecha_expedicion_documento", "telefono_1", "telefono_2", "correo_solicitante", "anios_residencia",
       "fecha_nacimiento", "estado_civil",
     ],
@@ -51,7 +51,7 @@ export const PASOS: readonly Paso[] = [
     id: "inmueble",
     titulo: "Inmueble y ubicación",
     seccion: "inmueble",
-    campos: ["direccion", "codigo_division", "id_barrio_vereda", "barrio_vereda_otro", "estrato"],
+    campos: ["direccion", "codigo_division", "id_barrio_vereda", "estrato"],
     schema: () => import("@/modules/inmueble/domain/schema").then((m) => m.inmuebleSchema),
   },
   {
@@ -65,21 +65,21 @@ export const PASOS: readonly Paso[] = [
     id: "titularidad",
     titulo: "Titularidad",
     seccion: "titularidad",
-    campos: ["tipo_titularidad", "numero_matricula_inmobiliaria"],
+    campos: ["tipo_titularidad", "numero_matricula_inmobiliaria", "es_unica_propiedad", "excepcion_unica_propiedad"],
     schema: () => import("@/modules/titularidad/domain/schema").then((m) => m.titularidadSchema),
   },
   {
     id: "financiero",
     titulo: "Cierre financiero",
     seccion: "cierre_financiero",
-    campos: ["fuentes_financiacion", "tiene_seguro", "codigo_aseguradora", "aseguradora_otra"],
+    campos: ["fuentes_financiacion", "tiene_seguro", "codigo_aseguradora", "aseguradora_otra", "observaciones"],
     schema: () => import("@/modules/cierre-financiero/domain/schema").then((m) => m.cierreFinancieroSchema),
   },
   { id: "resumen", titulo: "Resumen", seccion: "", campos: [] },
 ];
 
 /** Radio "si"/"no" fields per section, converted to booleans before parsing. */
-const BOOLEANOS: Record<string, string> = { composicion: "tiene_adulto_mayor", riesgo: "esta_en_rud", cierre_financiero: "tiene_seguro" };
+const BOOLEANOS: Record<string, string> = { composicion: "tiene_adulto_mayor", riesgo: "esta_en_rud", titularidad: "es_unica_propiedad", cierre_financiero: "tiene_seguro" };
 
 /** Form strings of one section -> schema input (radio "si"/"no" to boolean; conditional fields only when they apply). */
 export function entradaDeSeccion(seccion: string, valores: Valores): Record<string, unknown> {
@@ -95,11 +95,7 @@ export function entradaDeSeccion(seccion: string, valores: Valores): Record<stri
       s.adultos_mayores = undefined;
     }
   }
-  if (seccion === "inmueble") {
-    // "Not listed" switches between the catalog barrio and the free-text fallback.
-    if (s.barrio_no_listado) s.id_barrio_vereda = undefined;
-    else s.barrio_vereda_otro = undefined;
-  }
+  if (seccion === "titularidad" && s.es_unica_propiedad !== false) s.excepcion_unica_propiedad = undefined;
   if (seccion === "riesgo" && s.esta_en_rud !== true) {
     s.numero_rud = undefined;
     s.rud_no_sabe = undefined;

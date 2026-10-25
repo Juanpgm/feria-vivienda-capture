@@ -1,8 +1,10 @@
 import { expect, type Page } from "@playwright/test";
-import { BANDAS_ADULTO_MAYOR, BANDAS_HOGAR, CONDICIONES_ESPECIALES, DICTAMENES, FUENTES_FINANCIACION, TITULARIDADES } from "../src/shared/constantes";
+import { BANDAS_ADULTO_MAYOR, BANDAS_HOGAR, CONDICIONES_ESPECIALES, DICTAMENES, EXCEPCIONES_UNICA_PROPIEDAD, FUENTES_FINANCIACION, TITULARIDADES } from "../src/shared/constantes";
 import { fechaBogota } from "../src/shared/tiempo";
 import { parsePhoneNumberFromString } from "libphonenumber-js/min";
 import { type Caso, type CasoInvalido, condicionesFinales, ETIQUETA_RANGO, type PaisTel } from "./datos-prueba";
+
+export const ETIQUETAS_NOMBRE = ["Primer nombre", "Segundo nombre (opcional)", "Primer apellido", "Segundo apellido (opcional)"] as const;
 
 export const HOY = fechaBogota();
 const RUTA = process.env.E2E_RUTA_NUEVO ?? "/registros/nuevo";
@@ -21,8 +23,8 @@ export type NumeroPaso = keyof typeof TITULO_PASO;
 
 const exacto = { exact: true } as const;
 
-/** Opens a fresh draft: discards whatever the stored user's draft slot holds (the confirm dialog is accepted). */
-export async function nuevoRegistro(page: Page) {
+/** Opens /registros/nuevo (the list of drafts) and checks the session reached it. */
+export async function abrirLista(page: Page) {
   await page.goto(RUTA);
   const { pathname } = new URL(page.url());
   if (pathname !== RUTA) {
@@ -31,19 +33,21 @@ export async function nuevoRegistro(page: Page) {
         "Vuelva a ejecutar `npm run e2e:login` con un usuario aprobado.",
     );
   }
-  const descartar = page.getByRole("button", { name: "Descartar borrador" });
-  await expect(descartar).toBeVisible();
-  await expect(page.getByRole("heading", { level: 2 })).toBeVisible();
-  // Discard only when a draft exists. Discarding a clean form would remount it asynchronously and could
-  // swallow the first keystrokes typed right after.
-  const hayBorrador = !(await page.getByRole("status").innerText()).includes("Sin cambios por guardar");
-  if (hayBorrador) {
-    page.once("dialog", (d) => void d.accept());
-    await descartar.click();
-  }
+  await expect(page.getByRole("heading", { level: 2, name: "Borradores en curso" })).toBeVisible();
+}
+
+/** Starts a NEW draft from the list ("Nuevo registro" creates a fresh UUID); the browser context starts with empty IndexedDB. */
+export async function nuevoDesdeLista(page: Page) {
+  await page.getByRole("button", { name: "Nuevo registro", exact: true }).click();
+  await expect(page).toHaveURL(/\/registros\/nuevo\?borrador=[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { level: 2, name: TITULO_PASO[1] })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("Sin cambios por guardar");
-  await expect(page.getByLabel("Nombre completo", exacto)).toHaveValue("");
+  await expect(page.getByLabel("Primer nombre", exacto)).toHaveValue("");
+}
+
+export async function nuevoRegistro(page: Page) {
+  await abrirLista(page);
+  await nuevoDesdeLista(page);
 }
 
 /** Types like a person: fill, then Tab so blur normalization runs. */
@@ -84,7 +88,7 @@ async function escribirTelefono(page: Page, alterno: boolean, valor: string | un
 
 export async function llenarPaso1(page: Page, c: Pick<Caso, "solicitante"> | Pick<CasoInvalido, "solicitante">) {
   const s = c.solicitante;
-  await escribir(page, "Nombre completo", s.nombre);
+  for (const [i, etiqueta] of ETIQUETAS_NOMBRE.entries()) await escribir(page, etiqueta, s.nombres[i]);
   const tipos = { cc: "C.C.", ce: "C.E.", otro: "Otro" } as const;
   await page.getByRole("group", { name: "Tipo de documento" }).getByRole("radio", { name: tipos[s.tipoDocumento], ...exacto }).check();
   if (s.tipoDocumento === "otro") await escribir(page, "Cuál documento", s.tipoDocumentoOtro);
@@ -116,7 +120,7 @@ async function verificarTelefono(page: Page, alterno: boolean, e164: string) {
 /** What the person sees after blur: normalized text and derived hints. */
 export async function verificarPaso1(page: Page, c: Caso) {
   const e = c.esperado;
-  await expect(page.getByLabel("Nombre completo", exacto)).toHaveValue(e.nombre);
+  for (const [i, etiqueta] of ETIQUETAS_NOMBRE.entries()) await expect(page.getByLabel(etiqueta, exacto)).toHaveValue(e.nombres[i]);
   await expect(page.getByLabel("Número de documento", exacto)).toHaveValue(e.documento);
   await verificarTelefono(page, false, e.telefono1);
   if (e.telefono2) await verificarTelefono(page, true, e.telefono2);
@@ -193,10 +197,7 @@ export async function llenarPaso4(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
   await escribir(page, "Dirección del inmueble", v.direccion);
   if (v.division) await elegirEnCombobox(page, "Comuna o corregimiento", v.division.etiqueta);
   const rural = v.division?.sector === "Rural";
-  if (v.barrioOtro !== undefined) {
-    await page.getByRole("checkbox", { name: "No aparece en la lista", ...exacto }).check();
-    await escribir(page, rural ? "Vereda (escríbala)" : "Barrio (escríbalo)", v.barrioOtro);
-  } else if (v.lugar) {
+  if (v.lugar) {
     await elegirEnCombobox(page, rural ? "Vereda" : "Barrio o vereda", v.lugar.nombre);
   }
   if (v.estrato) await grupo(page, "Estrato socioeconómico").getByRole("radio", { name: String(v.estrato), ...exacto }).check();
@@ -206,11 +207,7 @@ export async function verificarPaso4(page: Page, c: Caso) {
   const v = c.extra.vivienda;
   await expect(page.getByRole("combobox", { name: "Comuna o corregimiento", ...exacto })).toHaveValue(v.division!.etiqueta);
   await expect(page.getByText(`Sector: ${v.division!.sector}`, exacto)).toBeVisible();
-  if (v.lugar) {
-    await expect(page.getByRole("combobox", { name: v.division!.sector === "Rural" ? "Vereda" : "Barrio o vereda", ...exacto })).toHaveValue(v.lugar.nombre);
-  } else {
-    await expect(page.getByLabel(v.division!.sector === "Rural" ? "Vereda (escríbala)" : "Barrio (escríbalo)", exacto)).toHaveValue(v.barrioOtro!);
-  }
+  await expect(page.getByRole("combobox", { name: v.division!.sector === "Rural" ? "Vereda" : "Barrio o vereda", ...exacto })).toHaveValue(v.lugar!.nombre);
   await expect(grupo(page, "Estrato socioeconómico").getByRole("radio", { name: String(v.estrato), ...exacto })).toBeChecked();
 }
 
@@ -229,6 +226,10 @@ export async function llenarPaso6(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
   const t = c.extra.titularidad;
   if (t.tipo) await grupo(page, "El solicitante es").getByRole("radio", { name: TITULARIDADES[t.tipo], ...exacto }).check();
   await escribir(page, "Número de matrícula (opcional)", t.matricula);
+  if (t.unica) await grupo(page, "¿Es su única propiedad residencial?").getByRole("radio", { name: t.unica === "si" ? "Sí" : "No", ...exacto }).check();
+  if (t.unica === "no" && t.excepcion) {
+    await page.getByLabel("Excepción que aplica", exacto).selectOption({ label: EXCEPCIONES_UNICA_PROPIEDAD[t.excepcion] });
+  }
 }
 
 export async function llenarPaso7(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
@@ -237,6 +238,7 @@ export async function llenarPaso7(page: Page, c: Pick<Caso, "extra"> | Pick<Caso
   if (f.seguro) await grupo(page, "¿El inmueble tenía seguro?").getByRole("radio", { name: f.seguro === "si" ? "Sí" : "No", ...exacto }).check();
   if (f.seguro === "si" && f.aseguradora) await elegirEnCombobox(page, "Aseguradora", f.aseguradora.nombre);
   if (f.aseguradora?.codigo === "otra") await escribir(page, "Nombre de la aseguradora", f.aseguradoraOtra);
+  await escribir(page, "Observaciones (opcional)", f.observaciones);
 }
 
 /** Fills steps 1..hasta with the dataset and advances after each one (the target step stays open). */
@@ -276,7 +278,7 @@ export async function verificarResumen(page: Page, c: Caso) {
 
   const inm = seccionResumen(page, "Inmueble y ubicación");
   await expect(inm.locator("dd").filter({ hasText: /^(Urbano|Rural)$/ })).toHaveText(x.vivienda.division!.sector);
-  await expect(inm).toContainText(x.vivienda.lugar?.nombre ?? x.vivienda.barrioOtro!);
+  await expect(inm).toContainText(x.vivienda.lugar!.nombre);
   await expect(inm).toContainText(String(x.vivienda.estrato));
   await expect(inm).toContainText(x.vivienda.division!.etiqueta.replace(/^Corregimiento /, ""));
 
@@ -287,12 +289,16 @@ export async function verificarResumen(page: Page, c: Caso) {
   const tit = seccionResumen(page, "Titularidad");
   await expect(tit).toContainText(TITULARIDADES[x.titularidad.tipo!]);
   await expect(tit).toContainText(x.titularidad.matricula || "No registrada");
+  await expect(tit).toContainText(
+    x.titularidad.unica === "si" ? "Sí" : `No. Excepción: ${EXCEPCIONES_UNICA_PROPIEDAD[x.titularidad.excepcion!]}`,
+  );
 
   const fin = seccionResumen(page, "Cierre financiero");
   for (const cod of condicionesFinales(x.financiero.fuentes)) await expect(fin).toContainText(FUENTES_FINANCIACION[cod as keyof typeof FUENTES_FINANCIACION]);
-  await expect(fin.locator("dd").last()).toHaveText(
+  await expect(fin.locator("dd").nth(1)).toHaveText(
     x.financiero.seguro === "no" ? "No" : `Sí, ${x.financiero.aseguradoraOtra ?? x.financiero.aseguradora!.nombre}`,
   );
+  await expect(fin.locator("dd").last()).toHaveText(e.observaciones ? e.observaciones.replace(/\s+/g, " ") : "Sin observaciones");
 
   // Phase 3 requirements are listed as pending and there is no submit yet.
   const pendiente = seccionResumen(page, "Pendiente para poder enviar");

@@ -58,14 +58,12 @@ describe("crearRegistro", () => {
     await expect(crearRegistro(datos(), actor)).rejects.toThrow("boom");
   });
 
-  it("warns about duplicate document (id only for admin+) and under-18, without blocking", async () => {
+  it("warns about duplicate document (id only for admin+) without blocking", async () => {
     dupDocs = [{ id: "otro" }];
     const d = datos();
-    d.solicitante.fecha_nacimiento = "2015-01-01";
     const u = await crearRegistro(d, actor);
     expect(u.creado).toBe(true);
     expect(u.advertencias).toContainEqual({ tipo: "documento_duplicado" });
-    expect(u.advertencias.some((a) => a.tipo === "menor_de_edad")).toBe(true);
     const a = await crearRegistro(datos(), { uid: "a1", rol: "admin" });
     expect(a.advertencias).toContainEqual({ tipo: "documento_duplicado", id_existente: "otro" });
   });

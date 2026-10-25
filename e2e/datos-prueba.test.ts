@@ -25,6 +25,7 @@ describe("datos de prueba e2e", () => {
     for (const paso of PASOS) expect(await validarPaso(paso, v)).toEqual({});
 
     const h = hogarSchema.parse(v.solicitante);
+    expect([h.primer_nombre, h.segundo_nombre ?? "", h.primer_apellido, h.segundo_apellido ?? ""]).toEqual([...c.esperado.nombres]);
     expect(h.nombre_completo).toBe(c.esperado.nombre);
     expect(h.numero_documento).toBe(c.esperado.documento);
     expect(h.telefono_1).toBe(c.esperado.telefono1);
@@ -53,10 +54,10 @@ describe("datos de prueba e2e", () => {
       const v = aValores(c) as unknown as Valores;
       const inm = (await evaluarRegistro(v)).inmueble;
       if (!inm.ok) throw new Error(c.clave);
-      const d = inm.datos as { nombre_barrio_vereda: string | null; barrio_vereda_otro: string | null; sector: string; nombre_division: string };
+      const d = inm.datos as { nombre_barrio_vereda: string; sector: string; nombre_division: string };
       const x = c.extra.vivienda;
       expect(d.sector, c.clave).toBe(x.division!.sector.toLowerCase());
-      expect(d.nombre_barrio_vereda ?? d.barrio_vereda_otro, c.clave).toBe(x.lugar?.nombre ?? x.barrioOtro);
+      expect(d.nombre_barrio_vereda, c.clave).toBe(x.lugar!.nombre);
       expect(x.division!.etiqueta.endsWith(d.nombre_division), c.clave).toBe(true);
     }
   });
@@ -66,7 +67,9 @@ describe("datos de prueba e2e", () => {
     expect(casos.length).toBeGreaterThanOrEqual(20);
     expect(new Set(ex.map((e) => e.vivienda.estrato))).toEqual(new Set([1, 2, 3, 4, 5, 6]));
     expect(new Set(ex.map((e) => e.vivienda.division!.sector))).toEqual(new Set(["Urbano", "Rural"]));
-    expect(ex.some((e) => e.vivienda.barrioOtro)).toBe(true);
+    expect(new Set(ex.map((e) => e.titularidad.unica))).toEqual(new Set(["si", "no"]));
+    expect(new Set(ex.map((e) => e.titularidad.excepcion).filter(Boolean))).toEqual(new Set(["otras_propiedades_destruidas", "dependencia_arriendo_40"]));
+    expect(ex.some((e) => e.financiero.observaciones) && ex.some((e) => !e.financiero.observaciones)).toBe(true);
     expect(new Set(ex.map((e) => e.riesgo.dictamen))).toEqual(new Set(Object.keys(DICTAMENES)));
     expect(new Set(ex.map((e) => (e.riesgo.rud === "no" ? "no" : e.riesgo.noSabe ? "no_sabe" : "numero")))).toEqual(new Set(["no", "no_sabe", "numero"]));
     expect(new Set(ex.map((e) => e.titularidad.tipo))).toEqual(new Set(Object.keys(TITULARIDADES)));
@@ -81,7 +84,8 @@ describe("datos de prueba e2e", () => {
     expect(ing).toEqual(new Set(["0_4", "4_5_5", "mas_5_5"]));
     expect(new Set(casos.map((c) => c.esperado.bandaHogar)).size).toBe(3);
     expect(new Set(casos.map((c) => c.esperado.bandaAdultoMayor)).size).toBe(3);
-    expect(casos.some((c) => c.esperado.menorDeEdad)).toBe(true);
+    expect(casos.some((c) => c.esperado.edad === 18)).toBe(true);
+    expect(casos.every((c) => c.esperado.edad >= 18)).toBe(true);
   });
 
   it.each(generarCasosInvalidos(hoy).map((c) => [c.clave, c] as const))("%s is refused at its step with the expected messages", async (_k, c) => {

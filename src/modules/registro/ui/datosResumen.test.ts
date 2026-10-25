@@ -4,7 +4,7 @@ import type { Valores } from "./pasos";
 
 const valores = {
   solicitante: {
-    nombre_completo: "ana maria perez", tipo_documento: "cc", tipo_documento_otro: "", codigo_pais_nacionalidad: "CO",
+    primer_nombre: "ana", segundo_nombre: "maria", primer_apellido: "perez", segundo_apellido: "", tipo_documento: "cc", tipo_documento_otro: "", codigo_pais_nacionalidad: "CO",
     numero_documento: "1.234.567", fecha_expedicion_documento: "2010-05-01", telefono_1: "3001234567", telefono_2: "",
     correo_solicitante: "a@b.co", anios_residencia: "2,5", fecha_nacimiento: "1990-01-02", estado_civil: "soltero",
   },
@@ -12,10 +12,10 @@ const valores = {
     cantidad_personas_hogar: "5", tiene_adulto_mayor: "si", cantidad_adultos_mayores: "1", adultos_mayores: [{ edad: "74" }],
     condiciones_especiales: ["ninguna"], ingreso_hogar_cop: "7.003.621",
   },
-  inmueble: { direccion: "Calle 5 # 10-20", codigo_division: "53", id_barrio_vereda: "V5306", barrio_no_listado: false, barrio_vereda_otro: "", estrato: "2" },
+  inmueble: { direccion: "Calle 5 # 10-20", codigo_division: "53", id_barrio_vereda: "V5306", estrato: "2" },
   riesgo: { esta_en_rud: "si", numero_rud: "", rud_no_sabe: true, dictamen: "otro", dictamen_otro: "Grietas" },
-  titularidad: { tipo_titularidad: "poseedor_legitimo", numero_matricula_inmobiliaria: "" },
-  cierre_financiero: { fuentes_financiacion: ["ninguna"], tiene_seguro: "si", codigo_aseguradora: "otra", aseguradora_otra: "Seguros X" },
+  titularidad: { tipo_titularidad: "poseedor_legitimo", numero_matricula_inmobiliaria: "", es_unica_propiedad: "no", excepcion_unica_propiedad: "dependencia_arriendo_40" },
+  cierre_financiero: { fuentes_financiacion: ["ninguna"], tiene_seguro: "si", codigo_aseguradora: "otra", aseguradora_otra: "Seguros X", observaciones: "  Prefiere llamada  " },
 } as unknown as Valores;
 
 describe("resumen", () => {
@@ -34,6 +34,9 @@ describe("resumen", () => {
     expect(fila("riesgo", "Registrado en el RUD")).toBe("Sí, no sabe el número");
     expect(fila("cierre_financiero", "Seguro")).toBe("Sí, Seguros X");
     expect(fila("solicitante", "Fecha de nacimiento")).toBe("02/01/1990 (36 años)");
+    expect(fila("solicitante", "Nombre")).toBe("Ana Maria Perez");
+    expect(fila("titularidad", "Única propiedad residencial")).toContain("No. Excepción: Dependencia económica de al menos el 40 %");
+    expect(fila("cierre_financiero", "Observaciones")).toBe("Prefiere llamada");
   });
 
   it("lists missing sections instead of rows", async () => {

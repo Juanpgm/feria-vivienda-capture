@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type ReactElement } from "react";
+import { useId, type InputHTMLAttributes, type ReactElement, type TextareaHTMLAttributes } from "react";
 
 export const controlClass =
   "min-h-11 w-full rounded-lg border border-border bg-bg px-3 text-base text-text placeholder:text-muted aria-[invalid=true]:border-danger";
@@ -41,4 +41,8 @@ export function Field({ label, hint, error, children }: FieldProps) {
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={controlClass} {...props} />;
+}
+
+export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea className={`${controlClass} py-2`} {...props} />;
 }

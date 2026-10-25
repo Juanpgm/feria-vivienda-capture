@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FUENTES_FINANCIACION } from "@/shared/constantes";
+import { FUENTES_FINANCIACION, MAX_OBSERVACIONES } from "@/shared/constantes";
 import { listaExclusiva, textoOpcional } from "@/shared/validacion";
 import aseguradoras from "../catalogo/aseguradoras.json";
 
@@ -12,6 +12,8 @@ export const cierreFinancieroSchema = z
     tiene_seguro: z.boolean({ error: "Seleccione Sí o No" }),
     codigo_aseguradora: z.string().nullish(),
     aseguradora_otra: textoOpcional,
+    // Free text from the officer; hoisted to the top-level `observaciones` of the record by registroSchema.
+    observaciones: textoOpcional.refine((s) => s === null || s.length <= MAX_OBSERVACIONES, `Máximo ${MAX_OBSERVACIONES} caracteres`),
   })
   .superRefine((v, ctx) => {
     if (!v.tiene_seguro) return;
@@ -25,6 +27,7 @@ export const cierreFinancieroSchema = z
     tiene_seguro: v.tiene_seguro,
     codigo_aseguradora: v.tiene_seguro ? (v.codigo_aseguradora ?? null) : null,
     aseguradora_otra: v.tiene_seguro && v.codigo_aseguradora === "otra" ? v.aseguradora_otra : null,
+    observaciones: v.observaciones,
   }));
 
 export type CierreFinanciero = z.output<typeof cierreFinancieroSchema>;

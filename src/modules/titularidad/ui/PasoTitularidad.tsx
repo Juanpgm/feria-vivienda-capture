@@ -1,15 +1,19 @@
 "use client";
 
-import { useFormContext } from "react-hook-form";
-import { TITULARIDADES } from "@/shared/constantes";
+import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
+import { EXCEPCIONES_UNICA_PROPIEDAD, TITULARIDADES } from "@/shared/constantes";
+import { Field } from "@/shared/ui/Field";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
+import { Select } from "@/shared/ui/Select";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 
 const P = "titularidad.";
+const EXCEPCIONES = Object.entries(EXCEPCIONES_UNICA_PROPIEDAD).map(([value, label]) => ({ value, label }));
 
 export function PasoTitularidad() {
-  const { register } = useFormContext();
+  const { register, setValue, control } = useFormContext<FieldValues>();
   const error = useError();
+  const unica = useWatch({ control, name: P + "es_unica_propiedad" });
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
@@ -21,16 +25,37 @@ export function PasoTitularidad() {
           error={error(P + "tipo_titularidad")}
           inputProps={register(P + "tipo_titularidad")}
         />
+        <div className="max-w-sm">
+          <CampoTexto
+            name={P + "numero_matricula_inmobiliaria"}
+            label="Número de matrícula (opcional)"
+            autoComplete="off"
+            hint="Puede dejarlo vacío si no lo tiene a la mano"
+            normalizar={(v) => v.trim()}
+          />
+        </div>
       </section>
-      <div className="max-w-sm">
-        <CampoTexto
-          name={P + "numero_matricula_inmobiliaria"}
-          label="Número de matrícula (opcional)"
-          autoComplete="off"
-          hint="Puede dejarlo vacío si no lo tiene a la mano"
-          normalizar={(v) => v.trim()}
+
+      <section className="flex flex-col gap-4">
+        <h3 className="text-lg font-bold text-primary-strong">Única propiedad residencial</h3>
+        <SegmentedControl
+          legend="¿Es su única propiedad residencial?"
+          name={P + "es_unica_propiedad"}
+          options={[
+            { value: "si", label: "Sí" },
+            { value: "no", label: "No" },
+          ]}
+          error={error(P + "es_unica_propiedad")}
+          inputProps={register(P + "es_unica_propiedad", { onChange: (e) => e.target.value === "si" && setValue(P + "excepcion_unica_propiedad", "") })}
         />
-      </div>
+        {unica === "no" && (
+          <div className="max-w-xl">
+            <Field label="Excepción que aplica" error={error(P + "excepcion_unica_propiedad")}>
+              {(a11y) => <Select {...a11y} options={EXCEPCIONES} {...register(P + "excepcion_unica_propiedad")} />}
+            </Field>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

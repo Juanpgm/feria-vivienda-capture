@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { ESTADOS_CIVILES, TIPOS_DOCUMENTO } from "@/shared/constantes";
+import { calcularEdad } from "@/modules/composicion/domain/derivaciones";
+import { EDAD_MINIMA, ESTADOS_CIVILES, TIPOS_DOCUMENTO } from "@/shared/constantes";
 import { normalizarDocumento, normalizarNombre } from "@/shared/normalizacion/texto";
 import { fechaBogota } from "@/shared/tiempo";
 import { enumDe, fechaIso, numero, telefono, telefonoOpcional, textoOpcional } from "@/shared/validacion";
@@ -8,14 +9,20 @@ import nacionalidades from "../catalogo/nacionalidades.json";
 export const CODIGO_COLOMBIA = "CO";
 const NACIONALIDAD = new Map(nacionalidades.map((n) => [n.codigo, n.nombre]));
 
+const nombreObligatorio = (msg: string) => z.string({ error: msg }).trim().min(1, msg).transform(normalizarNombre);
+/** Optional name part: empty/absent becomes null. */
+const nombreOpcional = z
+  .string()
+  .nullish()
+  .transform((s) => (s?.trim() ? normalizarNombre(s) : null));
+
 /** Applicant data (form section 1.1). */
 export const hogarSchema = z
   .object({
-    nombre_completo: z
-      .string({ error: "Ingrese el nombre completo" })
-      .trim()
-      .min(2, "Ingrese el nombre completo")
-      .transform(normalizarNombre),
+    primer_nombre: nombreObligatorio("Ingrese el primer nombre"),
+    segundo_nombre: nombreOpcional,
+    primer_apellido: nombreObligatorio("Ingrese el primer apellido"),
+    segundo_apellido: nombreOpcional,
     tipo_documento: enumDe(TIPOS_DOCUMENTO),
     tipo_documento_otro: textoOpcional,
     codigo_pais_nacionalidad: z
@@ -47,12 +54,16 @@ export const hogarSchema = z
     if (v.tipo_documento === "cc" && v.codigo_pais_nacionalidad !== CODIGO_COLOMBIA)
       err("codigo_pais_nacionalidad", "Con cédula de ciudadanía la nacionalidad es Colombiana");
     if (v.fecha_nacimiento >= hoy) err("fecha_nacimiento", "La fecha de nacimiento debe ser anterior a hoy");
+    else if (calcularEdad(v.fecha_nacimiento, hoy) < EDAD_MINIMA)
+      err("fecha_nacimiento", `Solo pueden registrarse personas de ${EDAD_MINIMA} años o más`);
     if (v.fecha_expedicion_documento > hoy) err("fecha_expedicion_documento", "La fecha de expedición no puede ser futura");
     else if (v.fecha_expedicion_documento < v.fecha_nacimiento)
       err("fecha_expedicion_documento", "La expedición no puede ser anterior al nacimiento");
   })
   .transform((v) => ({
     ...v,
+    // Derived for downstream code: "Primer Segundo Apellido Apellido2".
+    nombre_completo: [v.primer_nombre, v.segundo_nombre, v.primer_apellido, v.segundo_apellido].filter(Boolean).join(" "),
     tipo_documento_otro: v.tipo_documento === "otro" ? v.tipo_documento_otro : null,
     nacionalidad: NACIONALIDAD.get(v.codigo_pais_nacionalidad) ?? "",
   }));

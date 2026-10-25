@@ -19,7 +19,12 @@ export const registroSchema = z.object({
   riesgo: riesgoSchema,
   titularidad: titularidadSchema,
   cierre_financiero: cierreFinancieroSchema,
-});
+}).transform(({ cierre_financiero: { observaciones, ...cierre }, ...resto }) => ({
+  ...resto,
+  cierre_financiero: cierre,
+  // Stored at the top level of the record (the form edits it in the last data step).
+  observaciones,
+}));
 
 export type RegistroEntrada = z.input<typeof registroSchema>;
 export type RegistroDatos = z.output<typeof registroSchema>;

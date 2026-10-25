@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { FormProvider, set, useForm, type FieldErrors, type FieldValues, type Resolver } from "react-hook-form";
 import { PasoComposicion } from "@/modules/composicion/ui/PasoComposicion";
@@ -11,7 +13,7 @@ import { PasoRiesgo } from "@/modules/riesgo/ui/PasoRiesgo";
 import { PasoTitularidad } from "@/modules/titularidad/ui/PasoTitularidad";
 import { Button } from "@/shared/ui/Button";
 import { Resumen } from "./Resumen";
-import { cargarBorrador, descartarBorrador, guardarBorrador, type Borrador } from "./borradores";
+import { cargarBorrador, descartarBorrador, guardarBorrador, VERSION_BORRADOR, type Borrador } from "./borradores";
 import { ETIQUETA_ESTADO, estadoPaso, PASOS, validarPaso, type Marca, type Valores } from "./pasos";
 
 type PropsVista = { irAPaso: (id: string) => void };
@@ -26,15 +28,17 @@ const VISTAS: Record<string, ComponentType<PropsVista>> = {
   resumen: Resumen,
 };
 
-const nuevoBorrador = (): Borrador => ({
-  id: crypto.randomUUID(),
+export const nuevoBorrador = (id: string): Borrador => ({
+  id,
+  version: VERSION_BORRADOR,
   paso: PASOS[0].id,
   maximo: 0,
   marcas: {},
   guardado_en: "",
   valores: {
     solicitante: {
-      nombre_completo: "", tipo_documento: "", tipo_documento_otro: "", codigo_pais_nacionalidad: "", numero_documento: "",
+      primer_nombre: "", segundo_nombre: "", primer_apellido: "", segundo_apellido: "",
+      tipo_documento: "", tipo_documento_otro: "", codigo_pais_nacionalidad: "", numero_documento: "",
       fecha_expedicion_documento: "", telefono_1: "", telefono_1_pais: "CO", telefono_2: "", telefono_2_pais: "CO", correo_solicitante: "", anios_residencia: "",
       fecha_nacimiento: "", estado_civil: "",
     },
@@ -43,38 +47,31 @@ const nuevoBorrador = (): Borrador => ({
       condiciones_especiales: [], ingreso_hogar_cop: "",
     },
     inmueble: {
-      direccion: "", codigo_division: "", id_barrio_vereda: "", barrio_no_listado: false, barrio_vereda_otro: "", estrato: "",
+      direccion: "", codigo_division: "", id_barrio_vereda: "", estrato: "",
     },
     riesgo: { esta_en_rud: "", numero_rud: "", rud_no_sabe: false, dictamen: "", dictamen_otro: "" },
-    titularidad: { tipo_titularidad: "", numero_matricula_inmobiliaria: "" },
-    cierre_financiero: { fuentes_financiacion: [], tiene_seguro: "", codigo_aseguradora: "", aseguradora_otra: "" },
+    titularidad: { tipo_titularidad: "", numero_matricula_inmobiliaria: "", es_unica_propiedad: "", excepcion_unica_propiedad: "" },
+    cierre_financiero: { fuentes_financiacion: [], tiene_seguro: "", codigo_aseguradora: "", aseguradora_otra: "", observaciones: "" },
   },
 });
 
-/** Loads the user's draft from IndexedDB, then mounts the form (remounted with a fresh draft on discard). */
-export function Stepper({ uid }: { uid: string }) {
-  const [estado, setEstado] = useState<{ borrador: Borrador; recuperado: boolean; clave: number } | null>(null);
+/** Loads the draft `borradorId` from IndexedDB (a blank one when it does not exist yet), then mounts the form. */
+export function Stepper({ uid, borradorId }: { uid: string; borradorId: string }) {
+  const [estado, setEstado] = useState<{ borrador: Borrador; recuperado: boolean } | null>(null);
   useEffect(() => {
-    cargarBorrador(uid)
-      .catch(() => undefined)
-      .then((b) => setEstado({ borrador: b ?? nuevoBorrador(), recuperado: !!b, clave: 0 }));
-  }, [uid]);
+    cargarBorrador(uid, borradorId)
+      .catch(() => null)
+      .then((b) => setEstado({ borrador: b ?? nuevoBorrador(borradorId), recuperado: !!b }));
+  }, [uid, borradorId]);
 
   if (!estado) return <p role="status">Cargando borrador…</p>;
-  return (
-    <Formulario
-      key={estado.clave}
-      uid={uid}
-      inicial={estado.borrador}
-      recuperado={estado.recuperado}
-      alDescartar={() => setEstado({ borrador: nuevoBorrador(), recuperado: false, clave: estado.clave + 1 })}
-    />
-  );
+  return <Formulario key={borradorId} uid={uid} inicial={estado.borrador} recuperado={estado.recuperado} />;
 }
 
 type Guardado = "ninguno" | "guardando" | "guardado" | "error";
 
-function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; inicial: Borrador; recuperado: boolean; alDescartar: () => void }) {
+function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrador; recuperado: boolean }) {
+  const router = useRouter();
   const [pasoId, setPasoId] = useState(inicial.paso);
   const [maximo, setMaximo] = useState(inicial.maximo);
   const [marcas, setMarcas] = useState<Record<string, Marca>>(inicial.marcas);
@@ -88,6 +85,9 @@ function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; in
   const formRef = useRef<HTMLFormElement>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [cambios, setCambios] = useState(0);
+  const [confirmando, setConfirmando] = useState(false);
+  const pendiente = useRef(false); // a change not yet written
+  const guardarRef = useRef<() => Promise<void>>(async () => {});
 
   // The resolver validates only the current step; RHF shows each field's error after blur / Next.
   const resolver: Resolver<FieldValues> = async (valores) => {
@@ -105,18 +105,34 @@ function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; in
   }, []);
   useEffect(() => subscribe({ formState: { values: true }, callback: marcarCambio }), [subscribe, marcarCambio]);
 
+  // Writes the CURRENT state of this draft only (never another draft).
+  useEffect(() => {
+    guardarRef.current = async () => {
+      const ahora = new Date().toISOString();
+      pendiente.current = false;
+      try {
+        await guardarBorrador(uid, { id: inicial.id, valores: getValues() as Valores, paso: pasoId, maximo, marcas, guardado_en: ahora });
+        setGuardado("guardado");
+        setHoraGuardado(ahora);
+      } catch {
+        setGuardado("error");
+      }
+    };
+  });
+
   // Debounced autosave (1 s). Nothing is written until the user changes something.
   useEffect(() => {
     if (!cambios) return;
-    const t = setTimeout(() => {
-      const ahora = new Date().toISOString();
-      guardarBorrador(uid, { id: inicial.id, valores: getValues() as Valores, paso: pasoId, maximo, marcas, guardado_en: ahora })
-        .then(() => (setGuardado("guardado"), setHoraGuardado(ahora)))
-        .catch(() => setGuardado("error"));
-    }, 1000);
+    pendiente.current = true;
+    const t = setTimeout(() => void guardarRef.current(), 1000);
     temporizador.current = t;
     return () => clearTimeout(t);
-  }, [cambios, pasoId, maximo, marcas, uid, inicial.id, getValues]);
+  }, [cambios, pasoId, maximo, marcas]);
+
+  // Leaving the form (list link, back button) must not lose the last second of typing.
+  useEffect(() => () => {
+    if (pendiente.current) void guardarRef.current();
+  }, []);
 
   // After a failed "Siguiente", move focus to the first invalid control once errors are rendered.
   useEffect(() => {
@@ -146,10 +162,10 @@ function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; in
   const irAPaso = (id: string) => irA(PASOS.findIndex((p) => p.id === id));
 
   async function descartar() {
-    if (!window.confirm("¿Descartar el borrador? Se borrarán los datos ingresados.")) return;
     clearTimeout(temporizador.current);
-    await descartarBorrador(uid).catch(() => undefined);
-    alDescartar();
+    pendiente.current = false; // do not resurrect the draft on unmount
+    await descartarBorrador(uid, inicial.id).catch(() => undefined);
+    router.push("/registros/nuevo");
   }
 
   const estadoGuardado =
@@ -196,6 +212,9 @@ function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; in
 
         <div className="max-w-[44rem]">
           <div className="mb-6">
+            <Link href="/registros/nuevo" className="mb-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline underline-offset-2">
+              Ver borradores en curso
+            </Link>
             <p className="text-sm text-muted md:hidden">
               Paso {indice + 1} de {PASOS.length}
             </p>
@@ -220,9 +239,21 @@ function Formulario({ uid, inicial, recuperado, alDescartar }: { uid: string; in
             {aviso && <span className="mr-2 font-medium text-text">{aviso}</span>}
             <span className={guardado === "error" ? "font-medium text-danger" : ""}>{estadoGuardado}</span>
           </p>
-          <Button variant="secondary" onClick={descartar}>
-            Descartar borrador
-          </Button>
+          {confirmando ? (
+            <div role="group" aria-label="Confirmar descarte" className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">¿Descartar este borrador? Se borrarán los datos ingresados.</span>
+              <Button variant="danger" onClick={descartar}>
+                Sí, descartar
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmando(false)}>
+                Conservar
+              </Button>
+            </div>
+          ) : (
+            <Button variant="secondary" onClick={() => setConfirmando(true)}>
+              Descartar borrador
+            </Button>
+          )}
         </div>
       </div>
     </FormProvider>

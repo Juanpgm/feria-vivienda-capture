@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { Controller, useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import type { OpcionBusqueda } from "@/shared/busqueda";
-import { FUENTES_FINANCIACION } from "@/shared/constantes";
+import { FUENTES_FINANCIACION, MAX_OBSERVACIONES } from "@/shared/constantes";
 import { Combobox } from "@/shared/ui/Combobox";
-import { Field } from "@/shared/ui/Field";
+import { Field, TextArea } from "@/shared/ui/Field";
 import { MultiSelect } from "@/shared/ui/MultiSelect";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
@@ -19,6 +19,7 @@ export function PasoCierreFinanciero() {
   const [aseguradoras, setAseguradoras] = useState<OpcionBusqueda[]>([]);
   const seguro = useWatch({ control, name: P + "tiene_seguro" });
   const codigo = useWatch({ control, name: P + "codigo_aseguradora" });
+  const largoObservaciones = String(useWatch({ control, name: P + "observaciones" }) ?? "").length;
 
   useEffect(() => {
     import("../catalogo/aseguradoras.json").then((m) => setAseguradoras(m.default.items.map((a) => ({ value: a.codigo, label: a.nombre }))));
@@ -69,6 +70,17 @@ export function PasoCierreFinanciero() {
             {codigo === "otra" && <CampoTexto name={P + "aseguradora_otra"} label="Nombre de la aseguradora" autoComplete="off" />}
           </div>
         )}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h3 className="text-lg font-bold text-primary-strong">Observaciones</h3>
+        <Field
+          label="Observaciones (opcional)"
+          hint={`${largoObservaciones} de ${MAX_OBSERVACIONES} caracteres`}
+          error={error(P + "observaciones")}
+        >
+          {(a11y) => <TextArea {...a11y} rows={4} {...register(P + "observaciones")} />}
+        </Field>
       </section>
     </div>
   );

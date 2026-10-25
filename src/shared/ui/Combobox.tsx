@@ -13,13 +13,15 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | 
   listaClass?: string;
   /** Max options listed (default 50; raise it for catalogs that should be scrollable in full). */
   limite?: number;
+  /** Called on blur when the user had typed text that was not selected (and is therefore discarded). */
+  alDescartarTexto?: () => void;
 };
 
 /**
  * Searchable single-select following the ARIA 1.2 combobox pattern (editable, list autocomplete).
  * Typing filters accent/case-insensitively; Arrow keys move, Enter selects, Escape closes/clears the query.
  */
-export function Combobox({ options, value, onChange, onBlur, onFocus, listaClass = "w-full", limite = 50, ...props }: Props) {
+export function Combobox({ options, value, onChange, onBlur, onFocus, listaClass = "w-full", limite = 50, alDescartarTexto, ...props }: Props) {
   const listId = useId();
   const seleccion = options.find((o) => o.value === value);
   const [consulta, setConsulta] = useState<string | null>(null); // null = show the selected label
@@ -80,6 +82,7 @@ export function Combobox({ options, value, onChange, onBlur, onFocus, listaClass
           if (consulta !== null) {
             if (consulta === "") onChange("");
             setConsulta(null); // free text that was not selected is discarded
+            alDescartarTexto?.();
           }
           onBlur?.(e);
         }}

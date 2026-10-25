@@ -5,7 +5,7 @@ import { Controller, useFormContext, useWatch, type FieldValues } from "react-ho
 import type { OpcionBusqueda } from "@/shared/busqueda";
 import { normalizarDireccion } from "@/shared/normalizacion/direccion";
 import { Combobox } from "@/shared/ui/Combobox";
-import { Field, TextInput } from "@/shared/ui/Field";
+import { Field } from "@/shared/ui/Field";
 import { RadioGroup } from "@/shared/ui/Radio";
 import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
 import divisiones from "../catalogo/divisiones.json";
@@ -25,7 +25,6 @@ export function PasoInmueble() {
   const error = useError();
   const [lugares, setLugares] = useState<Lugar[]>([]);
   const division = (useWatch({ control, name: P + "codigo_division" }) as string | undefined) ?? "";
-  const noListado = !!useWatch({ control, name: P + "barrio_no_listado" });
   const direccion = (useWatch({ control, name: P + "direccion" }) as string | undefined) ?? "";
 
   useEffect(() => {
@@ -84,42 +83,23 @@ export function PasoInmueble() {
           </p>
         </div>
 
-        {noListado ? (
-          // The schema reports a missing free text on id_barrio_vereda; word it for this input.
-          <Field
-            label={rural ? "Vereda (escríbala)" : "Barrio (escríbalo)"}
-            error={error(P + "id_barrio_vereda") && (rural ? "Escriba el nombre de la vereda" : "Escriba el nombre del barrio")}
-          >
-            {(a11y) => <TextInput {...a11y} {...register(P + "barrio_vereda_otro")} autoComplete="off" />}
-          </Field>
-        ) : (
-          <Controller
-            control={control}
-            name={P + "id_barrio_vereda"}
-            render={({ field }) => (
-              <Field
-                label={rural ? "Vereda" : "Barrio o vereda"}
-                hint={division ? "Escriba para buscar" : "Primero seleccione la comuna o el corregimiento"}
-                error={error(P + "id_barrio_vereda")}
-              >
-                {(a11y) => (
-                  // No onBlur validation: the error line would push "No aparece en la lista" down while it is being clicked.
-                  <Combobox {...a11y} options={barrios} value={field.value ?? ""} onChange={field.onChange} disabled={!division} />
-                )}
-              </Field>
-            )}
-          />
-        )}
-        <label className="flex min-h-11 cursor-pointer items-center gap-3 self-end">
-          <input
-            type="checkbox"
-            className="check"
-            {...register(P + "barrio_no_listado", {
-              onChange: (e) => setValue(e.target.checked ? P + "id_barrio_vereda" : P + "barrio_vereda_otro", ""),
-            })}
-          />
-          No aparece en la lista
-        </label>
+        <Controller
+          control={control}
+          name={P + "id_barrio_vereda"}
+          render={({ field }) => (
+            <Field
+              label={rural ? "Vereda" : "Barrio o vereda"}
+              hint={division ? "Escriba para buscar y elija de la lista" : "Primero seleccione la comuna o el corregimiento"}
+              error={error(P + "id_barrio_vereda")}
+            >
+              {(a11y) => (
+                // Validates on blur only when typed text was discarded: an error line appearing on every blur would
+                // shift the layout under a click aimed at the fields below.
+                <Combobox {...a11y} options={barrios} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} disabled={!division} />
+              )}
+            </Field>
+          )}
+        />
       </Seccion>
 
       <section className="flex flex-col gap-4">

@@ -53,6 +53,20 @@ export const TITULARIDADES = {
 } as const;
 export type Titularidad = keyof typeof TITULARIDADES;
 
+/** Legal exceptions that allow applying with more than one residential property. */
+export const EXCEPCIONES_UNICA_PROPIEDAD = {
+  otras_propiedades_destruidas: "También fueron destruidas otras propiedades residenciales",
+  dependencia_arriendo_40: "Dependencia económica de al menos el 40 % del arriendo del inmueble",
+} as const;
+export type ExcepcionUnicaPropiedad = keyof typeof EXCEPCIONES_UNICA_PROPIEDAD;
+
+/** Max length of the free-text officer observations. */
+export const MAX_OBSERVACIONES = 1000;
+
+/** Minimum age to apply; applicants under it are blocked by the schema. */
+export const EDAD_MINIMA = 18;
+
+// ponytail: internal review status (set server-side / by admins in PR 2h); NOT a form field.
 export const ESTADOS_SGOV = {
   habilitado: "Habilitado",
   no_habilitado: "No Habilitado",

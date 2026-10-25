@@ -1,7 +1,9 @@
 export const valido = () => ({
   id: "6f1f6c0e-8a3b-4c52-9d77-3b1c2f5e9a10",
   solicitante: {
-    nombre_completo: "  ana MARÍA  pérez ",
+    primer_nombre: "  ana ",
+    segundo_nombre: "MARÍA  ",
+    primer_apellido: " pérez",
     tipo_documento: "cc",
     codigo_pais_nacionalidad: "CO",
     numero_documento: "1.234.567-8 ",
@@ -20,6 +22,6 @@ export const valido = () => ({
   },
   inmueble: { direccion: "cra 12 No 5-20", codigo_division: "01", id_barrio_vereda: "0199", estrato: 3 },
   riesgo: { esta_en_rud: false, dictamen: "colapso_total" },
-  titularidad: { tipo_titularidad: "propietario_clt" },
+  titularidad: { tipo_titularidad: "propietario_clt", es_unica_propiedad: true },
   cierre_financiero: { fuentes_financiacion: ["recursos_propios"], tiene_seguro: false },
 });

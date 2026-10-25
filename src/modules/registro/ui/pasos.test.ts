@@ -5,7 +5,7 @@ const [hogar, composicion, proteccion] = PASOS;
 const paso = (id: string) => PASOS.find((p) => p.id === id)!;
 
 const solicitante = {
-  nombre_completo: "ana maria", tipo_documento: "cc", tipo_documento_otro: "", codigo_pais_nacionalidad: "CO",
+  primer_nombre: "ana", segundo_nombre: "", primer_apellido: "maria", segundo_apellido: "", tipo_documento: "cc", tipo_documento_otro: "", codigo_pais_nacionalidad: "CO",
   numero_documento: "1.234.567", fecha_expedicion_documento: "2010-05-01", telefono_1: "3001234567", telefono_2: "",
   correo_solicitante: "a@b.co", anios_residencia: "2,5", fecha_nacimiento: "1990-01-02", estado_civil: "soltero",
 };
@@ -23,6 +23,14 @@ describe("validarPaso", () => {
     const v = { composicion: { ...comp, tiene_adulto_mayor: "si", cantidad_adultos_mayores: "2", adultos_mayores: [{ edad: "70" }], condiciones_especiales: [] } } as Valores;
     expect(Object.keys(await validarPaso(composicion, v))).toEqual(["composicion.adultos_mayores.root"]);
   });
+  it("blocks applicants under 18 on the birth date", async () => {
+    const e = await validarPaso(hogar, { solicitante: { ...solicitante, fecha_nacimiento: "2015-01-01", fecha_expedicion_documento: "2020-01-01" } } as Valores);
+    expect(Object.keys(e)).toEqual(["solicitante.fecha_nacimiento"]);
+  });
+  it("blocks more older adults than household members, with the message on the count field", async () => {
+    const v = { composicion: { ...comp, cantidad_personas_hogar: "2", tiene_adulto_mayor: "si", cantidad_adultos_mayores: "3", adultos_mayores: [{ edad: "70" }, { edad: "71" }, { edad: "72" }] } } as Valores;
+    expect(await validarPaso(composicion, v)).toEqual({ "composicion.cantidad_adultos_mayores": "Los adultos mayores no pueden ser más que las personas del hogar" });
+  });
   it("step 3 enforces the exclusive Ninguna rule without needing step 2 data", async () => {
     const vacio = { composicion: { condiciones_especiales: ["ninguna", "mujer_cabeza_hogar"] } } as Valores;
     expect(Object.keys(await validarPaso(proteccion, vacio))).toEqual(["composicion.condiciones_especiales"]);
@@ -31,14 +39,13 @@ describe("validarPaso", () => {
 });
 
 describe("pasos 4-7", () => {
-  const inm = { direccion: "Calle 5 # 10-20", codigo_division: "01", id_barrio_vereda: "0199", barrio_no_listado: false, barrio_vereda_otro: "", estrato: "3" };
-  it("inmueble: a barrio of another comuna is refused; 'not listed' needs the free text", async () => {
+  const inm = { direccion: "Calle 5 # 10-20", codigo_division: "01", id_barrio_vereda: "0199", estrato: "3" };
+  it("inmueble: a barrio of another comuna is refused; free text is not accepted", async () => {
     expect(await validarPaso(paso("inmueble"), { inmueble: inm } as Valores)).toEqual({});
     const otra = await validarPaso(paso("inmueble"), { inmueble: { ...inm, codigo_division: "02" } } as Valores);
     expect(Object.keys(otra)).toEqual(["inmueble.id_barrio_vereda"]);
-    const sinTexto = { ...inm, barrio_no_listado: true, id_barrio_vereda: "0199" };
-    expect(Object.keys(await validarPaso(paso("inmueble"), { inmueble: sinTexto } as Valores))).toEqual(["inmueble.id_barrio_vereda"]);
-    expect(await validarPaso(paso("inmueble"), { inmueble: { ...sinTexto, barrio_vereda_otro: "Mi barrio" } } as Valores)).toEqual({});
+    const libre = { ...inm, id_barrio_vereda: "", barrio_vereda_otro: "Mi barrio" };
+    expect(Object.keys(await validarPaso(paso("inmueble"), { inmueble: libre } as Valores))).toEqual(["inmueble.id_barrio_vereda"]);
   });
   it("inmueble: empty estrato asks for a selection", async () => {
     expect(Object.keys(await validarPaso(paso("inmueble"), { inmueble: { ...inm, estrato: "" } } as Valores))).toEqual(["inmueble.estrato"]);
@@ -51,9 +58,18 @@ describe("pasos 4-7", () => {
     expect(Object.keys(await validarPaso(paso("riesgo"), { riesgo: { ...r, numero_rud: "12", dictamen: "otro" } } as Valores))).toEqual(["riesgo.dictamen_otro"]);
   });
   it("titularidad: matricula is optional but must be alphanumeric", async () => {
-    expect(await validarPaso(paso("titularidad"), { titularidad: { tipo_titularidad: "poseedor_legitimo", numero_matricula_inmobiliaria: "" } } as Valores)).toEqual({});
-    const e = await validarPaso(paso("titularidad"), { titularidad: { tipo_titularidad: "propietario_clt", numero_matricula_inmobiliaria: "50C 123 !" } } as Valores);
+    const t = { tipo_titularidad: "poseedor_legitimo", numero_matricula_inmobiliaria: "", es_unica_propiedad: "si", excepcion_unica_propiedad: "" };
+    expect(await validarPaso(paso("titularidad"), { titularidad: t } as Valores)).toEqual({});
+    const e = await validarPaso(paso("titularidad"), { titularidad: { ...t, numero_matricula_inmobiliaria: "50C 123 !" } } as Valores);
     expect(Object.keys(e)).toEqual(["titularidad.numero_matricula_inmobiliaria"]);
+  });
+  it("titularidad: unica propiedad is required; No needs an exception, Si ignores a stale one", async () => {
+    const t = { tipo_titularidad: "poseedor_legitimo", numero_matricula_inmobiliaria: "", es_unica_propiedad: "", excepcion_unica_propiedad: "" };
+    const v = (x: object) => ({ titularidad: { ...t, ...x } }) as Valores;
+    expect(Object.keys(await validarPaso(paso("titularidad"), v({})))).toEqual(["titularidad.es_unica_propiedad"]);
+    expect(Object.keys(await validarPaso(paso("titularidad"), v({ es_unica_propiedad: "no" })))).toEqual(["titularidad.excepcion_unica_propiedad"]);
+    expect(await validarPaso(paso("titularidad"), v({ es_unica_propiedad: "no", excepcion_unica_propiedad: "otras_propiedades_destruidas" }))).toEqual({});
+    expect(await validarPaso(paso("titularidad"), v({ es_unica_propiedad: "si", excepcion_unica_propiedad: "basura" }))).toEqual({});
   });
   it("cierre financiero: insurance si needs an insurer, 'otra' needs a name; Ninguna is exclusive", async () => {
     const c = { fuentes_financiacion: ["recursos_propios"], tiene_seguro: "si", codigo_aseguradora: "", aseguradora_otra: "" };

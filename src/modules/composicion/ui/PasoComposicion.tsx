@@ -3,6 +3,9 @@
 import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { derivarIngreso, formatoCop, RANGOS_SMLMV } from "@/modules/cierre-financiero/domain/smlmv";
 import { parsearIngresoCop } from "@/shared/normalizacion/texto";
+import { fechaBogota } from "@/shared/tiempo";
+import { esFechaIso } from "@/shared/validacion";
+import { solicitanteEsAdultoMayor } from "../domain/derivaciones";
 import { Field, TextInput } from "@/shared/ui/Field";
 import { RadioGroup } from "@/shared/ui/Radio";
 import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
@@ -16,6 +19,8 @@ export function PasoComposicion() {
   const tiene = useWatch({ control, name: P + "tiene_adulto_mayor" });
   const cantidad = Number(useWatch({ control, name: P + "cantidad_adultos_mayores" }));
   const ingreso = parsearIngresoCop(String(useWatch({ control, name: P + "ingreso_hogar_cop" }) ?? ""));
+  const nacimiento = useWatch({ control, name: "solicitante.fecha_nacimiento" }) as string | undefined;
+  const sugerirAdultoMayor = tiene === "no" && !!nacimiento && esFechaIso(nacimiento) && solicitanteEsAdultoMayor(nacimiento, fechaBogota());
   const n = Number.isInteger(cantidad) ? Math.min(Math.max(cantidad, 0), MAX_ADULTOS) : 0;
   const rango = ingreso === null ? null : RANGOS_SMLMV.find((r) => r.codigo === derivarIngreso(ingreso).rango_ingresos_smlmv);
 
@@ -37,6 +42,11 @@ export function PasoComposicion() {
           error={error(P + "tiene_adulto_mayor")}
           inputProps={register(P + "tiene_adulto_mayor")}
         />
+        {sugerirAdultoMayor && (
+          <p role="note" className="text-sm text-muted">
+            El solicitante tiene 65 años o más. Verifique si debe contarse como adulto mayor del hogar.
+          </p>
+        )}
         {tiene === "si" && (
           <div className="grid gap-4 sm:grid-cols-2">
             <CampoTexto name={P + "cantidad_adultos_mayores"} label="Cuántos adultos mayores" type="number" inputMode="numeric" min={1} max={MAX_ADULTOS} />

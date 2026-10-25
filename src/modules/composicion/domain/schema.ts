@@ -26,6 +26,12 @@ export const composicionSchema = z
     if (!v.tiene_adulto_mayor) return;
     const n = v.cantidad_adultos_mayores;
     if (!n || n < 1) ctx.addIssue({ code: "custom", path: ["cantidad_adultos_mayores"], message: "Indique cuántos adultos mayores hay (mínimo 1)" });
+    else if (n > v.cantidad_personas_hogar)
+      ctx.addIssue({
+        code: "custom",
+        path: ["cantidad_adultos_mayores"],
+        message: "Los adultos mayores no pueden ser más que las personas del hogar",
+      });
     else if (v.adultos_mayores?.length !== n)
       ctx.addIssue({ code: "custom", path: ["adultos_mayores"], message: "Indique la edad de cada adulto mayor" });
   })
