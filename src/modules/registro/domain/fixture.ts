@@ -1,0 +1,25 @@
+export const valido = () => ({
+  id: "6f1f6c0e-8a3b-4c52-9d77-3b1c2f5e9a10",
+  solicitante: {
+    nombre_completo: "  ana MARÍA  pérez ",
+    tipo_documento: "cc",
+    codigo_pais_nacionalidad: "CO",
+    numero_documento: "1.234.567-8 ",
+    fecha_expedicion_documento: "2010-05-20",
+    telefono_1: "300 123 4567",
+    correo_solicitante: " Ana@Correo.COM ",
+    anios_residencia: "2,5",
+    fecha_nacimiento: "1990-01-15",
+    estado_civil: "soltero",
+  },
+  composicion: {
+    cantidad_personas_hogar: 4,
+    tiene_adulto_mayor: false,
+    condiciones_especiales: ["ninguna"],
+    ingreso_hogar_cop: "2.000.000 COP",
+  },
+  inmueble: { direccion: "cra 12 No 5-20", codigo_division: "01", id_barrio_vereda: "0199", estrato: 3 },
+  riesgo: { esta_en_rud: false, dictamen: "colapso_total" },
+  titularidad: { tipo_titularidad: "propietario_clt" },
+  cierre_financiero: { fuentes_financiacion: ["recursos_propios"], tiene_seguro: false },
+});

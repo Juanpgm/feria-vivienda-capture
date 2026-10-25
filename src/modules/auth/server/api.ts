@@ -10,7 +10,12 @@ export async function conErrores(fn: () => Promise<NextResponse>): Promise<NextR
     return await fn();
   } catch (e) {
     if (e instanceof SesionError) return respuesta(e.status, { error: e.message });
-    if (e instanceof ZodError) return respuesta(422, { error: "Datos inválidos", campos: e.flatten().fieldErrors });
+    if (e instanceof ZodError) {
+      // Dotted paths ("solicitante.telefono_1") so nested schemas map to form fields.
+      const campos: Record<string, string[]> = {};
+      for (const i of e.issues) (campos[i.path.join(".")] ??= []).push(i.message);
+      return respuesta(422, { error: "Datos inválidos", campos });
+    }
     const code = (e as { code?: string }).code;
     if (code === "auth/email-already-exists") return respuesta(409, { error: "El correo ya está registrado" });
     console.error("api error", code ?? (e as Error).name);

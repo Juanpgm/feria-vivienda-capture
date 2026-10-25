@@ -1,0 +1,25 @@
+import { z } from "zod";
+import { cierreFinancieroSchema } from "@/modules/cierre-financiero/domain/schema";
+import { composicionSchema } from "@/modules/composicion/domain/schema";
+import { hogarSchema } from "@/modules/hogar/domain/schema";
+import { inmuebleSchema } from "@/modules/inmueble/domain/schema";
+import { riesgoSchema } from "@/modules/riesgo/domain/schema";
+import { titularidadSchema } from "@/modules/titularidad/domain/schema";
+
+// Phase 3 extension points (NOT implemented yet): consentimiento, firma (discriminated union on
+// metodo_firma) and the two document photos are added here as extra keys / multipart parts.
+
+/** Whole registration, shared by the client form and the server (which re-parses the raw payload). */
+export const registroSchema = z.object({
+  // Client-generated at draft start; the idempotency key of the create.
+  id: z.uuid({ error: "Identificador de registro inválido" }),
+  solicitante: hogarSchema,
+  composicion: composicionSchema,
+  inmueble: inmuebleSchema,
+  riesgo: riesgoSchema,
+  titularidad: titularidadSchema,
+  cierre_financiero: cierreFinancieroSchema,
+});
+
+export type RegistroEntrada = z.input<typeof registroSchema>;
+export type RegistroDatos = z.output<typeof registroSchema>;
