@@ -22,12 +22,6 @@ export type NumeroPaso = keyof typeof TITULO_PASO;
 
 const exacto = { exact: true } as const;
 
-/**
- * Leaves the focused field (its blur validation runs and any error appears) before the next click. On the long merged
- * steps an error that shows up while the pointer is going down on another control moves it, and the click is lost.
- */
-const soltarFoco = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-
 /** The duplicate check reads the real Firestore: every spec that fills step 1 answers it locally instead (override with a later page.route). */
 export const sinDuplicados = (page: Page) =>
   page.route("**/api/registros/duplicado*", (route) => route.fulfill({ json: { existe: false } }));
@@ -156,7 +150,6 @@ export async function llenarComposicion(page: Page, c: Pick<Caso, "composicion">
     for (const [i, edad] of k.edades.entries()) await escribir(page, `Edad del adulto mayor ${i + 1}`, edad);
   }
   await escribir(page, "Ingreso mensual del hogar (COP)", k.ingreso);
-  await soltarFoco(page);
 }
 
 export async function verificarComposicion(page: Page, c: Caso) {
@@ -184,7 +177,6 @@ export const CAMPO_FUENTES = "Fuentes de financiación";
 
 export async function llenarProteccion(page: Page, c: Pick<Caso, "composicion"> | Pick<CasoInvalido, "composicion">) {
   await elegirVarias(page, CAMPO_CONDICIONES, c.composicion.condiciones.map((k) => CONDICIONES_ESPECIALES[k as keyof typeof CONDICIONES_ESPECIALES]));
-  await soltarFoco(page);
 }
 
 export async function verificarProteccion(page: Page, c: Caso) {
@@ -199,6 +191,8 @@ const grupo = (page: Page, nombre: string) => page.getByRole("group", { name: no
 /** Picks an option of a searchable combobox by typing it and pressing Enter. */
 async function elegirEnCombobox(page: Page, nombre: string, texto: string) {
   const combo = page.getByRole("combobox", { name: nombre, ...exacto });
+  // A parked pointer under the list that opens would hover (and activate) another option than the first one.
+  await page.mouse.move(0, 0);
   await combo.fill(texto);
   // The catalog loads on demand: Enter before the options exist would select nothing.
   await expect(page.getByRole("option").first()).toBeVisible();
@@ -215,7 +209,6 @@ export async function llenarInmueble(page: Page, c: Pick<Caso, "extra"> | Pick<C
     await elegirEnCombobox(page, rural ? "Vereda" : "Barrio o vereda", v.lugar.nombre);
   }
   if (v.estrato) await grupo(page, "Estrato socioeconómico").getByRole("radio", { name: String(v.estrato), ...exacto }).check();
-  await soltarFoco(page);
 }
 
 export async function verificarInmueble(page: Page, c: Caso) {
@@ -235,7 +228,6 @@ export async function llenarRiesgo(page: Page, c: Pick<Caso, "extra"> | Pick<Cas
   }
   if (r.dictamen) await page.getByLabel("Resultado del dictamen técnico", exacto).selectOption({ label: DICTAMENES[r.dictamen] });
   if (r.dictamen === "otro") await escribir(page, "Cuál dictamen", r.dictamenOtro);
-  await soltarFoco(page);
 }
 
 export async function llenarTitularidad(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {
@@ -246,7 +238,6 @@ export async function llenarTitularidad(page: Page, c: Pick<Caso, "extra"> | Pic
   if (t.unica === "no" && t.excepcion) {
     await page.getByLabel("Excepción que aplica", exacto).selectOption({ label: EXCEPCIONES_UNICA_PROPIEDAD[t.excepcion] });
   }
-  await soltarFoco(page);
 }
 
 export async function llenarFinanciero(page: Page, c: Pick<Caso, "extra"> | Pick<CasoInvalido, "extra">) {

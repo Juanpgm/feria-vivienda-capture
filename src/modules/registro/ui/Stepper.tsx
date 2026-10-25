@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, set, useForm, type FieldErrors, type FieldValues, type Resolver } from "react-hook-form";
 import { FIRMA_VACIA } from "@/modules/firma/domain/schema";
 import { Button } from "@/shared/ui/Button";
+import { usePunteroPresionado } from "@/shared/ui/punteroPresionado";
 import { Confirmacion, type DatosConfirmacion } from "./Confirmacion";
 import { cargarBorrador, descartarBorrador, guardarBorrador, VERSION_BORRADOR, type Borrador } from "./borradores";
 import { VISTAS } from "./vistas";
@@ -134,10 +135,15 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
     if (pendiente.current) void guardarRef.current();
   }, []);
 
-  // After a failed "Siguiente", move focus to the first invalid control once errors are rendered.
+  // After a failed "Siguiente", move focus to the first invalid control once errors are rendered
+  // (they are held back while the pointer that pressed the button is still down).
+  const apretado = usePunteroPresionado();
+  const fallosAtendidos = useRef(0);
   useEffect(() => {
-    if (fallos) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], fieldset[aria-describedby] input')?.focus();
-  }, [fallos]);
+    if (!fallos || apretado || fallos === fallosAtendidos.current) return;
+    fallosAtendidos.current = fallos;
+    formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], fieldset[aria-describedby] input')?.focus();
+  }, [fallos, apretado]);
 
   // "Editar" links point at a section inside a step: scroll to its heading once that step is rendered.
   const ancla = useRef<string>(undefined);
