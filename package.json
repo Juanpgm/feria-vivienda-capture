@@ -38,5 +38,10 @@
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.91.0",
     "zod": "^4.6.7"
+  },
+  "overrides": {
+    "jwks-rsa": {
+      "jose": "5.10.0"
+    }
   }
 }
