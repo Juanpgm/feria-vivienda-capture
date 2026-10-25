@@ -4,8 +4,140 @@
       "collectionGroup": "registros",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "id_usuario_registro", "order": "ASCENDING" },
-        { "fieldPath": "creado_en", "order": "DESCENDING" }
+        {
+          "fieldPath": "registrado_por_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrado_en",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "estado_revision",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrado_en",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "inmueble.codigo_division",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrado_en",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "inmueble.id_barrio_vereda",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrado_en",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "documento_clave",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrado_en",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "radicado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "registrado_en",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "registrado_por_uid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nombre_busqueda",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "estado_revision",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nombre_busqueda",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "inmueble.codigo_division",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nombre_busqueda",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "registros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "inmueble.id_barrio_vereda",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nombre_busqueda",
+          "order": "ASCENDING"
+        }
       ]
     }
   ],

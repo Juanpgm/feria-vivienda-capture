@@ -15,6 +15,7 @@ import { Select } from "@/shared/ui/Select";
 import { regionPorDefecto } from "@/shared/normalizacion/telefono";
 import { CampoFecha } from "@/modules/registro/ui/CampoFecha";
 import { CampoTelefono } from "@/modules/registro/ui/CampoTelefono";
+import { AvisoDuplicado } from "@/modules/registro/ui/AvisoDuplicado";
 import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
 
 const P = "solicitante.";
@@ -24,6 +25,9 @@ export function PasoHogar() {
   const { register, setValue, control } = useFormContext<FieldValues>();
   const error = useError();
   const [paises, setPaises] = useState<OpcionBusqueda[]>([]);
+  // Set when the funcionario leaves the document number: triggers the (non-blocking) duplicate check.
+  const [consulta, setConsulta] = useState<{ tipo?: string; numero: string } | null>(null);
+  const numero = useWatch({ control, name: P + "numero_documento" }) as string | undefined;
   const tipo = useWatch({ control, name: P + "tipo_documento" });
   const nacimiento = useWatch({ control, name: P + "fecha_nacimiento" }) as string | undefined;
   const nacionalidad = useWatch({ control, name: P + "codigo_pais_nacionalidad" }) as string | undefined;
@@ -81,8 +85,16 @@ export function PasoHogar() {
             </Field>
           )}
         />
-        <CampoTexto name={P + "numero_documento"} label="Número de documento" inputMode="text" autoComplete="off" normalizar={normalizarDocumento} />
+        <CampoTexto
+          name={P + "numero_documento"}
+          label="Número de documento"
+          inputMode="text"
+          autoComplete="off"
+          normalizar={normalizarDocumento}
+          alSalir={(v) => setConsulta(v ? { tipo, numero: v } : null)}
+        />
         <CampoFecha name={P + "fecha_expedicion_documento"} label="Fecha de expedición" max={hoy} mensajeMax="La fecha de expedición no puede ser futura" />
+        <AvisoDuplicado consulta={consulta} actual={normalizarDocumento(numero ?? "")} />
       </Seccion>
 
       <Seccion titulo="Contacto">

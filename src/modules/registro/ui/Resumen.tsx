@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useFormContext, type FieldValues } from "react-hook-form";
 import { fechaBogota } from "@/shared/tiempo";
+import { ListaFilas } from "./ListaFilas";
 import { PASOS, type Valores } from "./pasos";
 import { evaluarRegistro, filasDe, PENDIENTES_FASE_3, SECCIONES, type Evaluacion } from "./datosResumen";
 
@@ -50,14 +51,7 @@ export function Resumen({ irAPaso }: { irAPaso: (id: string) => void }) {
               </button>
             </div>
             {ev.ok ? (
-              <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[13rem_minmax(0,1fr)]">
-                {filasDe(s.id, ev.datos, hoy).map((f) => (
-                  <div key={f.etiqueta} className="contents">
-                    <dt className="text-sm text-muted sm:py-1">{f.etiqueta}</dt>
-                    <dd className="mb-2 sm:mb-0 sm:py-1">{f.valor}</dd>
-                  </div>
-                ))}
-              </dl>
+              <ListaFilas filas={filasDe(s.id, ev.datos, hoy)} />
             ) : (
               <ul className="flex flex-col gap-1">
                 {ev.errores.map((e) => (

@@ -66,12 +66,18 @@ export const MAX_OBSERVACIONES = 1000;
 /** Minimum age to apply; applicants under it are blocked by the schema. */
 export const EDAD_MINIMA = 18;
 
-// ponytail: internal review status (set server-side / by admins in PR 2h); NOT a form field.
-export const ESTADOS_SGOV = {
+/**
+ * Internal review status (SGOV) of a registro. NOT a form field: it is set server-side (initial value on creation,
+ * changed later by admins). It is independent from `estado` (lifecycle: registrado / anulado).
+ */
+export const ESTADOS_REVISION = {
+  pendiente_revision: "Pendiente de revisión",
   habilitado: "Habilitado",
-  no_habilitado: "No Habilitado",
-  pendiente_subsanacion: "Pendiente Subsanación",
+  no_habilitado: "No habilitado",
+  pendiente_subsanacion: "Pendiente de subsanación",
 } as const;
+export type EstadoRevision = keyof typeof ESTADOS_REVISION;
+export const ESTADO_REVISION_INICIAL: EstadoRevision = "pendiente_revision";
 
 /** Bands derived from the PDF (sections 6 and 7). */
 export const BANDAS_ADULTO_MAYOR = {

@@ -31,11 +31,17 @@ FIREBASE_SERVICE_ACCOUNT=
 # Optional: defaults to project_id inside the service account
 # FIREBASE_PROJECT_ID=
 
+# --- Radicado ---
+# Prefix of the human-friendly radicado (FV-000123). 1-6 letters/digits; optional, defaults to FV.
+# RADICADO_PREFIJO=FV
+
 # --- Emulators (local development only) ---
 # FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 # FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
 # NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
 ```
+
+Note: agents cannot write `.env*` files (permission settings), so `RADICADO_PREFIJO` is documented here only; add it by hand if you want a prefix other than `FV`. Set the same value in Vercel before the first registro: changing it later only affects new radicados.
 
 Never commit the service account file or its contents.
 
@@ -80,3 +86,23 @@ npm run dev
 ```
 
 Open http://localhost:3000. Checks: `npm run typecheck`, `npm run lint`, `npm test`, `npm run build`.
+
+## 7. Registro model (collection `registros/{id}`, `version_esquema` 2)
+
+`id` is the client UUID (idempotency key). Everything below is written by the server in ONE transaction in `crearRegistro`; none of it is accepted from the client.
+
+| Field | Meaning |
+|---|---|
+| `radicado`, `radicado_numero` | `FV-000123` and its consecutive. Taken from the counter doc `contadores/radicado` (`ultimo`) inside the same transaction; a retry with the same id returns the same radicado and consumes no number. |
+| `registrado_por_uid` / `_nombre` / `_correo` | Who created it. uid and correo come from the verified session; nombre from `usuarios/{uid}.nombre` (falls back to the email local part). Replaces the old `id_usuario_registro`. |
+| `registrado_en`, `fecha_registro_bogota` | Server timestamp and the Bogota calendar date (`YYYY-MM-DD`). |
+| `estado` | Lifecycle: `registrado` now (`anulado` later). |
+| `estado_revision`, `estado_revision_en`, `estado_revision_por_uid` / `_correo` | Internal SGOV review (`ESTADOS_REVISION`): `pendiente_revision` (initial), `habilitado`, `no_habilitado`, `pendiente_subsanacion`. NOT a form field; independent from `estado`. Changing it (admins, with historial) is a later PR. |
+| `documento_clave`, `documento_digitos` | Normalized document number (any tipo) and its digits-only form (>= 5 digits, no leading zeros): indexed keys for duplicate detection (exact / similar). |
+| `nombre_busqueda` | Lowercase, accent-free full name, for prefix search. |
+| `solicitante`, `composicion`, `inmueble`, `riesgo`, `titularidad`, `cierre_financiero`, `observaciones` | Validated form data (split names, derived fields). |
+| `historial/{auto}` (subcollection) | `{ tipo: "creacion", estado_revision, por_uid, por_nombre, por_correo, en }`; one entry on creation. |
+
+API: `POST /api/registros` (create), `GET /api/registros` (list: `q`, `nombre`, `comuna`, `barrio`, `estado_revision`, `registrado_por`, `desde`, `hasta`, `limite` 1-100 default 25, `cursor`; newest first, alphabetical when `nombre` is used and then dates cannot be combined), `GET /api/registros/[id]`, `GET /api/registros/duplicado?tipo=&numero=`. A `usuario` only sees their own registros; admin/superadmin see all. Photos and signature are never returned.
+
+Composite indexes for these queries are in `firestore.indexes.json`: deploy them (step 4) before using the list with filters, otherwise a filtered query answers 400 until the index finishes building.

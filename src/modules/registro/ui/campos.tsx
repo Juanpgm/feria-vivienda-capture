@@ -16,9 +16,11 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "name"> & {
   hint?: string;
   /** Returns the normalized text, or null to leave what the user typed (so the error explains it). */
   normalizar?: (v: string) => string | null | Promise<string | null>;
+  /** Runs after blur normalization with the final text (e.g. to trigger a server-side check). */
+  alSalir?: (valor: string) => void;
 };
 
-export function CampoTexto({ name, label, hint, normalizar, ...input }: Props) {
+export function CampoTexto({ name, label, hint, normalizar, alSalir, ...input }: Props) {
   const { register, setValue } = useFormContext<FieldValues>();
   const error = useError()(name);
   const r = register(name);
@@ -34,6 +36,7 @@ export function CampoTexto({ name, label, hint, normalizar, ...input }: Props) {
             const n = await normalizar?.(valor);
             if (n != null && n !== valor) setValue(name, n, { shouldDirty: true });
             await r.onBlur(e);
+            alSalir?.(n ?? valor);
           }}
         />
       )}

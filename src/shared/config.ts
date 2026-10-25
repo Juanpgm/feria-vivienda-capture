@@ -1,6 +1,12 @@
 /** Fixed business constant, not an env var. */
 export const ALLOWED_EMAIL_DOMAIN = "cali.gov.co";
 
+/** Prefix of the human-friendly radicado (`FV-000123`). Env RADICADO_PREFIJO, 1-6 letters/digits, default FV. */
+export function radicadoPrefijo(): string {
+  const p = (process.env.RADICADO_PREFIJO ?? "").trim().toUpperCase();
+  return /^[A-Z0-9]{1,6}$/.test(p) ? p : "FV";
+}
+
 function required(name: string, value: string | undefined): string {
   if (!value) throw new Error(`Missing environment variable: ${name}`);
   return value;

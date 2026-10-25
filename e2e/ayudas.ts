@@ -23,8 +23,13 @@ export type NumeroPaso = keyof typeof TITULO_PASO;
 
 const exacto = { exact: true } as const;
 
+/** The duplicate check reads the real Firestore: every spec that fills step 1 answers it locally instead (override with a later page.route). */
+export const sinDuplicados = (page: Page) =>
+  page.route("**/api/registros/duplicado*", (route) => route.fulfill({ json: { existe: false } }));
+
 /** Opens /registros/nuevo (the list of drafts) and checks the session reached it. */
 export async function abrirLista(page: Page) {
+  await sinDuplicados(page);
   await page.goto(RUTA);
   const { pathname } = new URL(page.url());
   if (pathname !== RUTA) {

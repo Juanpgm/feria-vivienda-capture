@@ -5,17 +5,21 @@ import { sesionOLogin } from "@/modules/auth/server/guard";
 import { BotonSalir } from "@/modules/auth/ui/BotonSalir";
 import { AppShell } from "@/shared/ui/AppShell";
 
+const enlaceNav = "inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-primary-strong hover:bg-bg";
+
 export const dynamic = "force-dynamic"; // always check the session cookie
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const sesion = await sesionOLogin("usuario", { soloLectura: true }); // pages that need approval guard themselves
   const nav = (
     <nav aria-label="Principal" className="flex flex-wrap items-center gap-2">
+      {sesion.aprobado && (
+        <Link href="/registros" className={enlaceNav}>
+          Registros
+        </Link>
+      )}
       {tieneRol(sesion.rol, "admin") && (
-        <Link
-          href="/admin/usuarios"
-          className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-primary-strong hover:bg-bg"
-        >
+        <Link href="/admin/usuarios" className={enlaceNav}>
           Usuarios
         </Link>
       )}
