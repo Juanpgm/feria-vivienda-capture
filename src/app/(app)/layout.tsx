@@ -13,6 +13,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const sesion = await sesionOLogin("usuario", { soloLectura: true }); // pages that need approval guard themselves
   const nav = (
     <nav aria-label="Principal" className="flex flex-wrap items-center gap-2">
+      <Link href="/dashboard" className={enlaceNav}>
+        Dashboard
+      </Link>
       {sesion.aprobado && (
         <Link href="/registros" className={enlaceNav}>
           Registros
