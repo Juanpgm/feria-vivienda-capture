@@ -101,7 +101,7 @@ function Funcionarios({ filas, tabla }: { filas: DashboardCompleto["por_funciona
 }
 
 /** Dashboard shell: fetches GET /api/dashboard (aggregated numbers only) and renders what the payload's scope contains. */
-export function PanelDashboard({ admin }: { admin: boolean }) {
+export function PanelDashboard({ admin, superadmin = false }: { admin: boolean; superadmin?: boolean }) {
   const [borrador, setBorrador] = useState<Filtros>(VACIOS);
   const [pedido, setPedido] = useState<Pedido>({ filtros: VACIOS, refrescar: false, n: 0 });
   const [resp, setResp] = useState<Respuesta | null>(null);
@@ -164,6 +164,11 @@ export function PanelDashboard({ admin }: { admin: boolean }) {
           <Button variant="secondary" disabled={cargando} onClick={() => setPedido((p) => ({ ...p, refrescar: true, n: p.n + 1 }))}>
             Actualizar
           </Button>
+          {superadmin && (
+            <a href="/api/dashboard/exportar" download className="inline-flex min-h-11 items-center rounded-lg border border-border px-4 font-semibold">
+              Descargar datos (.xlsx)
+            </a>
+          )}
         </div>
       </div>
 
