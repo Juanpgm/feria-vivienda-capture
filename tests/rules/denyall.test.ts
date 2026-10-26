@@ -15,6 +15,7 @@ const paths = [
   "usuarios/u1",
   "accesos_adjuntos/a1",
   "contadores/global",
+  "auditoria_exportaciones/e1",
 ];
 
 describe.skipIf(!hasEmulator)("firestore.rules deny-all", () => {
