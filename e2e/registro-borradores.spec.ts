@@ -168,7 +168,7 @@ test("borrador legado de un solo espacio: se migra a la lista, el nombre se part
     valores: {
       solicitante: { nombre_completo: "Rosa Elena Pérez Gómez", tipo_documento: "cc" },
       inmueble: { direccion: "Calle 5 # 10-20", barrio_no_listado: true, barrio_vereda_otro: "Mi barrio" },
-      titularidad: { tipo_titularidad: "poseedor_legitimo" },
+      titularidad: { tipo_titularidad: "arrendatario" },
     },
   });
 

@@ -49,7 +49,7 @@ export type FuenteFinanciacion = keyof typeof FUENTES_FINANCIACION;
 
 export const TITULARIDADES = {
   propietario_clt: "Propietario con título o Certificado de Libertad y Tradición (CLT)",
-  poseedor_legitimo: "Poseedor legítimo acreditado",
+  arrendatario: "Arrendatario",
 } as const;
 export type Titularidad = keyof typeof TITULARIDADES;
 

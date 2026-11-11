@@ -35,7 +35,7 @@ export function registrosSinteticos(n: number): RegistroMinimo[] {
       rango_ingresos: INGRESOS[i % INGRESOS.length],
       rango_hogar: ["1", "2_3", "4_mas"][i % 3],
       rango_adulto_mayor: ["ninguno", "65_73", "mayor_74"][i % 3 === 0 ? 1 : 0],
-      titularidad: i % 4 === 0 ? "poseedor_legitimo" : "propietario_clt",
+      titularidad: i % 4 === 0 ? "arrendatario" : "propietario_clt",
       dictamen: DICTAMENES[i % DICTAMENES.length],
       en_rud: i % 7 !== 0,
       rud_no_sabe: i % 11 === 0,

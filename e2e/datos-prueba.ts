@@ -177,7 +177,7 @@ const VARIANTES: Extra[] = [
   {
     vivienda: { direccion: CALLES[1], division: { codigo: "03", etiqueta: "Comuna 3", sector: "Urbano" }, lugar: { id: "0310", nombre: "El Calvario" }, estrato: 2 },
     riesgo: { rud: "no", dictamen: "demolido" },
-    titularidad: { tipo: "poseedor_legitimo", unica: "no", excepcion: "otras_propiedades_destruidas" },
+    titularidad: { tipo: "arrendatario", unica: "no", excepcion: "otras_propiedades_destruidas" },
     financiero: { fuentes: ["ninguna"], seguro: "no", observaciones: "Vive con su madre.\nTiene cita en la oficina el lunes." },
   },
   {
@@ -189,7 +189,7 @@ const VARIANTES: Extra[] = [
   {
     vivienda: { direccion: CALLES[3], division: { codigo: "12", etiqueta: "Comuna 12", sector: "Urbano" }, lugar: { id: "1202", nombre: "Asturias" }, estrato: 4 },
     riesgo: { rud: "no", dictamen: "demolicion_en_proceso" },
-    titularidad: { tipo: "poseedor_legitimo", matricula: "", unica: "si" },
+    titularidad: { tipo: "arrendatario", matricula: "", unica: "si" },
     financiero: { fuentes: ["recursos_propios", "ninguna"], seguro: "no" },
   },
   {
@@ -201,7 +201,7 @@ const VARIANTES: Extra[] = [
   {
     vivienda: { direccion: CALLES[5], division: { codigo: "55", etiqueta: "Corregimiento Villacarmelo", sector: "Rural" }, lugar: { id: "V5503", nombre: "Dos Quebradas" }, estrato: 6 },
     riesgo: { rud: "no", dictamen: "otro", dictamenOtro: "Grietas en vigas y columnas" },
-    titularidad: { tipo: "poseedor_legitimo", matricula: "370-999", unica: "no", excepcion: "otras_propiedades_destruidas" },
+    titularidad: { tipo: "arrendatario", matricula: "370-999", unica: "no", excepcion: "otras_propiedades_destruidas" },
     financiero: { fuentes: ["subsidio_concurrente", "indemnizacion_seguro"], seguro: "no" },
   },
   {
@@ -213,7 +213,7 @@ const VARIANTES: Extra[] = [
   {
     vivienda: { direccion: CALLES[2], division: { codigo: "55", etiqueta: "Corregimiento Villacarmelo", sector: "Rural" }, lugar: { id: "V5505", nombre: "El Carmen" }, estrato: 2 },
     riesgo: { rud: "si", noSabe: true, dictamen: "colapso_total" },
-    titularidad: { tipo: "poseedor_legitimo", unica: "no", excepcion: "dependencia_arriendo_40" },
+    titularidad: { tipo: "arrendatario", unica: "no", excepcion: "dependencia_arriendo_40" },
     financiero: { fuentes: ["credito_hipotecario", "ninguna"], seguro: "no" },
   },
 ];

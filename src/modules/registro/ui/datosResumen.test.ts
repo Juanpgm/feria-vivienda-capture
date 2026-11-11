@@ -14,7 +14,7 @@ const valores = {
   },
   inmueble: { direccion: "Calle 5 # 10-20", codigo_division: "53", id_barrio_vereda: "V5306", estrato: "2" },
   riesgo: { esta_en_rud: "si", numero_rud: "", rud_no_sabe: true, dictamen: "otro", dictamen_otro: "Grietas" },
-  titularidad: { tipo_titularidad: "poseedor_legitimo", numero_matricula_inmobiliaria: "", es_unica_propiedad: "no", excepcion_unica_propiedad: "dependencia_arriendo_40" },
+  titularidad: { tipo_titularidad: "arrendatario", numero_matricula_inmobiliaria: "", es_unica_propiedad: "no", excepcion_unica_propiedad: "dependencia_arriendo_40" },
   cierre_financiero: { fuentes_financiacion: ["ninguna"], tiene_seguro: "si", codigo_aseguradora: "otra", aseguradora_otra: "Seguros X", observaciones: "  Prefiere llamada  " },
 } as unknown as Valores;
 
