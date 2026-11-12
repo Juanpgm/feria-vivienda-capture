@@ -54,16 +54,16 @@ export function AutorizacionDatos({ alAceptar }: { alAceptar: (aceptaSensibles: 
           <input type="checkbox" className="check mt-0.5" checked={sensibles} onChange={(e) => setSensibles(e.target.checked)} />
           <span className="font-semibold">{ETIQUETA_SENSIBLES}</span>
         </label>
-        {intento && !tratamiento && (
+        {intento && (!tratamiento || !sensibles) && (
           <p role="alert" className="text-sm font-medium text-danger">
-            Para continuar con el registro debe autorizar el tratamiento de sus datos personales.
+            Para continuar con el registro debe autorizar el tratamiento de sus datos personales y de sus datos sensibles.
           </p>
         )}
         <div>
           <Button
             onClick={() => {
               setIntento(true);
-              if (tratamiento) alAceptar(sensibles);
+              if (tratamiento && sensibles) alAceptar(true);
             }}
           >
             Aceptar y comenzar

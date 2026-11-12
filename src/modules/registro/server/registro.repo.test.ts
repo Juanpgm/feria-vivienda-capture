@@ -453,7 +453,7 @@ describe("consentimiento y firma (spec data-consent / applicant-signature)", () 
     expect((await POST(req(valido()))).status).toBe(201);
     const c = store.get(`registros/${valido().id}`)!.consentimiento;
     expect(c).toEqual({
-      version: "2026-11-v1",
+      version: "2026-11-v2",
       hash: hashConsentimiento(),
       acepta_tratamiento: true,
       acepta_datos_sensibles: true,
@@ -483,14 +483,11 @@ describe("consentimiento y firma (spec data-consent / applicant-signature)", () 
     expect(contador()).toBeUndefined();
   });
 
-  it("refusing sensitive data still registers, but the special protection is stored as no_autorizado", async () => {
+  it("refusing sensitive data blocks the registration and stores nothing", async () => {
     const v = valido();
-    v.composicion.condiciones_especiales = ["discapacidad", "mujer_vbg"];
     v.consentimiento.acepta_datos_sensibles = false;
-    expect((await POST(req(v))).status).toBe(201);
-    const doc = store.get(`registros/${v.id}`)!;
-    expect(doc.composicion.condiciones_especiales).toEqual(["no_autorizado"]);
-    expect(doc.consentimiento.acepta_datos_sensibles).toBe(false);
+    expect((await POST(req(v))).status).toBe(422);
+    expect(store.get(`registros/${v.id}`)).toBeUndefined();
   });
 
   it("authorizing sensitive data keeps the selection", async () => {
@@ -593,7 +590,7 @@ describe("marcarAdjuntosCompletos / POST /api/registros/[id]/completar", () => {
     const d = await obtenerRegistro(uuid(1), actor);
     expect(d).toMatchObject({
       adjuntos_completos: false,
-      consentimiento: { version: "2026-11-v1", acepta_tratamiento: true, acepta_datos_sensibles: true },
+      consentimiento: { version: "2026-11-v2", acepta_tratamiento: true, acepta_datos_sensibles: true },
       firma: { metodo_firma: "dibujada" },
     });
     expect(JSON.stringify(d)).not.toContain("SECRETO");

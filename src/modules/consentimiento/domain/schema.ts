@@ -4,6 +4,8 @@ import { CONSENTIMIENTO_VERSION } from "./texto";
 /** Stored in `composicion.condiciones_especiales` when the person refuses the treatment of sensitive data. */
 export const CONDICION_NO_AUTORIZADO = "no_autorizado";
 
+export const MENSAJE_SENSIBLES = "Debe autorizar el tratamiento de datos sensibles para poder registrar la postulación";
+
 /**
  * Consent as sent by the form (and re-validated by the server). `version` is the wording the person saw when
  * ticking; the server also computes the hash of the current text itself, so nothing about the text is trusted.
@@ -11,7 +13,7 @@ export const CONDICION_NO_AUTORIZADO = "no_autorizado";
 export const consentimientoSchema = z
   .object({
     acepta_tratamiento: z.boolean({ error: "Debe autorizar el tratamiento de datos personales para poder registrar la postulación" }),
-    // Optional: declining never blocks the registration.
+    // Required too: without it the registration cannot be sent.
     acepta_datos_sensibles: z.boolean({ error: "Indique si autoriza el tratamiento de datos sensibles" }),
     version: z.string().optional(),
   })
@@ -24,6 +26,9 @@ export const consentimientoSchema = z
       });
     } else if (v.version !== CONSENTIMIENTO_VERSION) {
       ctx.addIssue({ code: "custom", path: ["acepta_tratamiento"], message: "El texto de la autorización cambió. Léalo y acéptelo de nuevo." });
+    }
+    if (v.acepta_datos_sensibles !== true) {
+      ctx.addIssue({ code: "custom", path: ["acepta_datos_sensibles"], message: MENSAJE_SENSIBLES });
     }
   })
   .transform((v) => ({

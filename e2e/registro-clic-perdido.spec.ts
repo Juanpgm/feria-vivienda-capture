@@ -86,8 +86,8 @@ const ESCENARIOS: Escenario[] = [
       await c.press("Space");
     },
     origen: (p) => p.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...exacto }),
-    destino: (p) => etiquetaDe(p.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles (opcional)", ...exacto })),
-    verificar: (p) => expect(p.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles (opcional)", ...exacto })).toBeChecked(),
+    destino: (p) => etiquetaDe(p.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles", ...exacto })),
+    verificar: (p) => expect(p.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles", ...exacto })).toBeChecked(),
   },
 ];
 

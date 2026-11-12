@@ -312,7 +312,7 @@ test.describe("lista y detalle: archivos, autorización y firma", () => {
     );
     await page.goto(`/registros/${uuid(5)}`);
     const aut = page.getByRole("region", { name: "Autorización y firma", exact: true });
-    await expect(aut).toContainText("Autorizado · texto 2026-11-v1");
+    await expect(aut).toContainText("Autorizado · texto 2026-11-v2");
     await expect(aut).toContainText(/05\/03\/2026,? 3:42/);
     await expect(aut.locator("dd").nth(1)).toHaveText("No autorizado");
     await expect(aut).toContainText("Dibujada en pantalla");

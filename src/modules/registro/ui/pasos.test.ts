@@ -89,10 +89,10 @@ describe("merged steps: vivienda, cierre financiero, autorizacion", () => {
     expect(Object.keys(await validarPaso(paso("financiero"), v({ tiene_seguro: "no", fuentes_financiacion: ["ninguna", "recursos_propios"] })))).toEqual(["cierre_financiero.fuentes_financiacion"]);
   });
   it("autorizacion: the consent and both photos are required together", async () => {
-    const ok = { consentimiento: { acepta_tratamiento: true, acepta_datos_sensibles: false, version: "2026-11-v1" }, documentos: { documento_frente: "capturada", documento_reverso: "capturada" } };
+    const ok = { consentimiento: { acepta_tratamiento: true, acepta_datos_sensibles: true, version: "2026-11-v2" }, documentos: { documento_frente: "capturada", documento_reverso: "capturada" } };
     expect(await validarPaso(paso("autorizacion"), ok as Valores)).toEqual({});
     const e = await validarPaso(paso("autorizacion"), { consentimiento: { acepta_tratamiento: false, acepta_datos_sensibles: false }, documentos: { documento_frente: "capturada", documento_reverso: "" } } as Valores);
-    expect(Object.keys(e)).toEqual(["consentimiento.acepta_tratamiento", "documentos.documento_reverso"]);
+    expect(Object.keys(e)).toEqual(["consentimiento.acepta_tratamiento", "consentimiento.acepta_datos_sensibles", "documentos.documento_reverso"]);
   });
 });
 

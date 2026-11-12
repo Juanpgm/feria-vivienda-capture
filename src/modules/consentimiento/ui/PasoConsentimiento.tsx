@@ -1,9 +1,8 @@
 "use client";
 
 import { useId } from "react";
-import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
+import { useFormContext, type FieldValues } from "react-hook-form";
 import { useError } from "@/modules/registro/ui/campos";
-import { CONDICIONES_ESPECIALES } from "@/shared/constantes";
 import {
   CONSENTIMIENTO_VERSION, ETIQUETA_SENSIBLES, ETIQUETA_TRATAMIENTO, POLITICA_URL, SECCIONES_TEXTO,
 } from "../domain/texto";
@@ -12,13 +11,11 @@ const P = "consentimiento.";
 
 /** Habeas Data authorization (Ley 1581 de 2012, Decreto 1377 de 2013). The wording lives in domain/texto.ts. */
 export function PasoConsentimiento() {
-  const { register, setValue, control } = useFormContext<FieldValues>();
+  const { register, setValue } = useFormContext<FieldValues>();
   const error = useError();
   const idTexto = useId();
-  const sensibles = useWatch({ control, name: P + "acepta_datos_sensibles" });
-  const condiciones = (useWatch({ control, name: "composicion.condiciones_especiales" }) ?? []) as string[];
-  const marcadas = condiciones.filter((c) => c !== "ninguna" && c in CONDICIONES_ESPECIALES);
   const errorTratamiento = error(P + "acepta_tratamiento");
+  const errorSensibles = error(P + "acepta_datos_sensibles");
 
   return (
     <div className="flex flex-col gap-8">
@@ -75,19 +72,21 @@ export function PasoConsentimiento() {
 
         <div className="flex flex-col gap-1">
           <label className="flex min-h-11 cursor-pointer items-start gap-3 py-2">
-            <input type="checkbox" className="check mt-0.5" aria-describedby={`${idTexto}-sens`} {...register(P + "acepta_datos_sensibles")} />
+            <input
+              type="checkbox"
+              className="check mt-0.5"
+              aria-describedby={errorSensibles ? `${idTexto}-sens-error` : `${idTexto}-sens`}
+              aria-invalid={errorSensibles ? true : undefined}
+              {...register(P + "acepta_datos_sensibles")}
+            />
             <span className="font-semibold">{ETIQUETA_SENSIBLES}</span>
           </label>
-          <p id={`${idTexto}-sens`} className="text-sm text-muted">
-            {sensibles
-              ? "Se guardará la información de especial protección que se registró."
-              : "Si no se autoriza, el registro se envía igual, pero la información de especial protección no se guarda: queda como «no autorizado»."}
-          </p>
-          {!sensibles && marcadas.length > 0 && (
-            <p role="status" className="text-sm font-medium">
-              No se guardará lo marcado en Especial protección: {marcadas.map((c) => CONDICIONES_ESPECIALES[c as keyof typeof CONDICIONES_ESPECIALES]).join("; ")}.
+          {errorSensibles && (
+            <p id={`${idTexto}-sens-error`} role="alert" className="text-sm font-medium text-danger">
+              {errorSensibles}
             </p>
           )}
+          <p id={`${idTexto}-sens`} className="text-sm text-muted">También es obligatoria para registrar la postulación.</p>
         </div>
       </section>
     </div>

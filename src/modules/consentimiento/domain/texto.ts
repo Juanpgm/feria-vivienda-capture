@@ -4,7 +4,7 @@
 // the person accepted.
 
 /** Bump on every change of the text below ("AAAA-MM-vN"). */
-export const CONSENTIMIENTO_VERSION = "2026-11-v1";
+export const CONSENTIMIENTO_VERSION = "2026-11-v2";
 
 export const POLITICA_URL = "https://www.cali.gov.co/tic/publicaciones/171934/politica-de-tratamiento-de-datos-personales/";
 
@@ -41,7 +41,7 @@ export const SECCIONES_TEXTO: readonly SeccionTexto[] = [
     titulo: "Datos sensibles",
     parrafos: [
       "Algunos datos que se le preguntan son sensibles, porque afectan su intimidad o pueden generar discriminación: discapacidad, condición de víctima del conflicto armado, víctima de violencia basada en género, proceso de reincorporación o ser cuidador de una persona con discapacidad.",
-      "Autorizar el tratamiento de estos datos es opcional. Si no lo autoriza, su registro se recibe de igual manera, pero esta información no se guarda: en su lugar se anotará «no autorizado».",
+      "Autorizar el tratamiento de estos datos es obligatorio: sin esta autorización no es posible realizar el registro.",
     ],
   },
   {
@@ -69,4 +69,4 @@ export function textoPlano(): string {
 }
 
 export const ETIQUETA_TRATAMIENTO = "El titular autoriza el tratamiento de sus datos personales";
-export const ETIQUETA_SENSIBLES = "Autoriza el tratamiento de datos sensibles (opcional)";
+export const ETIQUETA_SENSIBLES = "Autoriza el tratamiento de datos sensibles";

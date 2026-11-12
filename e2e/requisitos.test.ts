@@ -68,11 +68,10 @@ describe("armarEntrada", () => {
     expect(entrada.firma).toEqual({ metodo_firma: "dibujada" });
   });
 
-  it("refusing sensitive data yields no_autorizado in the parsed record", () => {
+  it("refusing sensitive data makes the record invalid", () => {
     const v = firmado(base());
-    v.composicion = { ...v.composicion, condiciones_especiales: ["discapacidad"] };
     v.consentimiento = { ...v.consentimiento, acepta_datos_sensibles: false };
-    const r = registroSchema.parse(armarEntrada("6f1f6c0e-8a3b-4c52-9d77-3b1c2f5e9a10", v));
-    expect(r.composicion.condiciones_especiales).toEqual(["no_autorizado"]);
+    const r = registroSchema.safeParse(armarEntrada("6f1f6c0e-8a3b-4c52-9d77-3b1c2f5e9a10", v));
+    expect(r.error?.issues.map((i) => i.path.join("."))).toEqual(["consentimiento.acepta_datos_sensibles"]);
   });
 });

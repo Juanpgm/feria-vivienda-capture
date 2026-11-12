@@ -352,5 +352,5 @@ export async function llenarFotos(page: Page) {
 /** Authorizes the treatment of personal data (required) and, unless `sensibles: false`, the sensitive data too. */
 export async function autorizarDatos(page: Page, _c?: unknown, o: { sensibles?: boolean } = {}) {
   await page.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...exacto }).check();
-  if (o.sensibles !== false) await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles (opcional)", ...exacto }).check();
+  if (o.sensibles !== false) await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles", ...exacto }).check();
 }

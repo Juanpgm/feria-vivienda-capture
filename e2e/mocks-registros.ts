@@ -37,7 +37,7 @@ export const detalle = (n: number) => {
     adjuntos_completos: true,
     adjuntos_requeridos: 3,
     adjuntos_presentes: 3,
-    consentimiento: { version: "2026-11-v1", acepta_tratamiento: true, acepta_datos_sensibles: false, aceptado_en: "2026-03-05T20:42:00.000Z" },
+    consentimiento: { version: "2026-11-v2", acepta_tratamiento: true, acepta_datos_sensibles: false, aceptado_en: "2026-03-05T20:42:00.000Z" },
     firma: { metodo_firma: "dibujada", firmado_en: "2026-03-05T20:42:00.000Z", metodo_verificacion: null, nota_verificacion: null, verificado_por_nombre: null },
     datos: {
       solicitante: { ...r.solicitante, edad: 36 },

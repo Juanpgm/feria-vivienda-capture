@@ -12,7 +12,7 @@ export const N_PASOS = PASOS.length;
 export const PASO = Object.fromEntries(PASOS.map((p, i) => [p.id, i + 1])) as { solicitante: 1; hogar: 2; vivienda: 3; financiero: 4; autorizacion: 5; revision: 6 };
 
 export const TEXTO_TRATAMIENTO = "El titular autoriza el tratamiento de sus datos personales";
-export const TEXTO_SENSIBLES = "Autoriza el tratamiento de datos sensibles (opcional)";
+export const TEXTO_SENSIBLES = "Autoriza el tratamiento de datos sensibles";
 
 // ---- server double ----
 
