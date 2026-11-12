@@ -92,7 +92,8 @@ export function FormAuth({ modo }: { modo: "login" | "registro" }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
+      {/* method="post": if the JS has not loaded yet, a native submit must never put the credentials in the URL. */}
+      <form method="post" onSubmit={enviar} noValidate className="flex flex-col gap-4">
         {registro && (
           <Field label="Nombre completo">
             {(a) => <TextInput {...a} name="nombre" autoComplete="name" required />}

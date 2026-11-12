@@ -27,7 +27,8 @@ export function FormIngreso() {
   }
 
   return (
-    <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
+    // method="post": if the JS has not loaded yet, a native submit must never put the credentials in the URL.
+    <form method="post" onSubmit={enviar} noValidate className="flex flex-col gap-4">
       <Field label="Número de documento" hint="Solo el número, sin puntos ni espacios.">
         {(a) => <TextInput {...a} name="documento" inputMode="numeric" autoComplete="off" required />}
       </Field>
