@@ -22,6 +22,19 @@ const INTENTO_MS = 5000; // one detection attempt = 5 s looking for the card
 const INTENTOS = 3; // after this many attempts without a complete card, point to the manual shot
 
 type Captura = { blob: Blob; url: string; error: string };
+type Luz = "ok" | "poca" | "mucha";
+
+/** Mean brightness of the live frame (sampled): too dark or burnt-out frames make detection and the photo itself fail. */
+function luzDe(data: Uint8ClampedArray): Luz {
+  let suma = 0;
+  let n = 0;
+  for (let i = 0; i < data.length; i += 64) {
+    suma += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    n++;
+  }
+  const media = n ? suma / n : 128;
+  return media < 55 ? "poca" : media > 225 ? "mucha" : "ok";
+}
 type Vista = { analisis: Analisis; rect: Rect | null; estables: number };
 
 /** True when two detections are (almost) the same place and size: the card is being held still. */
@@ -57,6 +70,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
   const [revisando, setRevisando] = useState(false);
   const [sugerirManual, setSugerirManual] = useState(false);
   const [intento, setIntento] = useState(1);
+  const [luz, setLuz] = useState<Luz>("ok");
   const [ronda, setRonda] = useState(0); // bumped by "Volver a intentar": restarts the detection attempts
   const [vista, setVista] = useState<Vista>({ analisis: { estado: "ninguna" }, rect: null, estables: 0 });
   // The parent re-renders often (autosave status): keep the latest callback in a ref so the camera is opened only once.
@@ -145,7 +159,9 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
       const v = video.current;
       if (!ctx || !v?.videoWidth) return;
       ctx.drawImage(v, 0, 0, w, h);
-      const a = analizarTarjeta(ctx.getImageData(0, 0, w, h).data, w, h, guia);
+      const pixeles = ctx.getImageData(0, 0, w, h).data;
+      setLuz(luzDe(pixeles));
+      const a = analizarTarjeta(pixeles, w, h, guia);
       const rect = "rect" in a ? { x: a.rect.x / escala, y: a.rect.y / escala, w: a.rect.w / escala, h: a.rect.h / escala } : null;
       if (a.estado !== "completa" || !rect) {
         quieta.current = null;
@@ -227,7 +243,13 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
       </div>
 
       <div className="flex flex-col gap-3 p-4">
-        {captura ? (
+        {error ? (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-lg font-semibold">No se pudo abrir la cámara.</p>
+            <p className="text-sm text-white/90">Cierre esta ventana y use «Elegir de la galería» para subir la foto de su cédula, o permita el acceso a la cámara en el navegador y vuelva a intentar.</p>
+            <Button onClick={alCerrar}>Cerrar</Button>
+          </div>
+        ) : captura ? (
           <>
             {captura.error ? (
               <p role="alert" className="rounded-lg bg-white p-3 font-medium text-danger">{captura.error}</p>
@@ -258,13 +280,18 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
                 <div className="h-full bg-green-400 transition-[width] duration-150" style={{ width: `${Math.min(100, (vista.estables / ESTABLES_PARA_CAPTURAR) * 100)}%` }} />
               </div>
             )}
+            {luz !== "ok" && !completa && (
+              <p role="status" className="rounded-lg bg-amber-200 p-2 text-sm font-semibold text-black">
+                {luz === "poca" ? "Hay poca luz. Busque un lugar más iluminado o encienda una luz." : "Hay demasiada luz o reflejo. Incline un poco la cédula para evitar el brillo."}
+              </p>
+            )}
             <ul className="text-sm text-white/90">
               <li>• Ponga la cédula {tipo === "documento_frente" ? "con su foto hacia arriba" : "del lado del código de barras"}, sobre un fondo de otro color.</li>
-              <li>• Sin reflejos, y que el texto se lea.</li>
+              <li>• Sin reflejos, y que el texto se lea. Se toma sola al detectarla; si prefiere, toque «Tomar foto ahora» cuando esté lista.</li>
             </ul>
             <div className="flex flex-col items-start gap-2">
               <Button
-                variant={sugerirManual ? "primary" : "secondary"}
+                variant="primary"
                 disabled={!zona || revisando || !!error}
                 onClick={() => zona && tomar(zona, vista.rect ? MARGEN_RECORTE : MARGEN_MANUAL)}
               >
