@@ -68,7 +68,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
   const [captura, setCaptura] = useState<Captura | null>(null);
   const [revisando, setRevisando] = useState(false);
   const [sugerirManual, setSugerirManual] = useState(false);
-  // Manual framing: the detector is off, the person lines the card up with the guide and the WHOLE frame is saved.
+  // Manual framing: the detector is off, the person lines the card up with the guide and ONLY what is inside it is saved.
   const [manual, setManual] = useState(false);
   const [intento, setIntento] = useState(1);
   const [luz, setLuz] = useState<Luz>("ok");
@@ -243,8 +243,8 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
             {dims && zona && (
               <div
                 aria-hidden="true"
-                className={`absolute rounded-2xl border-4 transition-[border-color,left,top,width,height] duration-150 ${
-                  manual ? "border-dashed border-white" : `shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] ${completa ? "border-green-400" : ajustar ? "border-amber-300" : "border-white"}`
+                className={`absolute rounded-2xl border-4 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] transition-[border-color,left,top,width,height] duration-150 ${
+                  manual ? "border-dashed border-white" : completa ? "border-green-400" : ajustar ? "border-amber-300" : "border-white"
                 }`}
                 style={pct(manual ? marco! : zona)}
               >
@@ -296,7 +296,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
               {revisando ? "Revisando la foto…" : "Encuadre la cédula completa dentro del marco."}
             </p>
             <div className="flex flex-wrap gap-2">
-              <Button disabled={revisando} onClick={() => tomar(undefined, 0)}>
+              <Button disabled={revisando || !marco} onClick={() => marco && tomar(marco, 0)}>
                 Capturar foto
               </Button>
               <Button
@@ -313,7 +313,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
               </Button>
             </div>
             <ul className="text-sm text-white/90">
-              <li>• Se guarda la imagen completa de la cámara, sin recortar: acomode la cédula dentro del marco y que se vean sus cuatro bordes.</li>
+              <li>• Solo se guarda lo que quede dentro del marco: acomode la cédula para que llene el marco y se vean sus cuatro bordes.</li>
               <li>• Con buena luz y sin reflejos.</li>
             </ul>
           </>
