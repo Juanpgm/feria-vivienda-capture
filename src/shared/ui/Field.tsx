@@ -1,4 +1,5 @@
 import { useId, type InputHTMLAttributes, type ReactElement, type TextareaHTMLAttributes } from "react";
+import { useAyuda } from "./Ayuda";
 
 export const controlClass =
   "min-h-11 w-full rounded-lg border border-border bg-bg px-3 text-base text-text placeholder:text-muted aria-[invalid=true]:border-danger";
@@ -18,12 +19,17 @@ type FieldProps = {
 /** Label + control + hint/error wiring (aria-describedby). Use with render-prop children. */
 export function Field({ label, hint, error, children }: FieldProps) {
   const id = useId();
+  const ayuda = useAyuda(label);
   const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-semibold">
-        {label}
-      </label>
+      <div className="flex items-center gap-1">
+        <label htmlFor={id} className="text-sm font-semibold">
+          {label}
+        </label>
+        {ayuda.boton}
+      </div>
+      {ayuda.panel}
       {children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
       {hint && (
         <p id={`${id}-hint`} className="text-sm text-muted">

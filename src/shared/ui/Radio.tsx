@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from "react";
+import { useAyuda } from "./Ayuda";
 import type { Option } from "./Select";
 
 /** Accessible radio group (fieldset/legend); spread react-hook-form `register(name)` into `inputProps`. */
@@ -16,9 +17,12 @@ export function RadioGroup({
   inputProps?: InputHTMLAttributes<HTMLInputElement>;
 }) {
   const errorId = `${name}-error`;
+  const ayuda = useAyuda(legend);
   return (
     <fieldset aria-describedby={error ? errorId : undefined} className="flex flex-col gap-1">
       <legend className="text-sm font-semibold">{legend}</legend>
+      {ayuda.boton && <div className="flex items-center">{ayuda.boton}<span className="text-sm text-muted">¿Qué significa?</span></div>}
+      {ayuda.panel}
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <label

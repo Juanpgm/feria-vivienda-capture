@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from "react";
+import { useAyuda } from "./Ayuda";
 import type { Option } from "./Select";
 
 /**
@@ -19,9 +20,12 @@ export function SegmentedControl({
   inputProps?: InputHTMLAttributes<HTMLInputElement>;
 }) {
   const errorId = `${name}-error`;
+  const ayuda = useAyuda(legend);
   return (
     <fieldset aria-describedby={error ? errorId : undefined} className="flex flex-col gap-1">
       <legend className="mb-1 text-sm font-semibold">{legend}</legend>
+      {ayuda.boton && <div className="flex items-center">{ayuda.boton}<span className="text-sm text-muted">¿Qué significa?</span></div>}
+      {ayuda.panel}
       <div
         className={`flex flex-col gap-1 rounded-lg border bg-surface p-1 sm:flex-row sm:self-start ${error ? "border-danger" : "border-border"}`}
       >
