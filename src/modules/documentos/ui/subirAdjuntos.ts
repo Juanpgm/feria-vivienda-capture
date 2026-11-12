@@ -46,10 +46,10 @@ async function aBase64(blob: Blob): Promise<string> {
 }
 
 /** One image (also used by the signature step with tipo "firma"). Throws ErrorSubida. */
-export async function enviarAdjunto(registroId: string, tipo: TipoAdjunto, imagen: Blob): Promise<void> {
+export async function enviarAdjunto(registroId: string, tipo: TipoAdjunto, imagen: Blob, url = `/api/registros/${encodeURIComponent(registroId)}/adjuntos`): Promise<void> {
   let res: Response;
   try {
-    res = await fetch(`/api/registros/${encodeURIComponent(registroId)}/adjuntos`, {
+    res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tipo, imagen: await aBase64(imagen) }),
