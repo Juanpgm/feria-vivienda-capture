@@ -141,8 +141,7 @@ const desplazamientos = (paso: number, max: number) => {
  * Looks for a card near `guia` (the frame drawn on screen), horizontal or vertical. Candidates are the guide scaled
  * 0.35-1.4 and shifted up to +-12 % of the image; the best one is refined to the measured edges.
  */
-export function analizarTarjeta(data: Uint8ClampedArray, w: number, h: number, guia: Rect): Analisis {
-  const img = aGris(data, w, h);
+function porBordes(img: Gris, w: number, h: number, guia: Rect): Analisis {
   let mejor: { r: Rect; lados: Lado[]; puntaje: number } | null = null;
   let parcial: { faltante: LadoNombre; puntaje: number } | null = null;
   for (const giro of [false, true]) {
@@ -179,10 +178,150 @@ export function analizarTarjeta(data: Uint8ClampedArray, w: number, h: number, g
   const ok2 = buenos(lados2);
   if (ok2.every(Boolean) && mismoSigno(lados2, ok2)) r = contorno(lados2);
   if (!tieneFormaDeTarjeta(r)) return { estado: "ninguna" };
+  return veredicto(r, w, h, mejor.puntaje);
+}
 
+/** Margin to the border and readable size: the same rules whichever detector found the rectangle. */
+function veredicto(r: Rect, w: number, h: number, puntaje: number): Analisis {
   const margenX = w * MARGEN_BORDE;
   const margenY = h * MARGEN_BORDE;
   if (r.x < margenX || r.y < margenY || r.x + r.w > w - margenX || r.y + r.h > h - margenY) return { estado: "ajustar", rect: r, problema: "cortada" };
   if (Math.max(r.w, r.h) < Math.max(w, h) * ANCHO_MIN) return { estado: "ajustar", rect: r, problema: "pequena" };
-  return { estado: "completa", rect: r, puntaje: mejor.puntaje };
+  return { estado: "completa", rect: r, puntaje };
+}
+
+// ---- Fallback for a card on a background of nearly the same brightness (white card on a white table) ----
+// There the card edge is almost invisible, but the card is PRINTED (text, portrait, barcode) and the table is flat:
+// the card is the one compact textured blob on a plain surface. Found with the bounding box of the texture, accepted
+// only when the surroundings are flat, the blob is dense and it has card proportions.
+
+const TEXTURA_UMBRAL = 16; // gradient (after a 3x3 blur) that counts as printed detail
+const TEXTURA_RADIO = 3; // detail closer than this is merged into one blob (gaps between text lines)
+const DENSIDAD_DENTRO = 0.22; // share of the blob that must be detail
+const DENSIDAD_FUERA = 0.05; // share of the surroundings that may be detail (a plain table)
+const TEXTURA_TOLERANCIA = 0.2;
+const TEXTURA_RELLENO = 0.08; // the printed area is a bit smaller than the card: grow the box by this share
+
+/** Longest run of columns/rows whose count reaches `minimo`, allowing small gaps. Null when none. */
+function tramoLargo(cuentas: Int32Array, minimo: number, hueco = 4): [number, number] | null {
+  let mejor: [number, number] | null = null;
+  let ini = -1;
+  let fin = -1;
+  for (let i = 0; i <= cuentas.length; i++) {
+    const on = i < cuentas.length && cuentas[i] >= minimo;
+    if (on) {
+      if (ini < 0) ini = i;
+      fin = i;
+    } else if (ini >= 0 && (i >= cuentas.length || i - fin > hueco)) {
+      if (!mejor || fin - ini > mejor[1] - mejor[0]) mejor = [ini, fin];
+      ini = -1;
+    }
+  }
+  return mejor;
+}
+
+export function porTextura({ g, w, h }: Gris): Rect | null {
+  // 3x3 box blur, then gradient magnitude
+  const b = new Float32Array(w * h);
+  for (let y = 1; y < h - 1; y++)
+    for (let x = 1; x < w - 1; x++) {
+      let s = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += g[(y + dy) * w + x + dx];
+      b[y * w + x] = s / 9;
+    }
+  const m = new Uint8Array(w * h);
+  for (let y = 2; y < h - 2; y++)
+    for (let x = 2; x < w - 2; x++) {
+      const i = y * w + x;
+      if (Math.abs(b[i + 1] - b[i - 1]) + Math.abs(b[i + w] - b[i - w]) > TEXTURA_UMBRAL) m[i] = 1;
+    }
+  // dilate with an integral image: merges the gaps between text lines into one blob
+  const I = new Int32Array((w + 1) * (h + 1));
+  for (let y = 0; y < h; y++) {
+    let fila = 0;
+    for (let x = 0; x < w; x++) {
+      fila += m[y * w + x];
+      I[(y + 1) * (w + 1) + x + 1] = I[y * (w + 1) + x + 1] + fila;
+    }
+  }
+  const r = TEXTURA_RADIO;
+  const d = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - r);
+      const y0 = Math.max(0, y - r);
+      const x1 = Math.min(w, x + r + 1);
+      const y1 = Math.min(h, y + r + 1);
+      if (I[y1 * (w + 1) + x1] - I[y0 * (w + 1) + x1] - I[y1 * (w + 1) + x0] + I[y0 * (w + 1) + x0] > 0) d[y * w + x] = 1;
+    }
+  // bounding box from the projection profiles (columns first, then rows inside them, then columns again)
+  const cols = (y0: number, y1: number) => {
+    const c = new Int32Array(w);
+    for (let y = y0; y < y1; y++) for (let x = 0; x < w; x++) c[x] += d[y * w + x];
+    return c;
+  };
+  const filas = (x0: number, x1: number) => {
+    const c = new Int32Array(h);
+    for (let y = 0; y < h; y++) for (let x = x0; x < x1; x++) c[y] += d[y * w + x];
+    return c;
+  };
+  const max = (a: Int32Array) => a.reduce((m2, v) => Math.max(m2, v), 0);
+  const c1 = cols(0, h);
+  const tx = tramoLargo(c1, Math.max(3, max(c1) * 0.15));
+  if (!tx) return null;
+  const f1 = filas(tx[0], tx[1] + 1);
+  const ty = tramoLargo(f1, Math.max(3, max(f1) * 0.15));
+  if (!ty) return null;
+  const c2 = cols(ty[0], ty[1] + 1);
+  const tx2 = tramoLargo(c2, Math.max(3, max(c2) * 0.15));
+  if (!tx2) return null;
+  const bw = tx2[1] - tx2[0] + 1;
+  const bh = ty[1] - ty[0] + 1;
+  // a card never fills most of the picture: a blob that does is clutter, not a card on a plain surface
+  if (bw < 20 || bh < 14 || bw * bh > w * h * 0.6) return null;
+
+  // isolation: dense inside, flat outside
+  let dentro = 0;
+  let fuera = 0;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (!d[y * w + x]) continue;
+      if (x >= tx2[0] && x <= tx2[1] && y >= ty[0] && y <= ty[1]) dentro++;
+      else fuera++;
+    }
+  if (dentro / (bw * bh) < DENSIDAD_DENTRO || fuera / Math.max(1, w * h - bw * bh) > DENSIDAD_FUERA) return null;
+
+  // undo the dilation, then grow by a few percent (the printed area is a bit smaller than the card)
+  const quitar = TEXTURA_RADIO + 2; // dilation + the blur/gradient halo
+  const iw = bw - 2 * quitar;
+  const ih = bh - 2 * quitar;
+  const px = iw * TEXTURA_RELLENO;
+  const py = ih * TEXTURA_RELLENO;
+  const rect = { x: tx2[0] + quitar - px, y: ty[0] + quitar - py, w: iw + 2 * px, h: ih + 2 * py };
+  const rel = rect.w / rect.h;
+  const ok = (v: number) => Math.abs(v - RELACION_TARJETA) <= RELACION_TARJETA * TEXTURA_TOLERANCIA;
+  return ok(rel) || ok(1 / rel) ? rect : null;
+}
+
+/**
+ * Edge detector first (accurate on any contrasting surface); when it finds nothing usable, the texture detector
+ * (white card on a white table). Never reports "completa" unless the four sides / a compact printed blob were seen.
+ */
+export function analizarTarjeta(data: Uint8ClampedArray, w: number, h: number, guia: Rect): Analisis {
+  const img = aGris(data, w, h);
+  const a = porBordes(img, w, h, guia);
+  const t = porTextura(img);
+  if (t) {
+    // The edge detector can lock onto something INSIDE the card (the portrait box, the barcode area): when the printed
+    // blob contains what it found, the blob is the card.
+    const dentro =
+      "rect" in a &&
+      a.rect.x >= t.x &&
+      a.rect.y >= t.y &&
+      a.rect.x + a.rect.w <= t.x + t.w &&
+      a.rect.y + a.rect.h <= t.y + t.h &&
+      a.rect.w * a.rect.h < 0.6 * t.w * t.h; // clearly a part of it, not the same card measured more tightly
+    if (a.estado === "ninguna" || a.estado === "parcial" || dentro) return veredicto(t, w, h, 0.5);
+  }
+  return a;
 }
