@@ -2,7 +2,13 @@ import { z } from "zod";
 import { EXCEPCIONES_UNICA_PROPIEDAD, TITULARIDADES } from "@/shared/constantes";
 import { enumDe, textoOpcional } from "@/shared/validacion";
 
-export const titularidadSchema = z
+/** Asked only to owners: a tenant is recorded as "No" (not their only property) without being asked, whatever was sent. */
+const sinPreguntarAlArrendatario = (raw: unknown) =>
+  raw && typeof raw === "object" && (raw as { tipo_titularidad?: unknown }).tipo_titularidad === "arrendatario" ? { ...raw, es_unica_propiedad: false } : raw;
+
+export const titularidadSchema = z.preprocess(
+  sinPreguntarAlArrendatario,
+  z
   .object({
     tipo_titularidad: enumDe(TITULARIDADES),
     // Optional: empty never blocks; when given, trimmed alphanumeric/hyphen.
@@ -18,15 +24,20 @@ export const titularidadSchema = z
     excepcion_otra: textoOpcional,
   })
   .superRefine((v, ctx) => {
+    if (v.tipo_titularidad === "arrendatario") return; // no exception to give: the question does not apply
     if (v.es_unica_propiedad === false && !v.excepcion_unica_propiedad)
       ctx.addIssue({ code: "custom", path: ["excepcion_unica_propiedad"], message: "Seleccione la excepción que aplica" });
     else if (v.es_unica_propiedad === false && v.excepcion_unica_propiedad === "otra" && !v.excepcion_otra)
       ctx.addIssue({ code: "custom", path: ["excepcion_otra"], message: "Describa la excepción" });
   })
-  .transform((v) => ({
-    ...v,
-    excepcion_unica_propiedad: v.es_unica_propiedad ? null : (v.excepcion_unica_propiedad ?? null),
-    excepcion_otra: !v.es_unica_propiedad && v.excepcion_unica_propiedad === "otra" ? v.excepcion_otra : null,
-  }));
+  .transform((v) => {
+    const aplica = v.tipo_titularidad !== "arrendatario" && !v.es_unica_propiedad; // only an owner with other properties gives an exception
+    return {
+      ...v,
+      excepcion_unica_propiedad: aplica ? (v.excepcion_unica_propiedad ?? null) : null,
+      excepcion_otra: aplica && v.excepcion_unica_propiedad === "otra" ? v.excepcion_otra : null,
+    };
+  }),
+);
 
 export type Titularidad = z.output<typeof titularidadSchema>;

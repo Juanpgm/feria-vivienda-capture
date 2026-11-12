@@ -42,7 +42,7 @@ describe("validarPaso", () => {
 });
 
 describe("merged steps: vivienda, cierre financiero, autorizacion", () => {
-  const tit = { tipo_titularidad: "arrendatario", numero_matricula_inmobiliaria: "", es_unica_propiedad: "si", excepcion_unica_propiedad: "" };
+  const tit = { tipo_titularidad: "propietario_clt", numero_matricula_inmobiliaria: "", es_unica_propiedad: "si", excepcion_unica_propiedad: "" };
   const rie = { esta_en_rud: "no", numero_rud: "", rud_no_sabe: false, dictamen: "demolido", dictamen_otro: "" };
   const inm = { direccion: "Calle 5 # 10-20", codigo_division: "01", id_barrio_vereda: "0199", estrato: "3" };
   /** The vivienda step with valid sections, overridden per case; returns the offending field paths. */

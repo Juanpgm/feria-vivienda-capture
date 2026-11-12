@@ -12,6 +12,8 @@ const EXCEPCIONES = Object.entries(EXCEPCIONES_UNICA_PROPIEDAD).map(([value, lab
 export function PasoTitularidad() {
   const { register, setValue, control } = useFormContext<FieldValues>();
   const error = useError();
+  const tipo = useWatch({ control, name: P + "tipo_titularidad" });
+  const propietario = tipo === "propietario_clt";
   const unica = useWatch({ control, name: P + "es_unica_propiedad" });
   const excepcion = useWatch({ control, name: P + "excepcion_unica_propiedad" });
   return (
@@ -23,7 +25,14 @@ export function PasoTitularidad() {
           name={P + "tipo_titularidad"}
           options={Object.entries(TITULARIDADES).map(([value, label]) => ({ value, label }))}
           error={error(P + "tipo_titularidad")}
-          inputProps={register(P + "tipo_titularidad")}
+          inputProps={register(P + "tipo_titularidad", {
+            // A tenant is not asked about "only property": it is recorded as "No". Changing the answer resets the question.
+            onChange: (e) => {
+              setValue(P + "es_unica_propiedad", e.target.value === "arrendatario" ? "no" : "", { shouldDirty: true });
+              setValue(P + "excepcion_unica_propiedad", "");
+              setValue(P + "excepcion_otra", "");
+            },
+          })}
         />
         <div className="max-w-sm">
           <CampoTexto
@@ -36,6 +45,7 @@ export function PasoTitularidad() {
         </div>
       </section>
 
+      {propietario && (
       <section className="flex flex-col gap-4">
         <h4 className="text-lg font-bold text-primary-strong">Única propiedad residencial</h4>
         <SegmentedControl
@@ -65,6 +75,7 @@ export function PasoTitularidad() {
           </div>
         )}
       </section>
+      )}
     </div>
   );
 }

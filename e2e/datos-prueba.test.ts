@@ -67,7 +67,9 @@ describe("datos de prueba e2e", () => {
     expect(casos.length).toBeGreaterThanOrEqual(20);
     expect(new Set(ex.map((e) => e.vivienda.estrato))).toEqual(new Set([1, 2, 3, 4, 5, 6]));
     expect(new Set(ex.map((e) => e.vivienda.division!.sector))).toEqual(new Set(["Urbano", "Rural"]));
-    expect(new Set(ex.map((e) => e.titularidad.unica))).toEqual(new Set(["si", "no"]));
+    // Tenants are not asked "only property" (unica undefined); owners answer si / no.
+    expect(new Set(ex.filter((e) => e.titularidad.tipo === "propietario_clt").map((e) => e.titularidad.unica))).toEqual(new Set(["si", "no"]));
+    expect(ex.filter((e) => e.titularidad.tipo === "arrendatario").every((e) => e.titularidad.unica === undefined)).toBe(true);
     expect(new Set(ex.map((e) => e.titularidad.excepcion).filter(Boolean))).toEqual(new Set(["otras_propiedades_destruidas", "dependencia_arriendo_40"]));
     expect(ex.some((e) => e.financiero.observaciones) && ex.some((e) => !e.financiero.observaciones)).toBe(true);
     expect(new Set(ex.map((e) => e.riesgo.dictamen))).toEqual(new Set(Object.keys(DICTAMENES)));

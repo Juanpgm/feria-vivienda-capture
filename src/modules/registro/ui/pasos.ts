@@ -144,7 +144,8 @@ export function entradaDeSeccion(seccion: string, valores: Valores): Record<stri
       s.adultos_mayores = undefined;
     }
   }
-  if (seccion === "titularidad" && s.es_unica_propiedad !== false) { s.excepcion_unica_propiedad = undefined; s.excepcion_otra = undefined; }
+  if (seccion === "titularidad" && s.tipo_titularidad === "arrendatario") s.es_unica_propiedad = false; // tenants are not asked
+  if (seccion === "titularidad" && (s.es_unica_propiedad !== false || s.tipo_titularidad === "arrendatario")) { s.excepcion_unica_propiedad = undefined; s.excepcion_otra = undefined; }
   if (seccion === "riesgo" && s.esta_en_rud !== true) {
     s.numero_rud = undefined;
     s.rud_no_sabe = undefined;

@@ -150,7 +150,10 @@ export function filasDe(id: string, datos: unknown, hoy: string): Fila[] {
         { etiqueta: "Matrícula inmobiliaria", valor: t.numero_matricula_inmobiliaria ?? "No registrada" },
         {
           etiqueta: "Única propiedad residencial",
-          valor: t.es_unica_propiedad ? "Sí" : `No. Excepción: ${t.excepcion_otra ?? EXCEPCIONES_UNICA_PROPIEDAD[t.excepcion_unica_propiedad!]}`,
+          valor:
+            t.tipo_titularidad === "arrendatario" ? "No aplica (arrendatario)"
+            : t.es_unica_propiedad ? "Sí"
+            : `No. Excepción: ${t.excepcion_otra ?? EXCEPCIONES_UNICA_PROPIEDAD[t.excepcion_unica_propiedad!]}`,
         },
       ];
     }
