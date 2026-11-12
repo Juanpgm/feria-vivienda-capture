@@ -1,5 +1,5 @@
-// Server-only: the citizen registro. One per document (deterministic id) and ONE later edit, both enforced inside
-// transactions. Identity (name, document) always comes from the eligibility list, never from the client.
+// Server-only: the citizen registro. One per document (deterministic id) and ONE later edit (unlimited only for a
+// citizen flagged `sin_limite_ediciones`, used for testing), both enforced inside transactions. Identity (name, document) always comes from the eligibility list, never from the client.
 import { createHash } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { calcularEdad } from "@/modules/composicion/domain/derivaciones";
@@ -36,7 +36,7 @@ export async function estadoCiudadano(c: Ciudadano): Promise<EstadoCiudadano> {
   if (c.registro_id) {
     const x = (await refRegistro(registroId).get()).data();
     if (x && (x.adjuntos_completos === true || (c.ediciones_usadas ?? 0) > 0)) {
-      const puedeEditar = (c.ediciones_usadas ?? 0) === 0 && x.estado_revision === ESTADO_REVISION_INICIAL;
+      const puedeEditar = ((c.ediciones_usadas ?? 0) === 0 || c.sin_limite_ediciones === true) && x.estado_revision === ESTADO_REVISION_INICIAL;
       return { tipo: "registrado", radicado: String(x.radicado), registrado_en: aIso(x.registrado_en), puedeEditar, registroId, valores: puedeEditar ? (x.valores_formulario ?? null) : null };
     }
     return { tipo: "nuevo", registroId }; // creation was interrupted: resume it
@@ -113,11 +113,11 @@ export async function guardarRegistroCiudadano(datos: RegistroDatos, c: Ciudadan
       return rad;
     }
     if (!edicion) throw new CiudadanoError(409, "Usted ya tiene un registro enviado.");
-    if (usadas === 0) {
+    if (usadas === 0 || ciu.sin_limite_ediciones === true) {
       if (x.estado_revision !== ESTADO_REVISION_INICIAL) throw new CiudadanoError(409, "Su registro ya está en revisión y no puede modificarse.");
-      tx.update(ref, { ...campos, valores_formulario: valores, actualizado_en: FieldValue.serverTimestamp(), ediciones_ciudadano: 1 });
+      tx.update(ref, { ...campos, valores_formulario: valores, actualizado_en: FieldValue.serverTimestamp(), ediciones_ciudadano: usadas + 1 });
       tx.create(ref.collection("historial").doc(), { tipo: "edicion_ciudadano", estado_revision: x.estado_revision, por_uid: UID_CIUDADANO, por_nombre: NOMBRE_CIUDADANO, por_correo: "", en: FieldValue.serverTimestamp() });
-      tx.update(refC, { ediciones_usadas: 1, edicion_hash: hash, adjuntos_abiertos: true });
+      tx.update(refC, { ediciones_usadas: usadas + 1, edicion_hash: hash, adjuntos_abiertos: true });
       return rad;
     }
     // Same payload re-sent after a failed upload of the edit: allowed, nothing new is consumed.
