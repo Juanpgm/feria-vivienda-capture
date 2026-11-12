@@ -17,7 +17,6 @@ const ANCHO_ANALISIS = 320; // detection runs on a 320 px wide copy of the frame
 const CADA_MS = 180;
 const ESTABLES_PARA_CAPTURAR = 6; // ~1 s with the whole card held still
 const MARGEN_RECORTE = 0.02; // crop a little outside the detected contour so no edge is lost
-const MARGEN_MANUAL = 0.12; // a manual shot is cropped to the guide plus this margin: the card may not sit exactly in it
 const INTENTO_MS = 5000; // one detection attempt = 5 s looking for the card
 const INTENTOS = 3; // after this many attempts without a complete card, point to the manual shot
 
@@ -69,6 +68,8 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
   const [captura, setCaptura] = useState<Captura | null>(null);
   const [revisando, setRevisando] = useState(false);
   const [sugerirManual, setSugerirManual] = useState(false);
+  // Manual framing: the detector is off, the person lines the card up with the guide and the WHOLE frame is saved.
+  const [manual, setManual] = useState(false);
   const [intento, setIntento] = useState(1);
   const [luz, setLuz] = useState<Luz>("ok");
   const [ronda, setRonda] = useState(0); // bumped by "Volver a intentar": restarts the detection attempts
@@ -138,7 +139,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
   // Analyze the live view ~5 times a second.
   const quieta = useRef<{ rect: Rect; n: number } | null>(null);
   useEffect(() => {
-    if (!dims || !marco || captura || revisando || error) return;
+    if (!dims || !marco || captura || revisando || error || manual) return;
     const escala = ANCHO_ANALISIS / dims.w;
     const w = ANCHO_ANALISIS;
     const h = Math.max(1, Math.round(dims.h * escala));
@@ -198,7 +199,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
     };
     // The guide only depends on the video size.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dims?.w, dims?.h, captura, revisando, error, tomar, ronda]);
+  }, [dims?.w, dims?.h, captura, revisando, error, manual, tomar, ronda]);
 
   const zona = vista.rect ?? marco;
   const completa = vista.analisis.estado === "completa";
@@ -242,10 +243,12 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
             {dims && zona && (
               <div
                 aria-hidden="true"
-                className={`absolute rounded-2xl border-4 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] transition-[border-color,left,top,width,height] duration-150 ${completa ? "border-green-400" : ajustar ? "border-amber-300" : "border-white"}`}
-                style={pct(zona)}
+                className={`absolute rounded-2xl border-4 transition-[border-color,left,top,width,height] duration-150 ${
+                  manual ? "border-dashed border-white" : `shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] ${completa ? "border-green-400" : ajustar ? "border-amber-300" : "border-white"}`
+                }`}
+                style={pct(manual ? marco! : zona)}
               >
-                {!vista.rect && <IlustracionCedula lado={tipo} className="size-full rounded-xl opacity-15" />}
+                {(manual || !vista.rect) && <IlustracionCedula lado={tipo} className="size-full rounded-xl opacity-15" />}
               </div>
             )}
           </div>
@@ -287,6 +290,33 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
               )}
             </div>
           </>
+        ) : manual ? (
+          <>
+            <p role="status" aria-live="polite" className="text-lg font-semibold">
+              {revisando ? "Revisando la foto…" : "Encuadre la cédula completa dentro del marco."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={revisando} onClick={() => tomar(undefined, 0)}>
+                Capturar foto
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={revisando}
+                onClick={() => {
+                  setManual(false);
+                  setSugerirManual(false);
+                  setIntento(1);
+                  setRonda((r) => r + 1);
+                }}
+              >
+                Volver a la detección automática
+              </Button>
+            </div>
+            <ul className="text-sm text-white/90">
+              <li>• Se guarda la imagen completa de la cámara, sin recortar: acomode la cédula dentro del marco y que se vean sus cuatro bordes.</li>
+              <li>• Con buena luz y sin reflejos.</li>
+            </ul>
+          </>
         ) : (
           <>
             <p role="status" aria-live="polite" className={`text-lg font-semibold ${msg.tono === "ok" ? "text-green-300" : msg.tono === "aviso" ? "text-amber-200" : ""}`}>
@@ -296,13 +326,13 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
               <Button
                 variant="primary"
                 disabled={revisando}
-                onClick={() => tomar(vista.rect ?? undefined, vista.rect ? MARGEN_RECORTE : MARGEN_MANUAL)}
+                onClick={() => setManual(true)}
               >
-                Tomar foto ahora
+                Tomar foto manualmente
               </Button>
               {sugerirManual && !completa && (
                 <>
-                  <p className="text-sm text-white/90">Acomode la cédula completa dentro del marco y toque «Tomar foto ahora». Si el fondo es blanco, ponga algo oscuro debajo para mejorar la detección.</p>
+                  <p className="text-sm text-white/90">Use «Tomar foto manualmente» y encuadre la cédula usted. Si el fondo es blanco, ponga algo oscuro debajo para mejorar la detección.</p>
                   <Button
                     variant="secondary"
                     onClick={() => {
@@ -328,7 +358,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
             )}
             <ul className="text-sm text-white/90">
               <li>• Ponga la cédula {tipo === "documento_frente" ? "con su foto hacia arriba" : "del lado del código de barras"}, sobre un fondo de otro color.</li>
-              <li>• Sin reflejos, y que el texto se lea. Se toma sola al detectarla; si prefiere, toque «Tomar foto ahora» cuando esté lista.</li>
+              <li>• Sin reflejos, y que el texto se lea. Se toma sola al detectarla; si prefiere, use «Tomar foto manualmente» y encuádrela usted.</li>
             </ul>
           </>
         )}
