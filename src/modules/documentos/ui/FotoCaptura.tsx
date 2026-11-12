@@ -59,15 +59,18 @@ export function FotoCaptura({ borradorId, tipo, errorFormulario, bloqueada }: { 
     };
   }, [borradorId, tipo, campo, getValues, setValue]);
 
-  async function recibir(archivo: Blob) {
+  async function recibir(archivo: Blob, forzar = false) {
     setCamara(false);
     setError("");
     setProcesando(true);
     try {
       const p = await procesarArchivo(archivo);
       // Must look like a document photo (sharp, lit, textured, horizontal) and not be the same picture as the other side.
-      const calidad = await revisarFoto(p.blob);
-      if (!calidad.ok) throw new ErrorFoto(calidad.mensaje);
+      // A photo the person kept from the camera after the warning (`forzar`) is not blocked by the quality check.
+      if (!forzar) {
+        const calidad = await revisarFoto(p.blob);
+        if (!calidad.ok) throw new ErrorFoto(calidad.mensaje);
+      }
       const otra = await cargarFoto(borradorId, tipo === "documento_frente" ? "documento_reverso" : "documento_frente").catch(() => undefined);
       if (otra && (await sonLaMismaFoto(p.blob, otra.blob)))
         throw new ErrorFoto(tipo === "documento_reverso" ? "Esta es la misma foto del frente. Ahora tome la parte de atrás de la cédula." : "Esta es la misma foto de la parte de atrás. Aquí va el frente, donde sale su foto.");
@@ -156,7 +159,7 @@ export function FotoCaptura({ borradorId, tipo, errorFormulario, bloqueada }: { 
       {camara && (
         <CamaraGuiada
           tipo={tipo}
-          alAceptar={(b) => void recibir(b)}
+          alAceptar={(b, forzada) => void recibir(b, forzada)}
           alCerrar={() => {
             setCamara(false);
             requestAnimationFrame(() => botonCamara.current?.focus());

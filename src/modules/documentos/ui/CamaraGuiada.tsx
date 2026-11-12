@@ -61,7 +61,7 @@ function mensajeDe(a: Analisis, estables: number, intento: number): { texto: str
  * moving, the photo is taken by itself. While it is not complete the screen says what to fix ("acerque", "muéstrela
  * completa"). "Tomar foto manualmente" is always there. The image is cropped to the detected card, then reviewed.
  */
-export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; alAceptar: (b: Blob) => void; alCerrar: () => void }) {
+export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /** `forzada`: the person kept a photo the checks did not like. */ alAceptar: (b: Blob, forzada?: boolean) => void; alCerrar: () => void }) {
   const paso = PASO_FOTO[tipo];
   const video = useRef<HTMLVideoElement>(null);
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
@@ -108,9 +108,11 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
     return { w, h, x: (dims.w - w) / 2, y: (dims.h - h) / 2 };
   })();
 
-  const tomar = useCallback((zona: Rect, margen = MARGEN_RECORTE) => {
+  const tomar = useCallback((zonaPedida?: Rect, margen = MARGEN_RECORTE) => {
     const v = video.current;
     if (!v?.videoWidth) return;
+    // No zone (detector or guide not ready): the whole frame. The manual shot must never be blocked by the detection.
+    const zona = zonaPedida ?? { x: 0, y: 0, w: v.videoWidth, h: v.videoHeight };
     const mx = zona.w * margen;
     const my = zona.h * margen;
     const x = Math.max(0, zona.x - mx);
@@ -158,10 +160,18 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
     const analizar = () => {
       const v = video.current;
       if (!ctx || !v?.videoWidth) return;
-      ctx.drawImage(v, 0, 0, w, h);
-      const pixeles = ctx.getImageData(0, 0, w, h).data;
-      setLuz(luzDe(pixeles));
-      const a = analizarTarjeta(pixeles, w, h, guia);
+      let pixeles: Uint8ClampedArray;
+      let a: Analisis;
+      try {
+        ctx.drawImage(v, 0, 0, w, h);
+        pixeles = ctx.getImageData(0, 0, w, h).data;
+        setLuz(luzDe(pixeles));
+        a = analizarTarjeta(pixeles, w, h, guia);
+      } catch {
+        // The detector could not run on this device: say so and leave the manual shot as the way forward.
+        setSugerirManual(true);
+        return;
+      }
       const rect = "rect" in a ? { x: a.rect.x / escala, y: a.rect.y / escala, w: a.rect.w / escala, h: a.rect.h / escala } : null;
       if (a.estado !== "completa" || !rect) {
         quieta.current = null;
@@ -211,7 +221,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
         </button>
       </div>
 
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-2">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden px-2">
         {error && <p role="alert" className="max-w-sm text-center font-medium">{error}</p>}
         {captura && (
           // eslint-disable-next-line @next/next/no-img-element -- blob: URL
@@ -219,7 +229,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
         )}
         {/* The live view stays mounted (only hidden) while reviewing, so "Tomar de nuevo" resumes the same stream. */}
         {!error && (
-          <div className={`relative max-h-full max-w-full ${captura ? "hidden" : ""}`} style={dims ? { aspectRatio: `${dims.w} / ${dims.h}`, height: "100%" } : { height: "100%" }}>
+          <div className={`relative max-h-full max-w-full overflow-hidden ${captura ? "hidden" : ""}`} style={dims ? { aspectRatio: `${dims.w} / ${dims.h}`, height: "100%" } : { height: "100%" }}>
             <video
               ref={video}
               autoPlay
@@ -242,7 +252,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
         )}
       </div>
 
-      <div className="flex flex-col gap-3 p-4">
+      <div className="relative z-10 flex flex-col gap-3 bg-black p-4">
         {error ? (
           <div className="flex flex-col items-start gap-2">
             <p className="text-lg font-semibold">No se pudo abrir la cámara.</p>
@@ -252,14 +262,16 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
         ) : captura ? (
           <>
             {captura.error ? (
-              <p role="alert" className="rounded-lg bg-white p-3 font-medium text-danger">{captura.error}</p>
+              <p role="alert" className="rounded-lg bg-white p-3 font-medium text-danger">
+                {captura.error} Si en la imagen se ve bien la cédula, puede usarla de todos modos.
+              </p>
             ) : (
               <p role="status" className="font-semibold">¿Se lee bien todo el texto y se ve la cédula completa?</p>
             )}
             <div className="flex flex-wrap gap-2">
               {!captura.error && <Button onClick={() => alAceptar(captura.blob)}>Sí, usar esta foto</Button>}
               <Button
-                variant="secondary"
+                variant={captura.error ? "primary" : "secondary"}
                 onClick={() => {
                   setCaptura(null);
                   setSugerirManual(false);
@@ -268,6 +280,11 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
               >
                 Tomar de nuevo
               </Button>
+              {captura.error && (
+                <Button variant="secondary" onClick={() => alAceptar(captura.blob, true)}>
+                  Usar de todos modos
+                </Button>
+              )}
             </div>
           </>
         ) : (
@@ -275,25 +292,11 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
             <p role="status" aria-live="polite" className={`text-lg font-semibold ${msg.tono === "ok" ? "text-green-300" : msg.tono === "aviso" ? "text-amber-200" : ""}`}>
               {revisando ? "Revisando la foto…" : msg.texto}
             </p>
-            {completa && (
-              <div aria-hidden="true" className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-white/20">
-                <div className="h-full bg-green-400 transition-[width] duration-150" style={{ width: `${Math.min(100, (vista.estables / ESTABLES_PARA_CAPTURAR) * 100)}%` }} />
-              </div>
-            )}
-            {luz !== "ok" && !completa && (
-              <p role="status" className="rounded-lg bg-amber-200 p-2 text-sm font-semibold text-black">
-                {luz === "poca" ? "Hay poca luz. Busque un lugar más iluminado o encienda una luz." : "Hay demasiada luz o reflejo. Incline un poco la cédula para evitar el brillo."}
-              </p>
-            )}
-            <ul className="text-sm text-white/90">
-              <li>• Ponga la cédula {tipo === "documento_frente" ? "con su foto hacia arriba" : "del lado del código de barras"}, sobre un fondo de otro color.</li>
-              <li>• Sin reflejos, y que el texto se lea. Se toma sola al detectarla; si prefiere, toque «Tomar foto ahora» cuando esté lista.</li>
-            </ul>
             <div className="flex flex-col items-start gap-2">
               <Button
                 variant="primary"
-                disabled={!zona || revisando || !!error}
-                onClick={() => zona && tomar(zona, vista.rect ? MARGEN_RECORTE : MARGEN_MANUAL)}
+                disabled={revisando}
+                onClick={() => tomar(vista.rect ?? undefined, vista.rect ? MARGEN_RECORTE : MARGEN_MANUAL)}
               >
                 Tomar foto ahora
               </Button>
@@ -313,6 +316,20 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
                 </>
               )}
             </div>
+            {completa && (
+              <div aria-hidden="true" className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-white/20">
+                <div className="h-full bg-green-400 transition-[width] duration-150" style={{ width: `${Math.min(100, (vista.estables / ESTABLES_PARA_CAPTURAR) * 100)}%` }} />
+              </div>
+            )}
+            {luz !== "ok" && !completa && (
+              <p role="status" className="rounded-lg bg-amber-200 p-2 text-sm font-semibold text-black">
+                {luz === "poca" ? "Hay poca luz. Busque un lugar más iluminado o encienda una luz." : "Hay demasiada luz o reflejo. Incline un poco la cédula para evitar el brillo."}
+              </p>
+            )}
+            <ul className="text-sm text-white/90">
+              <li>• Ponga la cédula {tipo === "documento_frente" ? "con su foto hacia arriba" : "del lado del código de barras"}, sobre un fondo de otro color.</li>
+              <li>• Sin reflejos, y que el texto se lea. Se toma sola al detectarla; si prefiere, toque «Tomar foto ahora» cuando esté lista.</li>
+            </ul>
           </>
         )}
       </div>
