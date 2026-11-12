@@ -47,7 +47,7 @@ export async function calcularRequisitos(valores: Valores): Promise<Requisitos> 
     },
     {
       id: "documentos",
-      titulo: "Fotos del documento de identidad",
+      titulo: "Fotos de la cédula",
       ok: documentos.success,
       detalle: documentos.success ? "Frente y reverso capturados." : "Faltan las fotos del frente y el reverso.",
       paso: "autorizacion",
@@ -55,11 +55,11 @@ export async function calcularRequisitos(valores: Valores): Promise<Requisitos> 
     },
     {
       id: "firma",
-      titulo: "Firma del solicitante",
+      titulo: "Firma",
       ok: firmada,
       detalle: firmada
         ? valores.firma?.metodo_firma === "verificacion_manual" ? "Verificación manual registrada." : "Firmada."
-        : "Se registra más abajo, después de revisar el resumen.",
+        : "Fírmela más abajo, después de revisar el resumen.",
       paso: "revision",
       ancla: anclaDe("firma"),
     },

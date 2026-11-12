@@ -2,9 +2,8 @@
 
 import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { DICTAMENES } from "@/shared/constantes";
-import { Field } from "@/shared/ui/Field";
+import { RadioGroup } from "@/shared/ui/Radio";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
-import { Select } from "@/shared/ui/Select";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 
 const P = "riesgo.";
@@ -12,7 +11,15 @@ const SI_NO = [
   { value: "si", label: "Sí" },
   { value: "no", label: "No" },
 ];
-const OPCIONES_DICTAMEN = Object.entries(DICTAMENES).map(([value, label]) => ({ value, label }));
+const DESCRIPCION_DICTAMEN: Record<string, string> = {
+  colapso_total: "El inmueble se destruyó por completo.",
+  demolido: "El inmueble ya fue demolido.",
+  orden_demolicion: "Le informaron que el inmueble debe demolerse.",
+  demolicion_en_proceso: "La demolición ya empezó.",
+  arreglos_locativos: "Necesita reparaciones, pero no demolición.",
+  otro: "Ninguna de las anteriores.",
+};
+const OPCIONES_DICTAMEN = Object.entries(DICTAMENES).map(([value, label]) => ({ value, label, description: DESCRIPCION_DICTAMEN[value] }));
 
 export function PasoRiesgo() {
   const { register, setValue, control } = useFormContext<FieldValues>();
@@ -41,11 +48,9 @@ export function PasoRiesgo() {
         )}
       </section>
 
-      <section className="flex max-w-md flex-col gap-4">
-        <h4 className="text-lg font-bold text-primary-strong">Dictamen técnico</h4>
-        <Field label="Resultado del dictamen técnico" error={error(P + "dictamen")}>
-          {(a11y) => <Select {...a11y} options={OPCIONES_DICTAMEN} {...register(P + "dictamen")} />}
-        </Field>
+      <section className="flex max-w-xl flex-col gap-4">
+        <h4 className="text-lg font-bold text-primary-strong">Estado de la vivienda (dictamen técnico)</h4>
+        <RadioGroup lista legend="Resultado del dictamen técnico" name={P + "dictamen"} options={OPCIONES_DICTAMEN} error={error(P + "dictamen")} inputProps={register(P + "dictamen")} />
         {dictamen === "otro" && <CampoTexto name={P + "dictamen_otro"} label="Cuál dictamen" autoComplete="off" />}
       </section>
     </div>

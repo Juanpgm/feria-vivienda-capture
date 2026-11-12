@@ -28,7 +28,7 @@ export function Resumen({ irAPaso }: { irAPaso: (id: string, ancla?: string) => 
       <p className={incompletas.length ? "font-medium text-danger" : "text-muted"}>
         {incompletas.length
           ? `Faltan datos en ${incompletas.length} ${incompletas.length === 1 ? "sección" : "secciones"}: ${incompletas.map((s) => s.titulo).join(", ")}.`
-          : "Los datos de los pasos anteriores están completos. Revíselos antes de continuar."}
+          : "Revise sus respuestas. Si algo no está bien, use «Editar» para corregirlo."}
       </p>
 
       {SECCIONES.map((s) => {

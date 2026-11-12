@@ -11,7 +11,6 @@ import type { OpcionBusqueda } from "@/shared/busqueda";
 import { Combobox } from "@/shared/ui/Combobox";
 import { Field } from "@/shared/ui/Field";
 import { RadioGroup } from "@/shared/ui/Radio";
-import { Select } from "@/shared/ui/Select";
 import { regionPorDefecto } from "@/shared/normalizacion/telefono";
 import { CampoFecha } from "@/modules/registro/ui/CampoFecha";
 import { CampoTelefono } from "@/modules/registro/ui/CampoTelefono";
@@ -65,7 +64,7 @@ export function PasoHogar() {
         </Seccion>
       )}
 
-      <Seccion titulo="Identificación">
+      <Seccion titulo="Su documento">
         <div className="sm:col-span-2">
           <RadioGroup
             legend="Tipo de documento"
@@ -111,7 +110,7 @@ export function PasoHogar() {
         {!ciudadano && <AvisoDuplicado consulta={consulta} actual={normalizarDocumento(numero ?? "")} />}
       </Seccion>
 
-      <Seccion titulo="Contacto">
+      <Seccion titulo="Cómo contactarlo">
         <CampoTelefono name={P + "telefono_1"} label="Teléfono principal" etiquetaPais="Código de país del teléfono principal" regionInicial={regionTelefono} conEjemplo />
         <CampoTelefono name={P + "telefono_2"} label="Teléfono alterno (opcional)" etiquetaPais="Código de país del teléfono alterno" regionInicial={regionTelefono} />
         <div className="sm:col-span-2">
@@ -125,7 +124,7 @@ export function PasoHogar() {
         </div>
       </Seccion>
 
-      <Seccion titulo="Datos personales">
+      <Seccion titulo="Sobre usted">
         <CampoFecha
           name={P + "fecha_nacimiento"}
           label="Fecha de nacimiento"
@@ -133,9 +132,9 @@ export function PasoHogar() {
           mensajeMax="La fecha de nacimiento debe ser anterior a hoy"
           hint={edad !== null ? `Edad: ${edad} años` : undefined}
         />
-        <Field label="Estado civil" error={error(P + "estado_civil")}>
-          {(a11y) => <Select {...a11y} options={opciones(ESTADOS_CIVILES)} {...register(P + "estado_civil")} />}
-        </Field>
+        <div className="sm:col-span-2">
+          <RadioGroup legend="Estado civil" name={P + "estado_civil"} options={opciones(ESTADOS_CIVILES)} error={error(P + "estado_civil")} inputProps={register(P + "estado_civil")} />
+        </div>
         <CampoTexto
           name={P + "anios_residencia"}
           label="Años de residencia"

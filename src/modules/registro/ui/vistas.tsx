@@ -41,10 +41,10 @@ const Compuesto = ({ children }: { children: ReactNode }) => <div className="fle
 
 const PasoHogarFamilia = () => (
   <Compuesto>
-    <Bloque clave="composicion" titulo="Composición familiar e ingresos">
+    <Bloque clave="composicion" titulo="Su hogar e ingresos">
       <PasoComposicion />
     </Bloque>
-    <Bloque clave="proteccion" titulo="Especial protección constitucional">
+    <Bloque clave="proteccion" titulo="Situaciones de especial protección">
       <PasoProteccion />
     </Bloque>
   </Compuesto>
@@ -52,13 +52,13 @@ const PasoHogarFamilia = () => (
 
 const PasoVivienda = () => (
   <Compuesto>
-    <Bloque clave="inmueble" titulo="Inmueble y ubicación">
+    <Bloque clave="inmueble" titulo="Dónde queda la vivienda">
       <PasoInmueble />
     </Bloque>
-    <Bloque clave="riesgo" titulo="Riesgo y dictamen técnico">
+    <Bloque clave="riesgo" titulo="Afectación de la vivienda">
       <PasoRiesgo />
     </Bloque>
-    <Bloque clave="titularidad" titulo="Titularidad">
+    <Bloque clave="titularidad" titulo="Propiedad de la vivienda">
       <PasoTitularidad />
     </Bloque>
   </Compuesto>
@@ -74,7 +74,7 @@ function PasoAutorizacionDocumento({ borradorId }: PropsVista) {
       <Bloque clave="consentimiento" titulo="Autorización de datos">
         <PasoConsentimiento />
       </Bloque>
-      <Bloque clave="documentos" titulo="Documento de identidad">
+      <Bloque clave="documentos" titulo="Fotos de su cédula">
         {habilitadas ? (
           <PasoDocumentos borradorId={borradorId} />
         ) : (

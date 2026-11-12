@@ -61,6 +61,27 @@ export function MultiSelect({ label, hint, error, options, value, onChange, onBl
     }
   }
 
+  // Up to 7 options: show them all as checkboxes, nothing to open or search.
+  if (options.length < buscableDesde) {
+    return (
+      <Field label={label} hint={hint} error={error}>
+        {(a11y) => (
+          <div role="group" aria-label={label} id={a11y.id} aria-describedby={a11y["aria-describedby"]} className="flex flex-col gap-2" onBlur={onBlur}>
+            {options.map((o) => (
+              <label
+                key={o.value}
+                className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 has-checked:border-2 has-checked:border-primary has-checked:bg-surface"
+              >
+                <input type="checkbox" className="check" checked={value.includes(o.value)} onChange={() => alternar(o)} />
+                <span className="font-medium">{o.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </Field>
+    );
+  }
+
   return (
     <Field label={label} hint={hint} error={error}>
       {(a11y) => (

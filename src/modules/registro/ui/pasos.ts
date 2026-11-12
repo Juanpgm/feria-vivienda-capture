@@ -19,6 +19,8 @@ export type Parte = {
 export type Paso = {
   id: string;
   titulo: string;
+  /** One plain-language sentence under the step title: what this step asks for. */
+  descripcion: string;
   /** Sections validated by this step; its fields are the union of their `campos`. */
   partes: readonly Parte[];
 };
@@ -28,7 +30,8 @@ export type Paso = {
 export const PASOS: readonly Paso[] = [
   {
     id: "solicitante",
-    titulo: "Solicitante",
+    titulo: "Sus datos",
+    descripcion: "Identificación y contacto de quien se postula. Los campos marcados como «opcional» puede dejarlos vacíos; los demás son obligatorios.",
     partes: [
       {
         seccion: "solicitante",
@@ -43,7 +46,8 @@ export const PASOS: readonly Paso[] = [
   },
   {
     id: "hogar",
-    titulo: "Hogar",
+    titulo: "Su hogar",
+    descripcion: "Cuántas personas viven en el hogar y cuánto ingresa al mes.",
     partes: [
       {
         seccion: "composicion",
@@ -54,7 +58,8 @@ export const PASOS: readonly Paso[] = [
   },
   {
     id: "vivienda",
-    titulo: "Vivienda",
+    titulo: "La vivienda afectada",
+    descripcion: "Dónde queda, en qué estado quedó y cuál es su relación con ella.",
     partes: [
       {
         seccion: "inmueble",
@@ -75,7 +80,8 @@ export const PASOS: readonly Paso[] = [
   },
   {
     id: "financiero",
-    titulo: "Cierre financiero",
+    titulo: "Recursos y seguro",
+    descripcion: "Con qué recursos contaría para una vivienda nueva y si el inmueble tenía seguro.",
     partes: [
       {
         seccion: "cierre_financiero",
@@ -86,7 +92,8 @@ export const PASOS: readonly Paso[] = [
   },
   {
     id: "autorizacion",
-    titulo: "Autorización y documento",
+    titulo: "Autorización y cédula",
+    descripcion: "Autorice el uso de sus datos y tome las fotos de la cédula.",
     partes: [
       {
         seccion: "consentimiento",
@@ -102,7 +109,8 @@ export const PASOS: readonly Paso[] = [
   },
   {
     id: "revision",
-    titulo: "Revisión y firma",
+    titulo: "Verifique su registro y envíe",
+    descripcion: "Revise que todo esté bien, firme y envíe. Con el envío recibe un número de radicado como constancia.",
     partes: [
       {
         seccion: "firma",

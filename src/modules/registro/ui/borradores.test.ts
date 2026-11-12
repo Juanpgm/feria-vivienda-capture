@@ -84,7 +84,7 @@ describe("lista de borradores", () => {
 
   it("names the row from primer_nombre + primer_apellido, 'Sin nombre' when empty, with the current step", () => {
     expect(resumenBorrador(base("a", "", { primer_nombre: " Ana ", segundo_nombre: "María", primer_apellido: "Pérez" }, "hogar"))).toMatchObject({
-      nombre: "Ana Pérez", numeroPaso: 2, paso: "Hogar",
+      nombre: "Ana Pérez", numeroPaso: 2, paso: "Su hogar",
     });
     expect(resumenBorrador(base("b", "", { primer_nombre: "Ana" })).nombre).toBe("Ana");
     expect(resumenBorrador(base("c", "")).nombre).toBe("Sin nombre");

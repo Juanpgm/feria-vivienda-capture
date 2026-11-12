@@ -267,10 +267,21 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
                 Ver borradores en curso
               </Link>
             )}
-            <p className="text-sm text-muted md:hidden">
+            <p className="text-sm font-medium text-muted">
               Paso {indice + 1} de {PASOS.length}
             </p>
+            <div
+              role="progressbar"
+              aria-label="Avance del registro"
+              aria-valuemin={1}
+              aria-valuemax={PASOS.length}
+              aria-valuenow={indice + 1}
+              className="mb-3 mt-1 h-2 w-full overflow-hidden rounded-full bg-border"
+            >
+              <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${((indice + 1) / PASOS.length) * 100}%` }} />
+            </div>
             <h2 className="text-2xl font-bold text-primary-strong">{paso.titulo}</h2>
+            <p className="mt-1 text-muted">{paso.descripcion}</p>
             {recuperado && indice === 0 && inicial.guardado_en && (
               <p className="mt-1 text-sm text-muted">Se recuperó el borrador guardado en este equipo.</p>
             )}

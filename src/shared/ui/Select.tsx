@@ -1,7 +1,7 @@
 import type { SelectHTMLAttributes } from "react";
 import { controlClass } from "./Field";
 
-export type Option = { value: string; label: string };
+export type Option = { value: string; label: string; /** Short plain-language explanation shown under the label in list-style radio groups. */ description?: string };
 
 export function Select({
   options,

@@ -104,7 +104,7 @@ export function EnvioRegistro({ irAPaso, borradorId, alEnviado, alBloquear }: Pr
     <div className="flex flex-col gap-8">
       <section aria-labelledby="req-titulo">
         <h3 id="req-titulo" className="mb-2 border-b border-border pb-1 text-lg font-bold text-primary-strong">
-          Requisitos para enviar
+          Antes de enviar
         </h3>
         {!req ? (
           <p role="status">Revisando requisitos…</p>
@@ -117,9 +117,15 @@ export function EnvioRegistro({ irAPaso, borradorId, alEnviado, alBloquear }: Pr
 
       <section aria-labelledby="envio-titulo" className="flex flex-col gap-3">
         <h3 id="envio-titulo" className="border-b border-border pb-1 text-lg font-bold text-primary-strong">
-          Enviar
+          {ciudadano ? "Enviar mi registro" : "Enviar"}
         </h3>
-        {!listo && req && <p className="text-muted">El botón se activa cuando todos los requisitos están listos.{faltan.length ? ` Falta: ${faltan.map((f) => f.titulo.toLowerCase()).join(", ")}.` : ""}</p>}
+        {listo ? (
+          <p className="text-muted">
+            Todo está listo. Al enviar recibirá un número de radicado como constancia{ciudadano && !edicion ? "; después podrá modificar su registro una sola vez" : ""}.
+          </p>
+        ) : (
+          req && <p className="text-muted">El botón se activa cuando todo esté listo.{faltan.length ? ` Falta: ${faltan.map((f) => f.titulo.toLowerCase()).join(", ")}.` : ""}</p>
+        )}
 
         <div aria-live="polite" role="status" className="min-h-6 text-muted">
           {textoProgreso(estado, total)}
@@ -151,7 +157,7 @@ export function EnvioRegistro({ irAPaso, borradorId, alEnviado, alBloquear }: Pr
 
         <div>
           <Button onClick={enviar} disabled={!listo || enviando} aria-busy={enviando}>
-            {error ? "Reintentar" : enviando ? "Enviando…" : "Enviar registro"}
+            {error ? "Reintentar" : enviando ? "Enviando…" : ciudadano ? "Enviar mi registro" : "Enviar registro"}
           </Button>
         </div>
       </section>

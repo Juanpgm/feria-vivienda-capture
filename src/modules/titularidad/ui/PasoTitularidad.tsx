@@ -2,9 +2,8 @@
 
 import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { EXCEPCIONES_UNICA_PROPIEDAD, TITULARIDADES } from "@/shared/constantes";
-import { Field } from "@/shared/ui/Field";
+import { RadioGroup } from "@/shared/ui/Radio";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
-import { Select } from "@/shared/ui/Select";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 
 const P = "titularidad.";
@@ -18,7 +17,7 @@ export function PasoTitularidad() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
-        <h4 className="text-lg font-bold text-primary-strong">Relación con el inmueble</h4>
+        <h4 className="text-lg font-bold text-primary-strong">Su relación con la vivienda</h4>
         <SegmentedControl
           legend="El solicitante es"
           name={P + "tipo_titularidad"}
@@ -57,9 +56,7 @@ export function PasoTitularidad() {
         />
         {unica === "no" && (
           <div className="max-w-xl">
-            <Field label="Excepción que aplica" error={error(P + "excepcion_unica_propiedad")}>
-              {(a11y) => <Select {...a11y} options={EXCEPCIONES} {...register(P + "excepcion_unica_propiedad")} />}
-            </Field>
+            <RadioGroup lista legend="Excepción que aplica" name={P + "excepcion_unica_propiedad"} options={EXCEPCIONES} error={error(P + "excepcion_unica_propiedad")} inputProps={register(P + "excepcion_unica_propiedad")} />
             {excepcion === "otra" && (
               <div className="mt-4">
                 <CampoTexto name={P + "excepcion_otra"} label="Describa la excepción" autoComplete="off" />
