@@ -18,8 +18,11 @@ export type Ciudadano = {
   edicion_hash?: string;
   /** Photos/signature may be uploaded only while open: set on create and on edit, closed by `completar`. */
   adjuntos_abiertos?: boolean;
-  /** Test citizens only (set by hand with the Admin SDK): may edit their registro any number of times. */
-  sin_limite_ediciones?: boolean;
+  /**
+   * Test citizen (set by hand with the Admin SDK): edits its registro any number of times and takes radicados from a
+   * separate series (FV-005001 on), so it never consumes the real consecutive.
+   */
+  prueba?: boolean;
 };
 
 const colCiudadanos = () => adminDb().collection("ciudadanos");

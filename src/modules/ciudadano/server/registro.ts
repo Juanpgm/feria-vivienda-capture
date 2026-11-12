@@ -1,5 +1,5 @@
-// Server-only: the citizen registro. One per document (deterministic id) and ONE later edit (unlimited only for a
-// citizen flagged `sin_limite_ediciones`, used for testing), both enforced inside transactions. Identity (name, document) always comes from the eligibility list, never from the client.
+// Server-only: the citizen registro. One per document (deterministic id) and ONE later edit, both enforced inside
+// transactions. A citizen flagged `prueba` edits without limit and numbers from its own series (see ciudadanos.repo). Identity (name, document) always comes from the eligibility list, never from the client.
 import { createHash } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { calcularEdad } from "@/modules/composicion/domain/derivaciones";
@@ -21,6 +21,8 @@ const actorCiudadano: Actor = { uid: UID_CIUDADANO, rol: "usuario", correo: "" }
 
 const refRegistro = (id: string) => adminDb().collection("registros").doc(id);
 const refContador = () => adminDb().collection("contadores").doc("radicado");
+const refContadorPruebas = () => adminDb().collection("contadores").doc("radicado_pruebas");
+const BASE_PRUEBAS = 5000;
 const aIso = (t: unknown) => (t && typeof (t as { toDate?: () => Date }).toDate === "function" ? (t as { toDate: () => Date }).toDate().toISOString() : null);
 
 /** Identity fields of `solicitante`, taken from the list: whatever the client sent for them is overwritten. */
@@ -36,7 +38,7 @@ export async function estadoCiudadano(c: Ciudadano): Promise<EstadoCiudadano> {
   if (c.registro_id) {
     const x = (await refRegistro(registroId).get()).data();
     if (x && (x.adjuntos_completos === true || (c.ediciones_usadas ?? 0) > 0)) {
-      const puedeEditar = ((c.ediciones_usadas ?? 0) === 0 || c.sin_limite_ediciones === true) && x.estado_revision === ESTADO_REVISION_INICIAL;
+      const puedeEditar = ((c.ediciones_usadas ?? 0) === 0 || c.prueba === true) && x.estado_revision === ESTADO_REVISION_INICIAL;
       return { tipo: "registrado", radicado: String(x.radicado), registrado_en: aIso(x.registrado_en), puedeEditar, registroId, valores: puedeEditar ? (x.valores_formulario ?? null) : null };
     }
     return { tipo: "nuevo", registroId }; // creation was interrupted: resume it
@@ -65,16 +67,17 @@ export async function guardarRegistroCiudadano(datos: RegistroDatos, c: Ciudadan
   const campos = camposDeDatos(dominios, actorCiudadano, NOMBRE_CIUDADANO, edad);
   const hash = createHash("sha256").update(JSON.stringify(dominios)).digest("hex");
 
+  const refNumero = c.prueba === true ? refContadorPruebas() : refContador();
   const radicado = await adminDb().runTransaction(async (tx) => {
-    const [r, cd, contador] = await Promise.all([tx.get(ref), tx.get(refC), tx.get(refContador())]);
+    const [r, cd, contador] = await Promise.all([tx.get(ref), tx.get(refC), tx.get(refNumero)]);
     const ciu = cd.data();
     if (!ciu) throw new CiudadanoError(403, "Registro no autorizado");
     const usadas = (ciu.ediciones_usadas as number | undefined) ?? 0;
 
     if (!r.exists) {
-      const numero = ((contador.data()?.ultimo as number | undefined) ?? 0) + 1;
+      const numero = ((contador.data()?.ultimo as number | undefined) ?? (c.prueba === true ? BASE_PRUEBAS : 0)) + 1;
       const rad = formatearRadicado(radicadoPrefijo(), numero);
-      tx.set(refContador(), { ultimo: numero, actualizado_en: FieldValue.serverTimestamp() });
+      tx.set(refNumero, { ultimo: numero, actualizado_en: FieldValue.serverTimestamp() });
       tx.create(ref, {
         ...campos,
         valores_formulario: valores,
@@ -113,7 +116,7 @@ export async function guardarRegistroCiudadano(datos: RegistroDatos, c: Ciudadan
       return rad;
     }
     if (!edicion) throw new CiudadanoError(409, "Usted ya tiene un registro enviado.");
-    if (usadas === 0 || ciu.sin_limite_ediciones === true) {
+    if (usadas === 0 || ciu.prueba === true) {
       if (x.estado_revision !== ESTADO_REVISION_INICIAL) throw new CiudadanoError(409, "Su registro ya está en revisión y no puede modificarse.");
       tx.update(ref, { ...campos, valores_formulario: valores, actualizado_en: FieldValue.serverTimestamp(), ediciones_ciudadano: usadas + 1 });
       tx.create(ref.collection("historial").doc(), { tipo: "edicion_ciudadano", estado_revision: x.estado_revision, por_uid: UID_CIUDADANO, por_nombre: NOMBRE_CIUDADANO, por_correo: "", en: FieldValue.serverTimestamp() });
