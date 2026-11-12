@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/shared/ui/Button";
-import { detectarTarjeta, RELACION_TARJETA, type Rect } from "../domain/detectarTarjeta";
+import { analizarTarjeta, RELACION_TARJETA, type Analisis, type Rect } from "../domain/detectarTarjeta";
 import type { TipoFoto } from "../domain/imagen";
 import { revisarFoto } from "./analisis";
 import { IlustracionCedula, PASO_FOTO } from "./GuiaCedula";
@@ -13,19 +13,37 @@ const MENSAJES: Record<string, string> = {
   NotReadableError: "La cámara está siendo usada por otra aplicación. Ciérrela e intente de nuevo.",
 };
 
-const ANCHO_ANALISIS = 240; // detection runs on a 240 px wide copy of the frame
-const CADA_MS = 200;
-const ESTABLES_PARA_CAPTURAR = 5; // ~1 s of the card held still
+const ANCHO_ANALISIS = 320; // detection runs on a 320 px wide copy of the frame
+const CADA_MS = 180;
+const ESTABLES_PARA_CAPTURAR = 6; // ~1 s with the whole card held still
+const MARGEN_RECORTE = 0.02; // crop a little outside the detected contour so no edge is lost
 
 type Captura = { blob: Blob; url: string; error: string };
+type Vista = { analisis: Analisis; rect: Rect | null; estables: number };
 
 /** True when two detections are (almost) the same place and size: the card is being held still. */
 const mismaPosicion = (a: Rect, b: Rect) => Math.abs(a.x - b.x) < a.w * 0.04 && Math.abs(a.y - b.y) < a.h * 0.04 && Math.abs(a.w - b.w) < a.w * 0.06;
 
+const BORDE: Record<string, string> = { izquierdo: "izquierdo", derecho: "derecho", superior: "de arriba", inferior: "de abajo" };
+
+function mensajeDe(a: Analisis, estables: number): { texto: string; tono: "neutro" | "aviso" | "ok" } {
+  switch (a.estado) {
+    case "completa":
+      return { texto: estables >= 2 ? "¡Cédula completa! Manténgala quieta, tomamos la foto solos." : "Cédula completa. Manténgala quieta un momento.", tono: "ok" };
+    case "ajustar":
+      return { texto: a.problema === "pequena" ? "Acerque un poco la cédula." : "La cédula se sale de la imagen. Aléjela un poco.", tono: "aviso" };
+    case "parcial":
+      return { texto: `No vemos el borde ${BORDE[a.faltante]} de la cédula. Muéstrela completa.`, tono: "aviso" };
+    default:
+      return { texto: "Buscando la cédula… colóquela completa sobre un fondo de otro color y bien iluminada.", tono: "neutro" };
+  }
+}
+
 /**
- * Full-screen guided camera. It looks for the card in every frame (a rectangle with the proportions of an ID card): the
- * outline turns green when it is found and the photo is taken by itself after ~1 s without moving; "Tomar foto" is always
- * there as the manual option. The image is cropped to the found card (or to the on-screen frame), then reviewed.
+ * Full-screen guided camera. It looks for the whole card in every frame: the outline follows its real contour and turns
+ * green only when the four sides are visible, it is not cut and it is big enough to read; then, after ~1 s without
+ * moving, the photo is taken by itself. While it is not complete the screen says what to fix ("acerque", "muéstrela
+ * completa"). "Tomar foto manualmente" is always there. The image is cropped to the detected card, then reviewed.
  */
 export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; alAceptar: (b: Blob) => void; alCerrar: () => void }) {
   const paso = PASO_FOTO[tipo];
@@ -34,7 +52,7 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
   const [error, setError] = useState("");
   const [captura, setCaptura] = useState<Captura | null>(null);
   const [revisando, setRevisando] = useState(false);
-  const [encontrada, setEncontrada] = useState<Rect | null>(null); // in video pixels
+  const [vista, setVista] = useState<Vista>({ analisis: { estado: "ninguna" }, rect: null, estables: 0 });
   // The parent re-renders often (autosave status): keep the latest callback in a ref so the camera is opened only once.
   const cerrar = useRef(alCerrar);
   useEffect(() => {
@@ -63,36 +81,39 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
 
   useEffect(() => () => void (captura && URL.revokeObjectURL(captura.url)), [captura]);
 
-  // Frame in video pixels: 70 % of the height (or 90 % of the width), centred, card-shaped. It is the starting guide.
+  // Starting guide in video pixels: 70 % of the height (or 90 % of the width), centred, card-shaped.
   const marco = dims && (() => {
     const w = Math.min(dims.w * 0.9, dims.h * 0.7 * RELACION_TARJETA);
     const h = w / RELACION_TARJETA;
     return { w, h, x: (dims.w - w) / 2, y: (dims.h - h) / 2 };
   })();
 
-  const tomar = useCallback(
-    (zona: Rect) => {
-      const v = video.current;
-      if (!v?.videoWidth) return;
-      const c = document.createElement("canvas");
-      c.width = Math.round(zona.w);
-      c.height = Math.round(zona.h);
-      c.getContext("2d")?.drawImage(v, zona.x, zona.y, zona.w, zona.h, 0, 0, c.width, c.height);
-      setRevisando(true);
-      c.toBlob(async (b) => {
-        if (!b) {
-          setRevisando(false);
-          return setError("No se pudo tomar la foto. Intente de nuevo.");
-        }
-        const r = await revisarFoto(b);
-        setCaptura({ blob: b, url: URL.createObjectURL(b), error: r.ok ? "" : r.mensaje });
+  const tomar = useCallback((zona: Rect) => {
+    const v = video.current;
+    if (!v?.videoWidth) return;
+    const mx = zona.w * MARGEN_RECORTE;
+    const my = zona.h * MARGEN_RECORTE;
+    const x = Math.max(0, zona.x - mx);
+    const y = Math.max(0, zona.y - my);
+    const w = Math.min(v.videoWidth - x, zona.w + 2 * mx);
+    const h = Math.min(v.videoHeight - y, zona.h + 2 * my);
+    const c = document.createElement("canvas");
+    c.width = Math.round(w);
+    c.height = Math.round(h);
+    c.getContext("2d")?.drawImage(v, x, y, w, h, 0, 0, c.width, c.height);
+    setRevisando(true);
+    c.toBlob(async (b) => {
+      if (!b) {
         setRevisando(false);
-      }, "image/jpeg", 0.92);
-    },
-    [],
-  );
+        return setError("No se pudo tomar la foto. Intente de nuevo.");
+      }
+      const r = await revisarFoto(b);
+      setCaptura({ blob: b, url: URL.createObjectURL(b), error: r.ok ? "" : r.mensaje });
+      setRevisando(false);
+    }, "image/jpeg", 0.92);
+  }, []);
 
-  // Look for the card ~5 times a second while the live view is on.
+  // Analyze the live view ~5 times a second.
   const quieta = useRef<{ rect: Rect; n: number } | null>(null);
   useEffect(() => {
     if (!dims || !marco || captura || revisando || error) return;
@@ -105,30 +126,45 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
     const ctx = lienzo.getContext("2d", { willReadFrequently: true });
     const guia: Rect = { x: marco.x * escala, y: marco.y * escala, w: marco.w * escala, h: marco.h * escala };
     quieta.current = null;
-    const t = setInterval(() => {
+    let vivo = true;
+    let timer: ReturnType<typeof setTimeout>;
+    // Self-scheduling: a slow phone never piles up analyses, it just looks a bit less often.
+    const paso = () => {
+      if (!vivo) return;
+      analizar();
+      timer = setTimeout(paso, CADA_MS);
+    };
+    const analizar = () => {
       const v = video.current;
       if (!ctx || !v?.videoWidth) return;
       ctx.drawImage(v, 0, 0, w, h);
-      const d = detectarTarjeta(ctx.getImageData(0, 0, w, h).data, w, h, guia);
-      if (!d) {
+      const a = analizarTarjeta(ctx.getImageData(0, 0, w, h).data, w, h, guia);
+      const rect = "rect" in a ? { x: a.rect.x / escala, y: a.rect.y / escala, w: a.rect.w / escala, h: a.rect.h / escala } : null;
+      if (a.estado !== "completa" || !rect) {
         quieta.current = null;
-        return setEncontrada(null);
+        return setVista({ analisis: a, rect, estables: 0 });
       }
-      const rect = { x: d.rect.x / escala, y: d.rect.y / escala, w: d.rect.w / escala, h: d.rect.h / escala };
-      setEncontrada(rect);
       const previa = quieta.current;
       quieta.current = previa && mismaPosicion(previa.rect, rect) ? { rect, n: previa.n + 1 } : { rect, n: 1 };
+      setVista({ analisis: a, rect, estables: quieta.current.n });
       if (quieta.current.n >= ESTABLES_PARA_CAPTURAR) {
         quieta.current = null;
         tomar(rect);
       }
-    }, CADA_MS);
-    return () => clearInterval(t);
+    };
+    timer = setTimeout(paso, CADA_MS);
+    return () => {
+      vivo = false;
+      clearTimeout(timer);
+    };
     // The guide only depends on the video size.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dims?.w, dims?.h, captura, revisando, error, tomar]);
 
-  const zona = encontrada ?? marco;
+  const zona = vista.rect ?? marco;
+  const completa = vista.analisis.estado === "completa";
+  const ajustar = vista.analisis.estado === "ajustar";
+  const msg = mensajeDe(vista.analisis, vista.estables);
   const pct = (r: Rect) =>
     dims ? { left: `${(r.x / dims.w) * 100}%`, top: `${(r.y / dims.h) * 100}%`, width: `${(r.w / dims.w) * 100}%`, height: `${(r.h / dims.h) * 100}%` } : {};
 
@@ -166,10 +202,10 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
             {dims && zona && (
               <div
                 aria-hidden="true"
-                className={`absolute rounded-2xl border-4 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] transition-colors ${encontrada ? "border-green-400" : "border-white"}`}
+                className={`absolute rounded-2xl border-4 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] transition-[border-color,left,top,width,height] duration-150 ${completa ? "border-green-400" : ajustar ? "border-amber-300" : "border-white"}`}
                 style={pct(zona)}
               >
-                {!encontrada && <IlustracionCedula lado={tipo} className="size-full rounded-xl opacity-15" />}
+                {!vista.rect && <IlustracionCedula lado={tipo} className="size-full rounded-xl opacity-15" />}
               </div>
             )}
           </div>
@@ -193,9 +229,14 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; al
           </>
         ) : (
           <>
-            <p role="status" aria-live="polite" className={`text-lg font-semibold ${encontrada ? "text-green-300" : ""}`}>
-              {revisando ? "Revisando la foto…" : encontrada ? "¡Cédula detectada! Manténgala quieta, tomamos la foto solos." : "Buscando la cédula… colóquela dentro del marco, completa y bien iluminada."}
+            <p role="status" aria-live="polite" className={`text-lg font-semibold ${msg.tono === "ok" ? "text-green-300" : msg.tono === "aviso" ? "text-amber-200" : ""}`}>
+              {revisando ? "Revisando la foto…" : msg.texto}
             </p>
+            {completa && (
+              <div aria-hidden="true" className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-white/20">
+                <div className="h-full bg-green-400 transition-[width] duration-150" style={{ width: `${Math.min(100, (vista.estables / ESTABLES_PARA_CAPTURAR) * 100)}%` }} />
+              </div>
+            )}
             <ul className="text-sm text-white/90">
               <li>• Ponga la cédula {tipo === "documento_frente" ? "con su foto hacia arriba" : "del lado del código de barras"}, sobre un fondo de otro color.</li>
               <li>• Sin reflejos, y que el texto se lea.</li>
