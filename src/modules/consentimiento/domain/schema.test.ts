@@ -54,7 +54,7 @@ describe("texto y hash", () => {
   it("the version is a dated tag and the text covers the Ley 1581 essentials", () => {
     expect(CONSENTIMIENTO_VERSION).toMatch(/^\d{4}-\d{2}-v\d+$/);
     const t = textoPlano();
-    for (const palabra of ["Secretaría de Vivienda Social y Hábitat", "RUD", "centrales de riesgo", "Superintendencia de Industria y Comercio", "revocar", "sensibles"]) {
+    for (const palabra of ["Alcaldía Distrital de Santiago de Cali", "RUD", "centrales de riesgo", "Superintendencia de Industria y Comercio", "revocar", "sensibles"]) {
       expect(t).toContain(palabra);
     }
     expect(SECCIONES_TEXTO.length).toBeGreaterThanOrEqual(5);

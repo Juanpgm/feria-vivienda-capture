@@ -453,7 +453,7 @@ describe("consentimiento y firma (spec data-consent / applicant-signature)", () 
     expect((await POST(req(valido()))).status).toBe(201);
     const c = store.get(`registros/${valido().id}`)!.consentimiento;
     expect(c).toEqual({
-      version: "2026-10-v1",
+      version: "2026-11-v1",
       hash: hashConsentimiento(),
       acepta_tratamiento: true,
       acepta_datos_sensibles: true,
@@ -593,7 +593,7 @@ describe("marcarAdjuntosCompletos / POST /api/registros/[id]/completar", () => {
     const d = await obtenerRegistro(uuid(1), actor);
     expect(d).toMatchObject({
       adjuntos_completos: false,
-      consentimiento: { version: "2026-10-v1", acepta_tratamiento: true, acepta_datos_sensibles: true },
+      consentimiento: { version: "2026-11-v1", acepta_tratamiento: true, acepta_datos_sensibles: true },
       firma: { metodo_firma: "dibujada" },
     });
     expect(JSON.stringify(d)).not.toContain("SECRETO");

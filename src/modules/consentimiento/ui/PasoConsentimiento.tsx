@@ -5,7 +5,7 @@ import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { useError } from "@/modules/registro/ui/campos";
 import { CONDICIONES_ESPECIALES } from "@/shared/constantes";
 import {
-  CONSENTIMIENTO_VERSION, ESTADO_TEXTO, ETIQUETA_SENSIBLES, ETIQUETA_TRATAMIENTO, POLITICA_URL, SECCIONES_TEXTO,
+  CONSENTIMIENTO_VERSION, ETIQUETA_SENSIBLES, ETIQUETA_TRATAMIENTO, POLITICA_URL, SECCIONES_TEXTO,
 } from "../domain/texto";
 
 const P = "consentimiento.";
@@ -22,10 +22,6 @@ export function PasoConsentimiento() {
 
   return (
     <div className="flex flex-col gap-8">
-      <p className="rounded-lg bg-warning-bg p-3 text-sm font-medium text-warning-text">
-        {ESTADO_TEXTO} Versión del texto: {CONSENTIMIENTO_VERSION}.
-      </p>
-
       <div id={idTexto} className="flex flex-col gap-6">
         {SECCIONES_TEXTO.map((s) => (
           <section key={s.id} aria-labelledby={`${idTexto}-${s.id}`} className="flex flex-col gap-2">

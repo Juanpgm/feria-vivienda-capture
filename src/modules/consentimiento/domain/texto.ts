@@ -4,19 +4,9 @@
 // the person accepted.
 
 /** Bump on every change of the text below ("AAAA-MM-vN"). */
-export const CONSENTIMIENTO_VERSION = "2026-10-v1";
-
-/** Shown at the top of the step until the Secretaría's legal area approves the wording. */
-export const ESTADO_TEXTO = "Borrador pendiente de validación jurídica por la Secretaría.";
+export const CONSENTIMIENTO_VERSION = "2026-11-v1";
 
 export const POLITICA_URL = "https://www.cali.gov.co/tic/publicaciones/171934/politica-de-tratamiento-de-datos-personales/";
-
-/** Contact channels are not defined yet: the Secretaría must replace these placeholders before go-live. */
-export const CANALES_CONTACTO = [
-  "Dirección: [por definir por la Secretaría de Vivienda Social y Hábitat]",
-  "Correo electrónico: [por definir por la Secretaría de Vivienda Social y Hábitat]",
-  "Teléfono: [por definir por la Secretaría de Vivienda Social y Hábitat]",
-] as const;
 
 export type SeccionTexto = { id: string; titulo: string; parrafos: readonly string[]; lista?: readonly string[] };
 
@@ -25,7 +15,7 @@ export const SECCIONES_TEXTO: readonly SeccionTexto[] = [
     id: "responsable",
     titulo: "Quién es el responsable de sus datos",
     parrafos: [
-      "El responsable del tratamiento es el Distrito Especial de Santiago de Cali, a través de la Secretaría de Vivienda Social y Hábitat de la Alcaldía de Santiago de Cali.",
+      "El responsable del tratamiento es la Alcaldía Distrital de Santiago de Cali.",
     ],
   },
   {
@@ -43,7 +33,7 @@ export const SECCIONES_TEXTO: readonly SeccionTexto[] = [
     titulo: "Declaración y verificación",
     parrafos: [
       "Declaro, bajo la gravedad de juramento, que la información que suministré es veraz y completa.",
-      "Autorizo a la Secretaría de Vivienda Social y Hábitat para verificar esa información en el RUD, en las bases de información predial, en las centrales de riesgo y en los sistemas de subsidios.",
+      "Autorizo a la Alcaldía Distrital de Santiago de Cali para verificar esa información en el RUD, en las bases de información predial, en las centrales de riesgo y en los sistemas de subsidios.",
     ],
   },
   {
@@ -69,8 +59,7 @@ export const SECCIONES_TEXTO: readonly SeccionTexto[] = [
   {
     id: "contacto",
     titulo: "Cómo ejercer sus derechos",
-    parrafos: ["Puede escribir o comunicarse con la Secretaría de Vivienda Social y Hábitat por estos canales:"],
-    lista: CANALES_CONTACTO,
+    parrafos: ["Puede ejercer estos derechos dirigiéndose a la Alcaldía Distrital de Santiago de Cali."],
   },
 ] as const;
 
