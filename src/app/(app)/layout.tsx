@@ -26,6 +26,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           Usuarios
         </Link>
       )}
+      {tieneRol(sesion.rol, "admin") && (
+        <Link href="/admin/ciudadanos" className={enlaceNav}>
+          Ciudadanos
+        </Link>
+      )}
       <span className="hidden text-sm text-muted md:inline">{sesion.correo}</span>
       <BotonSalir />
     </nav>

@@ -7,6 +7,7 @@ import { TIPOS_DOCUMENTO } from "@/shared/constantes";
 import { fechaHoraBogota } from "@/shared/tiempo";
 import { Button } from "@/shared/ui/Button";
 import { enmascararDocumento } from "../domain/enmascarar";
+import { useModo } from "./modo";
 
 export type DatosConfirmacion = {
   id: string;
@@ -28,6 +29,7 @@ const linkBoton = "inline-flex min-h-11 items-center justify-center rounded-lg p
  */
 export function Confirmacion({ datos }: { datos: DatosConfirmacion }) {
   const router = useRouter();
+  const { ciudadano, edicion } = useModo();
   const titulo = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     titulo.current?.focus();
@@ -39,10 +41,10 @@ export function Confirmacion({ datos }: { datos: DatosConfirmacion }) {
     <section aria-labelledby="conf-titulo" className="mx-auto flex max-w-xl flex-col gap-6 py-4">
       <div>
         <h2 id="conf-titulo" ref={titulo} tabIndex={-1} className="text-2xl font-bold text-primary-strong outline-none">
-          Registro enviado
+          {edicion ? "Registro modificado" : "Registro enviado"}
         </h2>
         <p role="status" className="mt-1 text-muted">
-          La postulación quedó registrada y los archivos se guardaron.
+          {ciudadano ? "Recibimos su registro y sus archivos. Guarde este número." : "La postulación quedó registrada y los archivos se guardaron."}
         </p>
       </div>
 
@@ -70,7 +72,11 @@ export function Confirmacion({ datos }: { datos: DatosConfirmacion }) {
         </div>
       </dl>
 
-      <p>Anote este número o tome una captura de esta pantalla y entréguela al solicitante. Con el radicado se puede consultar el registro.</p>
+      <p>
+        {ciudadano
+          ? "Anote este número o tome una captura de esta pantalla. Si vuelve a ingresar con su documento, aquí mismo verá su registro."
+          : "Anote este número o tome una captura de esta pantalla y entréguela al solicitante. Con el radicado se puede consultar el registro."}
+      </p>
 
       {datos.duplicados.length > 0 && (
         <p className="rounded-lg bg-warning-bg p-3 text-warning-text">
@@ -79,10 +85,16 @@ export function Confirmacion({ datos }: { datos: DatosConfirmacion }) {
       )}
 
       <div className="flex flex-wrap gap-3">
-        <Button onClick={() => router.push(`/registros/nuevo?borrador=${crypto.randomUUID()}`)}>Registrar otra persona</Button>
-        <Link href={`/registros/${datos.id}`} className={`${linkBoton} border border-border bg-bg text-text hover:bg-surface`}>
-          Ver registro
-        </Link>
+        {ciudadano ? (
+          <Button onClick={() => router.refresh()}>Ver mi registro</Button>
+        ) : (
+          <>
+            <Button onClick={() => router.push(`/registros/nuevo?borrador=${crypto.randomUUID()}`)}>Registrar otra persona</Button>
+            <Link href={`/registros/${datos.id}`} className={`${linkBoton} border border-border bg-bg text-text hover:bg-surface`}>
+              Ver registro
+            </Link>
+          </>
+        )}
       </div>
     </section>
   );

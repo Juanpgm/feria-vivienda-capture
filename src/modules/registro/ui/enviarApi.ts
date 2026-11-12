@@ -3,6 +3,7 @@ import { cargarFoto } from "@/modules/documentos/ui/fotos";
 import { conReintentos, enviarAdjunto, ErrorSubida } from "@/modules/documentos/ui/subirAdjuntos";
 import { firmaParaEnviar } from "@/modules/firma/domain/schema";
 import { ErrorEnvio, type Archivo, type ResultadoCreacion } from "../domain/envio";
+import { RUTAS_FUNCIONARIO, type Rutas } from "./modo";
 import { entradaDeSeccion, type Valores } from "./pasos";
 
 /** The JSON the server validates again (the same zod schema). Images are NOT part of it. */
@@ -39,22 +40,22 @@ async function errorDe(res: Response, defecto: string): Promise<ErrorEnvio> {
   const base = typeof j?.error === "string" ? j.error : defecto;
   const mensaje =
     res.status === 401 ? "Su sesión venció. Inicie sesión de nuevo; el borrador se conserva."
-    : res.status === 403 ? "Su cuenta no tiene permiso para registrar."
+    : res.status === 403 ? "No tiene permiso para registrar."
     : res.status >= 500 ? "El servidor tuvo un problema. Intente de nuevo en un momento."
     : base;
   return new ErrorEnvio(mensaje, { status: res.status, campos: j?.campos });
 }
 
 /** POST /api/registros: 201 created, 200 already created by this funcionario (same radicado). */
-export async function crearEnServidor(entrada: unknown): Promise<ResultadoCreacion> {
-  const res = await llamar("/api/registros", entrada);
+export async function crearEnServidor(entrada: unknown, rutas: Rutas = RUTAS_FUNCIONARIO): Promise<ResultadoCreacion> {
+  const res = await llamar(rutas.crear, entrada);
   if (!res.ok) throw await errorDe(res, "No se pudo crear el registro");
   return res.json();
 }
 
 /** POST /api/registros/{id}/completar: the server checks which required attachments exist. */
-export async function completarEnServidor(id: string): Promise<{ completo: boolean; faltan: Archivo[] }> {
-  const res = await llamar(`/api/registros/${encodeURIComponent(id)}/completar`);
+export async function completarEnServidor(id: string, rutas: Rutas = RUTAS_FUNCIONARIO): Promise<{ completo: boolean; faltan: Archivo[] }> {
+  const res = await llamar(rutas.completar(id));
   if (!res.ok) throw await errorDe(res, "No se pudo confirmar el registro");
   const j = await res.json();
   return { completo: !!j.completo, faltan: Array.isArray(j.faltan) ? j.faltan : [] };
@@ -71,7 +72,7 @@ export function dataUrlABlob(dataUrl: string): Blob {
 }
 
 /** Uploads one attachment (photo from IndexedDB, or the drawn signature held in the form) with a few retries. */
-export async function subirArchivo(id: string, archivo: Archivo, valores: Valores): Promise<void> {
+export async function subirArchivo(id: string, archivo: Archivo, valores: Valores, rutas: Rutas = RUTAS_FUNCIONARIO): Promise<void> {
   let imagen: Blob | undefined;
   if (archivo === "firma") {
     const url = valores.firma?.imagen;
@@ -80,7 +81,7 @@ export async function subirArchivo(id: string, archivo: Archivo, valores: Valore
     imagen = (await cargarFoto(id, archivo).catch(() => undefined))?.blob;
   }
   if (!imagen) throw new ErrorEnvio(archivo === "firma" ? "La firma no está guardada en este equipo" : "La foto no está guardada en este equipo");
-  const r = await conReintentos(() => enviarAdjunto(id, archivo, imagen), { intentos: 3, baseMs: 500 });
+  const r = await conReintentos(() => enviarAdjunto(id, archivo, imagen, rutas.adjuntos(id)), { intentos: 3, baseMs: 500 });
   if ("error" in r) {
     const e = r.error;
     throw new ErrorEnvio(e.message, { sinConexion: e instanceof ErrorSubida && e.message.startsWith("No hay conexión") });

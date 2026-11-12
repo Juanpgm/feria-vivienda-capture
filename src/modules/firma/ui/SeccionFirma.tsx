@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { useError } from "@/modules/registro/ui/campos";
+import { useModo } from "@/modules/registro/ui/modo";
 import { Field, TextArea } from "@/shared/ui/Field";
 import { Button } from "@/shared/ui/Button";
 import { Select } from "@/shared/ui/Select";
@@ -20,6 +21,7 @@ const OPCIONES = Object.entries(METODOS_VERIFICACION).map(([value, label]) => ({
 export function SeccionFirma() {
   const { register, setValue, getValues, control, trigger } = useFormContext<FieldValues>();
   const error = useError();
+  const { ciudadano } = useModo();
   const valores = useWatch({ control }) as Record<string, Record<string, unknown>>;
   const firma = valores.firma ?? {};
   // Signed = method AND seal: while the manual form is being filled the method is set but there is no seal yet.
@@ -57,7 +59,7 @@ export function SeccionFirma() {
   return (
     <section aria-labelledby="firma-titulo" className="flex flex-col gap-4">
       <h3 id="firma-titulo" className="border-b border-border pb-1 text-lg font-bold text-primary-strong">
-        Firma del solicitante
+        {ciudadano ? "Su firma" : "Firma del solicitante"}
       </h3>
       {obsoleta && (
         <p role="alert" className="rounded-lg bg-warning-bg p-3 font-medium text-warning-text">
@@ -65,6 +67,7 @@ export function SeccionFirma() {
         </p>
       )}
 
+      {!ciudadano && (
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-1 text-sm font-semibold">¿Cómo firma el solicitante?</legend>
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
@@ -76,6 +79,7 @@ export function SeccionFirma() {
           No es posible firmar en pantalla (verificación manual)
         </label>
       </fieldset>
+      )}
 
       {modo === "dibujada" ? (
         vigente ? (

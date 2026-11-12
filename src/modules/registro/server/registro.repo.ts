@@ -76,6 +76,35 @@ export async function buscarDuplicados(numero: string, { excluirId }: { excluirI
 }
 
 /**
+ * The validated form data plus the server-computed parts that depend on it (consent hash/time, signature, search keys).
+ * Shared by the create here and the citizen's one-time edit.
+ */
+export function camposDeDatos(dominios: Omit<RegistroDatos, "id">, actor: Actor, nombre: string, edad: number) {
+  return {
+    ...dominios,
+    solicitante: { ...dominios.solicitante, edad },
+    // Consent: version and hash of the wording come from the server, never from the client; time is the server clock.
+    consentimiento: {
+      ...dominios.consentimiento,
+      hash: hashConsentimiento(),
+      aceptado_en: FieldValue.serverTimestamp(),
+      registrado_por: actor.uid,
+    },
+    // Signature: the verifier of a manual verification is the funcionario of the session. A drawn image arrives later
+    // through the adjuntos endpoint; `adjuntos_completos` flips only in `marcarAdjuntosCompletos`.
+    firma: {
+      ...dominios.firma,
+      firmado_en: FieldValue.serverTimestamp(),
+      ...(dominios.firma.metodo_firma === "verificacion_manual"
+        ? { verificado_por_uid: actor.uid, verificado_por_nombre: nombre, verificado_por_correo: actor.correo }
+        : {}),
+    },
+    ...clavesDocumento(dominios.solicitante.numero_documento),
+    nombre_busqueda: normalizarBusqueda(dominios.solicitante.nombre_completo),
+  };
+}
+
+/**
  * Creates registros/{id} (+ historial entry + radicado consecutive) in ONE transaction. Idempotent: a retry with the same
  * id by the same funcionario returns the same radicado and consumes no number. Creator fields come from the verified
  * session and the usuarios profile, never from the client payload. Derived fields already come from the schema.
@@ -114,8 +143,7 @@ export async function crearRegistro(datos: RegistroDatos, actor: Actor): Promise
     tx.set(refContador(), { ultimo: numero, actualizado_en: FieldValue.serverTimestamp() });
     tx.create(ref, {
       // Validated form data first: nothing in it can override the server-owned fields below.
-      ...dominios,
-      solicitante: { ...dominios.solicitante, edad },
+      ...camposDeDatos(dominios, actor, nombre, edad),
       id,
       radicado,
       radicado_numero: numero,
@@ -128,22 +156,6 @@ export async function crearRegistro(datos: RegistroDatos, actor: Actor): Promise
       registrado_por_uid: actor.uid,
       registrado_por_nombre: nombre,
       registrado_por_correo: actor.correo,
-      // Consent: version and hash of the wording come from the server, never from the client; time is the server clock.
-      consentimiento: {
-        ...dominios.consentimiento,
-        hash: hashConsentimiento(),
-        aceptado_en: FieldValue.serverTimestamp(),
-        registrado_por: actor.uid,
-      },
-      // Signature: the verifier of a manual verification is the funcionario of the session. A drawn image arrives later
-      // through the adjuntos endpoint; `adjuntos_completos` flips only in `marcarAdjuntosCompletos`.
-      firma: {
-        ...dominios.firma,
-        firmado_en: FieldValue.serverTimestamp(),
-        ...(dominios.firma.metodo_firma === "verificacion_manual"
-          ? { verificado_por_uid: actor.uid, verificado_por_nombre: nombre, verificado_por_correo: actor.correo }
-          : {}),
-      },
       adjuntos_requeridos: adjuntosRequeridos(dominios.firma.metodo_firma),
       adjuntos_presentes: 0,
       adjuntos_completos: false,
@@ -153,8 +165,6 @@ export async function crearRegistro(datos: RegistroDatos, actor: Actor): Promise
       estado_revision_en: FieldValue.serverTimestamp(),
       estado_revision_por_uid: actor.uid,
       estado_revision_por_correo: actor.correo,
-      ...clavesDocumento(datos.solicitante.numero_documento),
-      nombre_busqueda: normalizarBusqueda(datos.solicitante.nombre_completo),
     });
     tx.create(ref.collection("historial").doc(), {
       tipo: "creacion",

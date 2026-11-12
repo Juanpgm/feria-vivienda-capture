@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { CiudadanoError } from "@/modules/ciudadano/server/sesion";
 import { SesionError } from "./sesion";
 
 export const respuesta = (status: number, body: Record<string, unknown>) => NextResponse.json(body, { status });
@@ -9,7 +10,7 @@ export async function conErrores(fn: () => Promise<NextResponse>): Promise<NextR
   try {
     return await fn();
   } catch (e) {
-    if (e instanceof SesionError) return respuesta(e.status, { error: e.message });
+    if (e instanceof SesionError || e instanceof CiudadanoError) return respuesta(e.status, { error: e.message });
     if (e instanceof ZodError) {
       // Dotted paths ("solicitante.telefono_1") so nested schemas map to form fields.
       const campos: Record<string, string[]> = {};

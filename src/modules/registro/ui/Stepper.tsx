@@ -9,6 +9,7 @@ import { Button } from "@/shared/ui/Button";
 import { usePunteroPresionado } from "@/shared/ui/punteroPresionado";
 import { Confirmacion, type DatosConfirmacion } from "./Confirmacion";
 import { cargarBorrador, descartarBorrador, guardarBorrador, VERSION_BORRADOR, type Borrador } from "./borradores";
+import { useModo } from "./modo";
 import { VISTAS } from "./vistas";
 import { ETIQUETA_ESTADO, estadoPaso, PASOS, validarPaso, type Marca, type Valores } from "./pasos";
 
@@ -43,14 +44,31 @@ export const nuevoBorrador = (id: string): Borrador => ({
   },
 });
 
+/** Citizen flow: identity always comes from the eligibility list; `semilla` only fills a draft that does not exist yet. */
+export type DatosCiudadano = { identidad: Record<string, string>; semilla?: Valores };
+
+function conCiudadano(b: Borrador, c: DatosCiudadano | undefined, nuevo: boolean): Borrador {
+  if (!c) return b;
+  const valores: Valores = { ...b.valores };
+  if (nuevo) for (const [seccion, campos] of Object.entries(c.semilla ?? {})) valores[seccion] = { ...valores[seccion], ...campos };
+  valores.solicitante = { ...valores.solicitante, ...c.identidad };
+  return { ...b, valores };
+}
+
 /** Loads the draft `borradorId` from IndexedDB (a blank one when it does not exist yet), then mounts the form. */
-export function Stepper({ uid, borradorId }: { uid: string; borradorId: string }) {
+export function Stepper({ uid, borradorId, ciudadano }: { uid: string; borradorId: string; ciudadano?: DatosCiudadano }) {
   const [estado, setEstado] = useState<{ borrador: Borrador; recuperado: boolean } | null>(null);
   useEffect(() => {
     cargarBorrador(uid, borradorId)
       .catch(() => null)
       // Sections added after the draft was saved (consent, signature...) start from their defaults.
-      .then((b) => setEstado({ borrador: b ? { ...b, valores: { ...nuevoBorrador(borradorId).valores, ...b.valores } } : nuevoBorrador(borradorId), recuperado: !!b }));
+      .then((b) =>
+        setEstado({
+          borrador: conCiudadano(b ? { ...b, valores: { ...nuevoBorrador(borradorId).valores, ...b.valores } } : nuevoBorrador(borradorId), ciudadano, !b),
+          recuperado: !!b,
+        }),
+      );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `ciudadano` is built once by the page
   }, [uid, borradorId]);
 
   if (!estado) return <p role="status">Cargando borrador…</p>;
@@ -69,6 +87,7 @@ type Guardado = "ninguno" | "guardando" | "guardado" | "error";
 
 function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrador; recuperado: boolean }) {
   const router = useRouter();
+  const { ciudadano } = useModo();
   const [pasoId, setPasoId] = useState(inicial.paso);
   const [maximo, setMaximo] = useState(inicial.maximo);
   const [marcas, setMarcas] = useState<Record<string, Marca>>(inicial.marcas);
@@ -186,7 +205,7 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
     clearTimeout(temporizador.current);
     pendiente.current = false;
     await descartarBorrador(uid, inicial.id).catch(() => undefined);
-    window.history.replaceState(null, "", "/registros/nuevo");
+    window.history.replaceState(null, "", ciudadano ? "/ciudadano/registro" : "/registros/nuevo");
     setConfirmacion(d);
   }
 
@@ -243,9 +262,11 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
 
         <div className="max-w-[44rem]">
           <div className="mb-6">
-            <Link href="/registros/nuevo" className="mb-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline underline-offset-2">
-              Ver borradores en curso
-            </Link>
+            {!ciudadano && (
+              <Link href="/registros/nuevo" className="mb-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline underline-offset-2">
+                Ver borradores en curso
+              </Link>
+            )}
             <p className="text-sm text-muted md:hidden">
               Paso {indice + 1} de {PASOS.length}
             </p>
@@ -270,7 +291,7 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
             {aviso && <span className="mr-2 font-medium text-text">{aviso}</span>}
             <span className={guardado === "error" ? "font-medium text-danger" : ""}>{estadoGuardado}</span>
           </p>
-          {confirmando ? (
+          {ciudadano ? null : confirmando ? (
             <div role="group" aria-label="Confirmar descarte" className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium">¿Descartar este borrador? Se borrarán los datos ingresados.</span>
               <Button variant="danger" onClick={descartar}>

@@ -7,7 +7,8 @@ const PUBLICAS = ["/login", "/registro", "/pendiente"];
 // API routes are excluded: they answer 401/403 JSON themselves.
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (req.cookies.has(COOKIE_SESION) || PUBLICAS.includes(pathname)) return NextResponse.next();
+  // /ciudadano/* is the separate citizen area: its pages verify their own cookie and never touch staff pages.
+  if (req.cookies.has(COOKIE_SESION) || PUBLICAS.includes(pathname) || pathname === "/ciudadano" || pathname.startsWith("/ciudadano/")) return NextResponse.next();
   return NextResponse.redirect(new URL("/login", req.url));
 }
 

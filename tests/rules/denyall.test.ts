@@ -16,6 +16,10 @@ const paths = [
   "accesos_adjuntos/a1",
   "contadores/global",
   "auditoria_exportaciones/e1",
+  "ciudadanos/c1",
+  "configuracion/ciudadano",
+  "intentos_ciudadano/i1",
+  "auditoria_enlace_ciudadano/a1",
 ];
 
 describe.skipIf(!hasEmulator)("firestore.rules deny-all", () => {

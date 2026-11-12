@@ -9,6 +9,7 @@ import { ejecutarEnvio, ETIQUETA_ARCHIVO, progresoDe, type Archivo, type EstadoE
 import { registroSchema } from "../domain/schema";
 import type { DatosConfirmacion } from "./Confirmacion";
 import { ListaRequisitos } from "./ListaRequisitos";
+import { useModo, RUTAS_CIUDADANO, RUTAS_FUNCIONARIO } from "./modo";
 import { armarEntrada, completarEnServidor, crearEnServidor, subirArchivo } from "./enviarApi";
 import type { Valores } from "./pasos";
 import { calcularRequisitos, type Requisitos } from "./requisitos";
@@ -35,6 +36,8 @@ export function EnvioRegistro({ irAPaso, borradorId, alEnviado, alBloquear }: Pr
   const valores = useWatch({ control }) as Valores;
   const [req, setReq] = useState<Requisitos | null>(null);
   const [estado, setEstado] = useState<EstadoEnvio>({ fase: "inactivo" });
+  const { ciudadano, edicion } = useModo();
+  const rutas = ciudadano ? RUTAS_CIUDADANO : RUTAS_FUNCIONARIO;
   const ocupado = useRef(false); // double-click guard that does not wait for a re-render
 
   useEffect(() => {
@@ -54,6 +57,8 @@ export function EnvioRegistro({ irAPaso, borradorId, alEnviado, alBloquear }: Pr
     try {
       const actuales = getValues() as Valores;
       const entrada = armarEntrada(borradorId, actuales);
+      // Citizen: the raw form values travel too (the single edit reopens the form from them); the server strips the images.
+      const cuerpo = ciudadano ? { ...entrada, edicion, valores: actuales } : entrada;
       const analizado = registroSchema.safeParse(entrada);
       if (!analizado.success) {
         setEstado({ fase: "error", etapa: "registro", mensaje: "Hay datos incompletos o inválidos. Revise el resumen.", subidos: [], fallidos: [], sinConexion: false, conflicto: false });
@@ -65,9 +70,9 @@ export function EnvioRegistro({ irAPaso, borradorId, alEnviado, alBloquear }: Pr
         {
           id: borradorId,
           archivos,
-          crear: () => crearEnServidor(entrada),
-          subir: (a) => subirArchivo(borradorId, a, actuales),
-          completar: () => completarEnServidor(borradorId),
+          crear: () => crearEnServidor(cuerpo, rutas),
+          subir: (a) => subirArchivo(borradorId, a, actuales, rutas),
+          completar: () => completarEnServidor(borradorId, rutas),
         },
         progresoDe(estado),
         setEstado,

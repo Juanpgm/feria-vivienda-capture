@@ -17,6 +17,7 @@ import { CampoFecha } from "@/modules/registro/ui/CampoFecha";
 import { CampoTelefono } from "@/modules/registro/ui/CampoTelefono";
 import { AvisoDuplicado } from "@/modules/registro/ui/AvisoDuplicado";
 import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
+import { useModo } from "@/modules/registro/ui/modo";
 
 const P = "solicitante.";
 const opciones = (o: Record<string, string>) => Object.entries(o).map(([value, label]) => ({ value, label }));
@@ -24,11 +25,13 @@ const opciones = (o: Record<string, string>) => Object.entries(o).map(([value, l
 export function PasoHogar() {
   const { register, setValue, control } = useFormContext<FieldValues>();
   const error = useError();
+  const { ciudadano } = useModo();
   const [paises, setPaises] = useState<OpcionBusqueda[]>([]);
   // Set when the funcionario leaves the document number: triggers the (non-blocking) duplicate check.
   const [consulta, setConsulta] = useState<{ tipo?: string; numero: string } | null>(null);
   const numero = useWatch({ control, name: P + "numero_documento" }) as string | undefined;
   const tipo = useWatch({ control, name: P + "tipo_documento" });
+  const [nombre1, nombre2, apellido1, apellido2] = useWatch({ control, name: [P + "primer_nombre", P + "segundo_nombre", P + "primer_apellido", P + "segundo_apellido"] }) as string[];
   const nacimiento = useWatch({ control, name: P + "fecha_nacimiento" }) as string | undefined;
   const nacionalidad = useWatch({ control, name: P + "codigo_pais_nacionalidad" }) as string | undefined;
   const hoy = fechaBogota();
@@ -46,12 +49,21 @@ export function PasoHogar() {
 
   return (
     <div className="flex flex-col gap-8">
-      <Seccion titulo="Nombre">
-        <CampoTexto name={P + "primer_nombre"} label="Primer nombre" autoComplete="off" normalizar={normalizarNombre} />
-        <CampoTexto name={P + "segundo_nombre"} label="Segundo nombre (opcional)" autoComplete="off" normalizar={normalizarNombre} />
-        <CampoTexto name={P + "primer_apellido"} label="Primer apellido" autoComplete="off" normalizar={normalizarNombre} />
-        <CampoTexto name={P + "segundo_apellido"} label="Segundo apellido (opcional)" autoComplete="off" normalizar={normalizarNombre} />
-      </Seccion>
+      {ciudadano ? (
+        // Name and document come from the eligibility list: shown, never asked.
+        <p className="rounded-lg border border-border bg-surface p-3">
+          <span className="block text-sm text-muted">Registro a nombre de</span>
+          <span className="font-semibold">{[nombre1, nombre2, apellido1, apellido2].filter(Boolean).join(" ")}</span>
+          <span className="block text-sm text-muted">Documento {numero}</span>
+        </p>
+      ) : (
+        <Seccion titulo="Nombre">
+          <CampoTexto name={P + "primer_nombre"} label="Primer nombre" autoComplete="off" normalizar={normalizarNombre} />
+          <CampoTexto name={P + "segundo_nombre"} label="Segundo nombre (opcional)" autoComplete="off" normalizar={normalizarNombre} />
+          <CampoTexto name={P + "primer_apellido"} label="Primer apellido" autoComplete="off" normalizar={normalizarNombre} />
+          <CampoTexto name={P + "segundo_apellido"} label="Segundo apellido (opcional)" autoComplete="off" normalizar={normalizarNombre} />
+        </Seccion>
+      )}
 
       <Seccion titulo="Identificación">
         <div className="sm:col-span-2">
@@ -85,16 +97,18 @@ export function PasoHogar() {
             </Field>
           )}
         />
-        <CampoTexto
-          name={P + "numero_documento"}
-          label="Número de documento"
-          inputMode="text"
-          autoComplete="off"
-          normalizar={normalizarDocumento}
-          alSalir={(v) => setConsulta(v ? { tipo, numero: v } : null)}
-        />
+        {!ciudadano && (
+          <CampoTexto
+            name={P + "numero_documento"}
+            label="Número de documento"
+            inputMode="text"
+            autoComplete="off"
+            normalizar={normalizarDocumento}
+            alSalir={(v) => setConsulta(v ? { tipo, numero: v } : null)}
+          />
+        )}
         <CampoFecha name={P + "fecha_expedicion_documento"} label="Fecha de expedición" max={hoy} mensajeMax="La fecha de expedición no puede ser futura" />
-        <AvisoDuplicado consulta={consulta} actual={normalizarDocumento(numero ?? "")} />
+        {!ciudadano && <AvisoDuplicado consulta={consulta} actual={normalizarDocumento(numero ?? "")} />}
       </Seccion>
 
       <Seccion titulo="Contacto">
