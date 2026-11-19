@@ -167,13 +167,23 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await combo(page, "Lugar de nacimiento", "cali");
   await page.getByLabel("Género", exacto).selectOption("cis_femenino");
   await page.getByLabel("Correo electrónico", exacto).fill("ana.perez@correo.com");
-  await responder(page, /artículo 56 de la Ley 1437/, "Sí");
+  await responder(page, "¿Autoriza recibir notificaciones por medios electrónicos?", "Sí");
   await page.getByLabel("Tiempo de residencia en Cali (años)", exacto).fill("20");
   await page.getByLabel("Ocupación", exacto).selectOption("independiente");
   await responder(page, "¿Está afiliado a una caja de compensación?", "No");
   await responder(page, "¿Está afiliado al Sisbén?", "No");
   await varias(page, "Condición especial del solicitante", ["Ninguna"]);
   await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
+
+  // Step by step: going back is free, but a section left incomplete blocks going forward (also from the step bar).
+  await expect(page.getByRole("heading", { level: 2, name: "Grupo familiar" })).toBeVisible();
+  await page.getByRole("button", { name: "Atrás", ...exacto }).click();
+  await page.getByLabel("Correo electrónico", exacto).fill("");
+  await page.getByRole("button", { name: /Su hogar/ }).click();
+  await expect(page.getByText("Complete esta sección antes de continuar.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Datos del solicitante" })).toBeVisible();
+  await page.getByLabel("Correo electrónico", exacto).fill("ana.perez@correo.com");
+  await page.getByRole("button", { name: /Su hogar/ }).click();
 
   // Step 2: two household members; a minor with C.C. is rejected; the total adds everyone.
   await expect(page.getByRole("heading", { level: 2, name: "Grupo familiar" })).toBeVisible();

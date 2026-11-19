@@ -46,7 +46,7 @@ export async function llenarTitular(page: Page, o: { nombres?: string; apellidos
   await page.getByLabel("Género", ex).selectOption("cis_femenino");
   await page.getByLabel("Teléfono o celular", ex).fill("3001234567");
   await page.getByLabel("Correo electrónico", ex).fill("ana.perez@correo.com");
-  await responder(page, /artículo 56 de la Ley 1437/, "Sí");
+  await responder(page, "¿Autoriza recibir notificaciones por medios electrónicos?", "Sí");
   const dir = page.getByLabel("Dirección de domicilio actual", ex);
   await dir.fill(o.direccion ?? "Calle 5 # 38-20");
   await expect(page.getByTestId("estrato-automatico")).toBeVisible({ timeout: 20_000 });

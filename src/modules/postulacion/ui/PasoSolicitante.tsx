@@ -14,7 +14,6 @@ import { fechaBogota } from "@/shared/tiempo";
 import {
   CONDICIONES_ESPECIALES, GENEROS_SOLICITANTE, GRUPOS_SISBEN, OCUPACIONES_SOLICITANTE, SUBGRUPO_MAX, TIPOS_DOCUMENTO_SOLICITANTE, opciones,
 } from "../domain/catalogos";
-import { NOTIFICACION_ELECTRONICA } from "../domain/texto";
 import { CampoMoneda, CampoMultiple, CampoMunicipio, CampoSelect, CampoSiNo, Grupo } from "./campos";
 
 const P = "solicitante.";
@@ -67,7 +66,7 @@ export function PasoSolicitante({ borradorId, documentoFijo, conAutorizacion }: 
         <CampoTelefono name={P + "telefono"} label="Teléfono o celular" etiquetaPais="Código de país del teléfono" regionInicial="CO" />
         <CampoTexto name={P + "correo"} label="Correo electrónico" type="email" autoComplete="email" inputMode="email" />
         <div className="sm:col-span-2">
-          <CampoSiNo name={P + "notificacion_electronica"} legend={NOTIFICACION_ELECTRONICA} />
+          <CampoSiNo name={P + "notificacion_electronica"} legend="¿Autoriza recibir notificaciones por medios electrónicos?" />
         </div>
       </Grupo>
 

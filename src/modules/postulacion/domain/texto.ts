@@ -13,9 +13,6 @@ export const DECLARACION: readonly string[] = [
 export const AUTORIZACION_GIRO =
   "En los términos del Artículo Quinto, Parágrafo Primero del Acuerdo Distrital No. 0644 de 2026, autorizo expresa e irrevocablemente que, de ser asignado el subsidio para adjudicatarios y/o deudores hipotecarios, su valor sea girado directamente a la entidad acreedora señalada arriba, y no a mi nombre, imputándose a la obligación sujeta del presente subsidio, conforme a la reglamentación vigente.";
 
-export const NOTIFICACION_ELECTRONICA =
-  "¿En los términos del artículo 56 de la Ley 1437 de 2011, manifiesto expresamente mi autorización y acepto recibir información y ser notificado por medios electrónicos?";
-
 export const NOTA_FORMATO =
   "La presentación del formato no otorga necesariamente el derecho al subsidio distrital. El desprendible de radicación no garantiza que el hogar cumpla con los requisitos de asignación. Este formulario es gratuito.";
 

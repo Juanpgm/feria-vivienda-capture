@@ -67,10 +67,19 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [guardadoEn, setGuardadoEn] = useState(inicial.guardado_en);
+  // A draft of this document was found on this device (autosave): say so, and allow starting over.
+  const recuperado = !edicion && !!inicial.guardado_en;
+  async function empezarDeCero() {
+    terminado.current = true;
+    await Promise.all([del(claveBorrador(uid, documento)), descartarFotos(inicial.id)]).catch(() => undefined);
+    window.location.reload();
+  }
   const terminado = useRef(false);
   const paso = PASOS[indice];
   // On edit the consent, declaration and signature already exist; photos are optional replacements.
-  const secciones = (edicion ? paso.secciones.filter((s) => s !== "consentimiento" && s !== "declaracion" && s !== "firma" && s !== "documentos") : paso.secciones) as Seccion[];
+  // On edit the consent, declaration and signature already exist; photos are optional replacements.
+  const seccionesDe = (i: number) => (edicion ? PASOS[i].secciones.filter((s) => s !== "consentimiento" && s !== "declaracion" && s !== "firma" && s !== "documentos") : PASOS[i].secciones) as Seccion[];
+  const secciones = seccionesDe(indice);
 
   const resolver: Resolver<FieldValues> = async (valores) => {
     const planos = validarSecciones(valores as Valores, secciones);
@@ -116,7 +125,29 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
     enfocarCampo(ruta);
   }
 
-  function irA(i: number) {
+  /**
+   * Step by step: going forward (button or step bar) requires the current step and every step in between to be
+   * complete; the first incomplete one is opened instead. Going back is always allowed.
+   */
+  async function irA(i: number) {
+    if (i > indice) {
+      if (!(await trigger())) {
+        setAviso("Complete esta sección antes de continuar.");
+        requestAnimationFrame(() => document.querySelector<HTMLElement>('form [aria-invalid="true"]')?.focus());
+        return;
+      }
+      for (let k = indice + 1; k < i; k++) {
+        if (Object.keys(validarSecciones(getValues() as Valores, seccionesDe(k))).length) {
+          ir(k);
+          setAviso("Complete esta sección antes de continuar.");
+          return;
+        }
+      }
+    }
+    ir(i);
+  }
+
+  function ir(i: number) {
     setIndice(i);
     setMaximo((m) => Math.max(m, i));
     setAviso("");
@@ -124,7 +155,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
   }
 
   async function siguiente() {
-    if (await trigger()) irA(indice + 1);
+    if (await trigger()) ir(indice + 1);
     else {
       setAviso("Revise los campos marcados antes de continuar.");
       requestAnimationFrame(() => document.querySelector<HTMLElement>('form [aria-invalid="true"]')?.focus());
@@ -197,7 +228,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
                       type="button"
                       disabled={i > maximo || enviando}
                       aria-current={actual ? "step" : undefined}
-                      onClick={() => irA(i)}
+                      onClick={() => void irA(i)}
                       className="group flex min-h-11 items-center gap-2 rounded-lg px-1 text-left disabled:cursor-not-allowed"
                     >
                       <span
@@ -230,6 +261,12 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
           </header>
 
           <form noValidate onSubmit={(e) => e.preventDefault()} className="pb-10">
+            {indice === 0 && recuperado && (
+              <div role="status" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3 text-sm">
+                <span>Se recuperó lo que escribió antes en este equipo para este documento.</span>
+                <button type="button" onClick={empezarDeCero} className="font-semibold text-primary underline underline-offset-2">Empezar de cero</button>
+              </div>
+            )}
             {indice === 0 && <PasoSolicitante borradorId={inicial.id} documentoFijo={!!documento} conAutorizacion={!edicion} />}
             {indice === 1 && <PasoHogar />}
             {indice === 2 && <PasoSubsidio creacion={!edicion} />}
@@ -238,7 +275,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
 
       <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-bg/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
-          <Button variant="secondary" disabled={indice === 0 || enviando} onClick={() => irA(indice - 1)}>
+          <Button variant="secondary" disabled={indice === 0 || enviando} onClick={() => ir(indice - 1)}>
             Atrás
           </Button>
           {indice < PASOS.length - 1 ? (

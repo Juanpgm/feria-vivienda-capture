@@ -69,7 +69,8 @@ export function PasoInmueble({
   const estratoAuto = deteccion?.estratoDeBarrio(barrio) ?? null;
   const [estado, setEstado] = useState<Estado>(null);
   // The barrio last filled in automatically: a later address may replace it; a barrio chosen by hand is never overwritten.
-  const automatico = useRef("");
+  // Remounting (going back to this step) must not forget it: a barrio that came with coordinates was the located one.
+  const automatico = useRef<string>(getValues(P + "latitud") ? String(getValues(P + "id_barrio_vereda") ?? "") : "");
   const consulta = useRef(0);
 
   useEffect(() => {

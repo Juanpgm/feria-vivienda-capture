@@ -64,8 +64,8 @@ export const AYUDAS: Record<string, string> = {
   Género: "Elija cómo se identifica. «Cisgénero» es la persona que se identifica con el sexo que le asignaron al nacer.",
   "¿Cuál género?": "Escriba con sus palabras cómo se identifica.",
   "Teléfono o celular": "Número donde podamos llamarlo o escribirle sobre su postulación. El código de Colombia (+57) ya está seleccionado.",
-  "¿En los términos del artículo 56 de la Ley 1437 de 2011, manifiesto expresamente mi autorización y acepto recibir información y ser notificado por medios electrónicos?":
-    "Si responde Sí, la Secretaría puede enviarle las notificaciones de su postulación al correo electrónico o al celular que registró, en lugar de por correo físico.",
+  "¿Autoriza recibir notificaciones por medios electrónicos?":
+    "Texto del formato: «En los términos del artículo 56 de la Ley 1437 de 2011, manifiesto expresamente mi autorización y acepto recibir información y ser notificado por medios electrónicos». Si responde Sí, la Secretaría puede enviarle las notificaciones de su postulación al correo electrónico o al celular que registró, en lugar de por correo físico.",
   "Dirección de domicilio actual": "La dirección donde vive hoy, como la conoce. Ejemplo: Calle 12 # 5-20, apto 301. La convertimos al formato catastral y le mostramos cómo quedará.",
   "Tiempo de residencia en Cali (años)": "Cuántos años completos lleva viviendo en el Distrito de Santiago de Cali. Para algunas modalidades se exigen más de 5 años.",
   Ocupación: "Su ocupación principal hoy. Si no es empleado, independiente ni pensionado, elija «Ninguna de las anteriores».",
