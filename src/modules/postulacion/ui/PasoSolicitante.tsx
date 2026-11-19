@@ -4,6 +4,7 @@ import { useWatch } from "react-hook-form";
 import { TIPOS_FOTO } from "@/modules/documentos/domain/imagen";
 import { FOTO_CAPTURADA } from "@/modules/documentos/domain/schema";
 import { FotoCaptura } from "@/modules/documentos/ui/FotoCaptura";
+import { PasoConsentimiento } from "@/modules/consentimiento/ui/PasoConsentimiento";
 import { PasoInmueble, type UbicacionGeocodificada } from "@/modules/inmueble/ui/PasoInmueble";
 import { CampoFecha } from "@/modules/registro/ui/CampoFecha";
 import { CampoTelefono } from "@/modules/registro/ui/CampoTelefono";
@@ -26,13 +27,28 @@ async function ubicar(direccion: string): Promise<UbicacionGeocodificada | null>
 const SUBGRUPOS = Array.from({ length: SUBGRUPO_MAX }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
 
 /** Step 1: section 1 of the format (jefe del hogar) + photos of the identity document (S16). */
-export function PasoSolicitante({ borradorId, documentoFijo }: { borradorId: string; documentoFijo: boolean }) {
+/** `conAutorizacion` (creation): the data-treatment authorization comes first; nothing else is asked until it is given. */
+export function PasoSolicitante({ borradorId, documentoFijo, conAutorizacion }: { borradorId: string; documentoFijo: boolean; conAutorizacion: boolean }) {
   const error = useError();
   const [genero, ocupacion, caja, sisben, nacimiento] = useWatch({ name: [P + "genero", P + "ocupacion", P + "caja_compensacion", P + "sisben", P + "lugar_nacimiento"] }) as string[];
   const frente = useWatch({ name: "documentos.documento_frente" }) === FOTO_CAPTURADA;
+  const [tratamiento, sensibles] = useWatch({ name: ["consentimiento.acepta_tratamiento", "consentimiento.acepta_datos_sensibles"] }) as boolean[];
+  const autorizado = !conAutorizacion || (tratamiento === true && sensibles === true);
 
   return (
     <div className="flex flex-col gap-8">
+      {conAutorizacion && (
+        <Grupo titulo="Autorización de tratamiento de datos" columnas={false}>
+          <PasoConsentimiento plegable />
+          {!autorizado && (
+            <p role="status" className="rounded-lg border border-border bg-surface p-3 text-sm font-medium">
+              Para continuar con el registro debe autorizar el tratamiento de sus datos personales y de sus datos sensibles.
+            </p>
+          )}
+        </Grupo>
+      )}
+      {autorizado && (
+      <>
       <Grupo titulo="Identificación" descripcion="Escriba los datos tal como aparecen en su documento de identidad.">
         <CampoTexto name={P + "nombres"} label="Nombres" autoComplete="given-name" normalizar={nombre} />
         <CampoTexto name={P + "apellidos"} label="Apellidos" autoComplete="family-name" normalizar={nombre} />
@@ -106,6 +122,8 @@ export function PasoSolicitante({ borradorId, documentoFijo }: { borradorId: str
           />
         ))}
       </Grupo>
+      </>
+      )}
     </div>
   );
 }

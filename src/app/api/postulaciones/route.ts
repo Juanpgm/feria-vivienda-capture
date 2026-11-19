@@ -11,7 +11,7 @@ export function POST(req: Request) {
     const sesion = await sesionOpcional();
     if (!sesion && !(await formularioHabilitado())) return respuesta(403, { error: "El formulario de postulación no está disponible en este momento." });
     if (Number(req.headers.get("content-length") ?? 0) > MAX_CUERPO) return respuesta(413, { error: "El envío es demasiado grande. Tome las fotos de nuevo." });
-    const envio = entradaCreacion(await req.json().catch(() => ({})), { publico: !sesion });
+    const envio = entradaCreacion(await req.json().catch(() => ({})));
     return respuesta(201, await crearPostulacion(envio, sesion));
   });
 }

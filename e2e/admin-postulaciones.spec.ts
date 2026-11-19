@@ -37,7 +37,7 @@ test("the form switch turns the public form on and off (left off)", async ({ pag
   await expect(page.getByText("Habilitado", ex)).toBeVisible();
   await page.getByRole("button", { name: "Deshabilitar formulario" }).click();
   await expect(page.getByText("Deshabilitado", ex)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Imprimir código QR" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Descargar QR en PDF" })).toBeVisible();
 });
 
 test("a staff member creates an incomplete postulación: it cannot be validated yet", async ({ page }) => {
@@ -45,6 +45,8 @@ test("a staff member creates an incomplete postulación: it cannot be validated 
   const modal = page.getByRole("dialog", { name: "Nueva postulación" });
   await modal.getByLabel("Número de documento", ex).fill(DOC);
   await modal.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...ex }).check();
+  await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles", ...ex }).check();
   await page.getByLabel("Nombres", ex).fill("PRUEBA E2E");
   await page.getByLabel("Apellidos", ex).fill("Postulación Uno");
   await page.getByLabel("Fecha de nacimiento", ex).fill("15031985");
@@ -56,10 +58,10 @@ test("a staff member creates an incomplete postulación: it cannot be validated 
   await page.getByRole("button", { name: "Siguiente", ...ex }).click();
   await page.getByRole("button", { name: "Siguiente", ...ex }).click();
   await page.getByRole("radio", { name: "Arrendamiento" }).check();
-  await page.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...ex }).check();
-  await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles", ...ex }).check();
   await page.getByRole("checkbox", { name: /Declaro bajo la gravedad de juramento/ }).check();
-  // Staff can choose how the applicant signs; drawn is the default.
+  // Signed on screen (the other way is uploading an image of a valid signature; no manual verification).
+  await expect(page.getByRole("radio", { name: "Subir imagen de la firma" })).toBeVisible();
+  await expect(page.getByText("verificación manual", { exact: false })).toHaveCount(0);
   await firmar(page);
   await page.getByRole("button", { name: "Enviar postulación" }).click();
   await expect(page.getByTestId("radicado")).toHaveText(/^PSE-\d{6}$/);
@@ -153,6 +155,36 @@ test("list, public status and metrics reflect the validated postulación", async
   await expect(existente.getByRole("link")).toHaveCount(0);
 });
 
+test("the QR of the postulación opens the record for staff and only its status for the public", async ({ page, browser }) => {
+  test.setTimeout(150_000); // two browser contexts on the dev server
+  const id = detalle.split("/").pop();
+  await page.goto(detalle);
+  await expect(page.getByTestId("qr-postulacion")).toBeVisible();
+  await page.goto(`/postulacion/estado/${id}`);
+  await page.waitForURL((u) => u.pathname === detalle); // logged-in official: straight to the record
+  // An explicit empty state: the project would otherwise hand the official session to this context too.
+  const anonimo = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const p2 = await anonimo.newPage();
+  await p2.goto(new URL(`/postulacion/estado/${id}`, page.url()).href, { waitUntil: "domcontentloaded" });
+  await expect(p2.getByTestId("estado")).toHaveText("Válido");
+  await expect(p2.getByTestId("radicado")).toHaveText(/^PSE-\d{6}$/);
+  await expect(p2.getByText(/Prueba E2e/i)).toHaveCount(0); // no personal data
+  await anonimo.close();
+});
+
+test("the QR poster downloads as a PDF and does not show the link", async ({ page }) => {
+  await page.goto("/postulaciones/qr");
+  await expect(page.getByTestId("qr-formulario")).toBeVisible();
+  await expect(page.getByText(/https?:\/\//)).toHaveCount(0);
+  const [descarga] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Descargar PDF para imprimir" }).click()]);
+  expect(descarga.suggestedFilename()).toBe("postulacion-subsidio-qr.pdf");
+  const ruta = await descarga.path();
+  const { readFileSync } = await import("node:fs");
+  const pdf = readFileSync(ruta!);
+  expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  expect(pdf.toString("latin1")).not.toContain("/postulacion");
+});
+
 test("an admin deletes the postulación with a reason; it is gone and the document is free again", async ({ page }) => {
   await page.goto(`/postulaciones?q=${DOC}`);
   await page.getByRole("button", { name: /^Borrar la postulación PSE-/ }).click();
@@ -163,7 +195,7 @@ test("an admin deletes the postulación with a reason; it is gone and the docume
   await expect(confirmar).toBeDisabled();
   await d.getByRole("checkbox", { name: "Entiendo que el borrado es definitivo" }).check();
   await confirmar.click();
-  await expect(page.getByText("0 postulación(es)")).toBeVisible();
+  await expect(page.getByText("0 postulación(es)")).toBeVisible({ timeout: 30_000 }); // recursive delete of the record and its files
   await page.goto("/postulaciones/nueva");
   const modal = page.getByRole("dialog", { name: "Nueva postulación" });
   await modal.getByLabel("Número de documento", ex).fill(DOC);

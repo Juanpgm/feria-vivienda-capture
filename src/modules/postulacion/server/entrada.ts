@@ -22,14 +22,14 @@ function imagenes(adjuntos: Partial<Record<TipoAdjunto, string>>): AdjuntoValida
   return Object.entries(adjuntos).map(([tipo, imagen]) => validarAdjunto({ tipo, imagen }));
 }
 
-/** Creation: every section must be valid, both ID photos and (for a drawn signature) its image are mandatory (S16). */
-export function entradaCreacion(cuerpo: unknown, { publico }: { publico: boolean }): Envio {
+/** Creation: every section must be valid; both ID photos and the signature image are mandatory (S16). */
+export function entradaCreacion(cuerpo: unknown): Envio {
   const { valores, adjuntos } = cuerpoSchema.parse(cuerpo);
   const v = valores as Valores;
   const errores = validarSecciones(v, ["consentimiento", "declaracion"]);
   const firma = firmaSchema.safeParse(v.firma ?? {});
-  if (!firma.success) errores["firma.metodo_firma"] = "Registre la firma del solicitante";
-  else if (publico && firma.data.metodo_firma !== "dibujada") errores["firma.metodo_firma"] = "Dibuje su firma";
+  // Only a signature image (drawn on screen or an uploaded image of a valid signature); no manual verification.
+  if (!firma.success || firma.data.metodo_firma !== "dibujada") errores["firma.metodo_firma"] = "Firme en pantalla o suba una imagen de la firma";
   const datos = armarDatos(v);
   if (!datos.ok) Object.assign(errores, datos.errores);
   if (!adjuntos.documento_frente) errores["documentos.documento_frente"] = "Falta la foto del frente del documento";
@@ -40,8 +40,8 @@ export function entradaCreacion(cuerpo: unknown, { publico }: { publico: boolean
     datos: datos.datos,
     faltantes: datos.faltantes,
     consentimiento: consentimientoSchema.parse(v.consentimiento),
-    firma: firma.data,
-    adjuntos: imagenes(firma.data.metodo_firma === "dibujada" ? adjuntos : { documento_frente: adjuntos.documento_frente, documento_reverso: adjuntos.documento_reverso }),
+    firma: { ...firma.data, origen: v.firma?.origen === "imagen" ? "imagen" : "pantalla" },
+    adjuntos: imagenes(adjuntos),
   };
 }
 

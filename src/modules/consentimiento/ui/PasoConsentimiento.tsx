@@ -9,16 +9,18 @@ import {
 
 const P = "consentimiento.";
 
-/** Habeas Data authorization (Ley 1581 de 2012, Decreto 1377 de 2013). The wording lives in domain/texto.ts. */
-export function PasoConsentimiento() {
+/**
+ * Habeas Data authorization (Ley 1581 de 2012, Decreto 1377 de 2013). The wording lives in domain/texto.ts.
+ * `plegable`: the full text is one tap away ("Ver la política…") instead of filling the screen; the decisions stay visible.
+ */
+export function PasoConsentimiento({ plegable = false }: { plegable?: boolean } = {}) {
   const { register, setValue } = useFormContext<FieldValues>();
   const error = useError();
   const idTexto = useId();
   const errorTratamiento = error(P + "acepta_tratamiento");
   const errorSensibles = error(P + "acepta_datos_sensibles");
 
-  return (
-    <div className="flex flex-col gap-8">
+  const texto = (
       <div id={idTexto} className="flex flex-col gap-6">
         {SECCIONES_TEXTO.map((s) => (
           <section key={s.id} aria-labelledby={`${idTexto}-${s.id}`} className="flex flex-col gap-2">
@@ -45,6 +47,27 @@ export function PasoConsentimiento() {
           .
         </p>
       </div>
+  );
+
+  return (
+    <div className="flex flex-col gap-8">
+      {plegable ? (
+        <div className="flex flex-col gap-3">
+          <p>
+            Sus datos se usan solo para gestionar su postulación, verificarla y hacer estadísticas sin identificarlo. Usted puede conocerlos,
+            corregirlos y pedir que se eliminen.
+          </p>
+          <details className="group rounded-lg border border-border">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 font-semibold text-primary [&::-webkit-details-marker]:hidden">
+              Ver la política de tratamiento de datos personales
+              <span aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none">▾</span>
+            </summary>
+            <div className="border-t border-border px-4 py-4">{texto}</div>
+          </details>
+        </div>
+      ) : (
+        texto
+      )}
 
       <section aria-labelledby={`${idTexto}-decision`} className="flex flex-col gap-4">
         <h4 id={`${idTexto}-decision`} className="border-b border-border pb-1 text-lg font-bold text-primary-strong">
@@ -67,7 +90,7 @@ export function PasoConsentimiento() {
               {errorTratamiento}
             </p>
           )}
-          <p className="text-sm text-muted">Es obligatoria para registrar la postulación. El texto de arriba es lo que la persona autoriza.</p>
+          <p className="text-sm text-muted">Es obligatoria para registrar la postulación. {plegable ? "Lo que autoriza es la política de arriba." : "El texto de arriba es lo que la persona autoriza."}</p>
         </div>
 
         <div className="flex flex-col gap-1">

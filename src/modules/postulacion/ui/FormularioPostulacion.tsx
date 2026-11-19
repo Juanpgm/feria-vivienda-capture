@@ -23,11 +23,12 @@ import { BarraAvance } from "./Progreso";
 import { PasoHogar } from "./PasoHogar";
 import { PasoSolicitante } from "./PasoSolicitante";
 import { PasoSubsidio } from "./PasoSubsidio";
+import { QrPostulacion } from "./QrPostulacion";
 
 const PASOS = [
-  { id: "solicitante", corto: "Usted", titulo: "Datos del solicitante", descripcion: "Quién se postula como jefe del hogar, dónde vive y las fotos de su documento.", minutos: 5, secciones: ["solicitante", "documentos"] },
+  { id: "solicitante", corto: "Usted", titulo: "Datos del solicitante", descripcion: "Primero autorice el uso de sus datos. Luego, quién se postula como jefe del hogar, dónde vive y las fotos de su documento.", minutos: 5, secciones: ["consentimiento", "solicitante", "documentos"] },
   { id: "hogar", corto: "Su hogar", titulo: "Grupo familiar", descripcion: "Las personas que viven con usted y lo que ganan al mes. Si vive solo, siga al siguiente paso.", minutos: 3, secciones: ["hogar"] },
-  { id: "subsidio", corto: "Vivienda y recursos", titulo: "Subsidio y cierre financiero", descripcion: "El subsidio que solicita, el proyecto y el dinero con que cuenta. Al final autoriza y firma.", minutos: 4, secciones: ["postulacion", "consentimiento", "declaracion", "firma"] },
+  { id: "subsidio", corto: "Vivienda y recursos", titulo: "Subsidio y cierre financiero", descripcion: "El subsidio que solicita, el proyecto y el dinero con que cuenta. Al final declara y firma.", minutos: 4, secciones: ["postulacion", "declaracion", "firma"] },
 ] as const satisfies readonly { id: string; corto: string; titulo: string; descripcion: string; minutos: number; secciones: readonly Seccion[] }[];
 
 type Borrador = { id: string; paso: number; maximo: number; valores: Valores; guardado_en: string };
@@ -130,7 +131,8 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
       }
       if (!edicion && v.firma?.metodo_firma === "dibujada") adjuntos.firma = String(v.firma.imagen);
       const { documentos: _d, firma, ...resto } = v; // eslint-disable-line @typescript-eslint/no-unused-vars
-      const valores = edicion ? resto : { ...resto, firma: firmaParaEnviar(firma ?? {}) };
+      // Drawn on screen or uploaded as an image: always a signature image, never a manual verification.
+      const valores = edicion ? resto : { ...resto, firma: { ...firmaParaEnviar(firma ?? {}), origen: firma?.origen === "imagen" ? "imagen" : "pantalla" } };
       const res = await fetch(edicion ? `/api/postulaciones/${edicion.id}` : "/api/postulaciones", {
         method: edicion ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -209,7 +211,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
           </header>
 
           <form noValidate onSubmit={(e) => e.preventDefault()} className="pb-10">
-            {indice === 0 && <PasoSolicitante borradorId={inicial.id} documentoFijo={!!documento} />}
+            {indice === 0 && <PasoSolicitante borradorId={inicial.id} documentoFijo={!!documento} conAutorizacion={!edicion} />}
             {indice === 1 && <PasoHogar />}
             {indice === 2 && <PasoSubsidio creacion={!edicion} />}
           </form>
@@ -272,10 +274,11 @@ function Confirmacion({ r, publico }: { r: Resultado; publico: boolean }) {
           </dl>
         </div>
       </div>
+      <QrPostulacion id={r.id} radicado={r.radicado} />
       <div>
         <h3 className="font-bold text-primary-strong">Qué sigue</h3>
         <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-muted">
-          <li>Tome una foto de esta pantalla o anote el número de registro.</li>
+          <li>Tome una foto de esta pantalla o guarde el código QR: con él consulta el estado cuando quiera.</li>
           <li>Un funcionario de la Secretaría revisará sus datos y sus documentos.</li>
           <li>Cuando la postulación quede validada, su estado cambiará a «Válido».</li>
         </ol>

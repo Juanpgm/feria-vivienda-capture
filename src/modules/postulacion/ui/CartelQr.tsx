@@ -3,38 +3,74 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/ui/Button";
+import { descargarCartel, PASOS_CARTEL } from "./pdfCartel";
 
-/** Printable poster with the QR of the public form (S14). Built in the browser, so it always points at this deployment. */
+/**
+ * QR poster of the public form (S14): a preview and a printable PDF with instructions. The QR opens only the
+ * registration form; the link is not shown or offered anywhere, only the QR and the document.
+ */
 export function CartelQr() {
   const [svg, setSvg] = useState("");
-  const [url, setUrl] = useState("");
+  const [generando, setGenerando] = useState(false);
+  const [error, setError] = useState("");
+  const destino = () => `${window.location.origin}/postulacion`;
+
   useEffect(() => {
-    const u = `${window.location.origin}/postulacion`;
-    // High error correction: the printed code survives stains and folds.
-    QRCode.toString(u, { type: "svg", errorCorrectionLevel: "H", margin: 2 })
-      .then((s) => {
-        setUrl(u);
-        setSvg(s);
-      })
-      .catch(() => setUrl(u));
+    QRCode.toString(destino(), { type: "svg", errorCorrectionLevel: "H", margin: 1 }).then(setSvg).catch(() => setSvg(""));
   }, []);
 
+  async function descargar() {
+    setGenerando(true);
+    setError("");
+    try {
+      await descargarCartel(destino());
+    } catch {
+      setError("No se pudo generar el PDF. Intente de nuevo.");
+    } finally {
+      setGenerando(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col items-center gap-6">
-      <div className="print:hidden">
-        <Button onClick={() => window.print()}>Imprimir</Button>
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-primary-strong">Código QR del formulario de postulación</h1>
+          <p className="mt-1 max-w-prose text-muted">
+            Descargue el PDF para imprimirlo o compartirlo. Quien escanee el código llega solo al formulario de registro; no puede ver otras postulaciones.
+          </p>
+        </div>
+        <Button onClick={descargar} disabled={generando || !svg}>
+          {generando ? "Generando PDF…" : "Descargar PDF para imprimir"}
+        </Button>
       </div>
-      <article className="flex w-full max-w-xl flex-col items-center gap-4 rounded-2xl border-4 border-primary bg-white p-8 text-center text-black print:border-2">
-        <p className="text-sm font-semibold uppercase tracking-wide">Alcaldía de Santiago de Cali · Secretaría de Vivienda Social y Hábitat</p>
-        <h1 className="text-3xl font-bold">Postúlese al Subsidio Distrital de Vivienda</h1>
-        <p className="text-lg">Escanee el código con la cámara de su celular y diligencie el formulario.</p>
-        {svg ? (
-          <div role="img" aria-label={`Código QR que abre ${url}`} className="w-72 max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />
-        ) : (
-          <p role="status">Generando código…</p>
-        )}
-        <p className="break-all font-mono text-base">{url}</p>
-        <p className="text-sm">Tenga a mano su documento de identidad: le pediremos foto del frente y del reverso. El formulario es gratuito.</p>
+      {error && <p role="alert" className="font-medium text-danger">{error}</p>}
+
+      {/* Preview of the printed sheet. */}
+      <article aria-label="Vista previa del cartel" className="overflow-hidden rounded-xl border border-border bg-white text-[#222221] shadow-[0_18px_40px_-24px_rgb(0_54_95/0.55)]">
+        <div className="relative bg-[#00365f] px-8 py-5 text-white">
+          <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-accent" />
+          <p className="text-sm">Alcaldía de Santiago de Cali</p>
+          <p className="font-bold">Secretaría de Vivienda Social y Hábitat</p>
+        </div>
+        <div className="flex flex-col items-center gap-4 px-8 py-8 text-center">
+          <h2 className="text-3xl font-bold text-[#00365f]">Postúlese al Subsidio Distrital de Vivienda</h2>
+          <p className="text-[#4d4d4d]">Escanee el código con la cámara de su celular para abrir el formulario.</p>
+          {svg ? (
+            <div role="img" aria-label="Código QR del formulario de postulación" data-testid="qr-formulario" className="w-56 rounded-xl border-2 border-[#00365f] p-3" dangerouslySetInnerHTML={{ __html: svg }} />
+          ) : (
+            <p role="status">Generando código…</p>
+          )}
+          <ol className="mt-2 flex w-full max-w-md flex-col gap-2 text-left">
+            {PASOS_CARTEL.map((p, i) => (
+              <li key={p} className="flex gap-3">
+                <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full bg-[#00365f] text-xs font-bold text-white">{i + 1}</span>
+                <span>{p}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-2 border-t border-[#d5b16c] pt-3 text-sm text-[#4d4d4d]">El formulario es gratuito. No entregue dinero ni sus datos a intermediarios.</p>
+        </div>
       </article>
     </div>
   );

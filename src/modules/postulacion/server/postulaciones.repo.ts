@@ -71,6 +71,12 @@ export async function consultarPorDocumento(documento: string): Promise<Consulta
   return d ? { existe: true, id, radicado: String(d.radicado), estado: d.estado as EstadoPostulacion } : { existe: false };
 }
 
+/** What the public may see of a postulación (its QR page): radicado, status and dates. Never personal data. */
+export async function estadoPublico(id: string) {
+  const d = (await col().doc(id).get()).data();
+  return d ? { radicado: String(d.radicado), estado: d.estado as EstadoPostulacion, fecha_bogota: String(d.fecha_bogota ?? ""), validado_en: (d.validado_en as string | undefined) ?? null } : null;
+}
+
 const adjuntoDoc = (a: AdjuntoValidado, por: string) => ({
   tipo: a.tipo,
   mime: a.mime,

@@ -54,6 +54,19 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   const envios = await servidor(page);
   await abrir(page);
   await expect(page.getByRole("heading", { level: 2, name: "Datos del solicitante" })).toBeVisible();
+
+  // The authorization comes first: without it nothing else is asked and the step cannot be passed.
+  await expect(page.getByLabel("Nombres", exacto)).toHaveCount(0);
+  await expect(page.getByText("Para continuar con el registro debe autorizar el tratamiento de sus datos personales y de sus datos sensibles.")).toBeVisible();
+  await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Datos del solicitante" })).toBeVisible();
+  // The policy text is folded; it opens on demand.
+  await expect(page.getByText("Quién es el responsable de sus datos")).toBeHidden();
+  await page.getByText("Ver la política de tratamiento de datos personales").click();
+  await expect(page.getByText("Quién es el responsable de sus datos")).toBeVisible();
+  await page.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...exacto }).check();
+  await expect(page.getByLabel("Nombres", exacto)).toHaveCount(0); // sensitive data authorization is required too
+  await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles", ...exacto }).check();
   await expect(page.getByLabel("Número de documento", exacto)).toHaveValue(DOC);
 
   // Step 1: required fields and the photos block the next step until filled.
@@ -186,8 +199,6 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await expect(page.getByText("Debe aceptar la declaración bajo juramento para enviar la postulación")).toBeVisible();
   expect(envios).toHaveLength(0);
 
-  await page.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...exacto }).check();
-  await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles", ...exacto }).check();
   await page.getByRole("checkbox", { name: /Declaro bajo la gravedad de juramento/ }).check();
   await dibujarFirma(page);
   await page.getByRole("button", { name: "Usar esta firma", ...exacto }).click();
@@ -206,7 +217,11 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   expect((cuerpo.valores.postulacion.recursos as Record<string, { entidad: string }>).ahorro_programado.entidad).toBe("Bancolombia");
   expect((cuerpo.valores.postulacion.recursos as Record<string, { entidad: string }>).cesantias.entidad).toBe("Fondo de empleados XYZ");
   expect((cuerpo.valores.postulacion.recursos as Record<string, { valor: string }>).cesantias.valor).toBe("1000000");
-  expect(cuerpo.valores.firma).toEqual({ metodo_firma: "dibujada" });
+  expect(cuerpo.valores.firma).toEqual({ metodo_firma: "dibujada", origen: "pantalla" });
+  // The receipt carries the QR of this postulación (no link shown).
+  await expect(page.getByTestId("qr-postulacion")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Guardar código QR" })).toHaveAttribute("download", "postulacion-PSE-000008.png");
+  await expect(page.getByText("/postulacion/estado/")).toHaveCount(0);
   expect(cuerpo.valores.documentos).toBeUndefined();
 });
 

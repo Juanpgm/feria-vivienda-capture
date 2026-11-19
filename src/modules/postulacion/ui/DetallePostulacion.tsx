@@ -10,6 +10,7 @@ import {
 import type { PostulacionVista } from "../server/postulaciones.repo";
 import { BotonBorrar } from "./BotonBorrar";
 import { BotonValidar } from "./BotonValidar";
+import { QrPostulacion } from "./QrPostulacion";
 
 type Fila = [string, unknown];
 const SIN = "Sin información";
@@ -73,6 +74,8 @@ export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista
           )}
         </div>
       </header>
+
+      <QrPostulacion id={p.id} radicado={p.radicado} />
 
       {p.faltantes.length > 0 ? (
         <section aria-labelledby="faltantes" className="rounded-lg border-2 border-warning-text bg-warning-bg p-4 text-warning-text">

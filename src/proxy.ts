@@ -9,7 +9,7 @@ const PUBLICAS = ["/login", "/registro", "/pendiente", "/postulacion"];
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   // /ciudadano/* is the separate citizen area: its pages verify their own cookie and never touch staff pages.
-  if (req.cookies.has(COOKIE_SESION) || PUBLICAS.includes(pathname) || pathname === "/ciudadano" || pathname.startsWith("/ciudadano/")) return NextResponse.next();
+  if (req.cookies.has(COOKIE_SESION) || PUBLICAS.includes(pathname) || pathname.startsWith("/postulacion/") || pathname === "/ciudadano" || pathname.startsWith("/ciudadano/")) return NextResponse.next();
   return NextResponse.redirect(new URL("/login", req.url));
 }
 

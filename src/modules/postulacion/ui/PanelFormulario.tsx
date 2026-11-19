@@ -35,7 +35,7 @@ export function PanelFormulario({ inicial }: { inicial: boolean }) {
           {habilitado ? "Deshabilitar formulario" : "Habilitar formulario"}
         </Button>
         <Link href="/postulaciones/qr" className="inline-flex min-h-11 items-center rounded-lg border border-border px-4 font-semibold">
-          Imprimir código QR
+          Descargar QR en PDF
         </Link>
       </div>
       {error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}

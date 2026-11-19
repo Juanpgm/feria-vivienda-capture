@@ -2,8 +2,6 @@
 
 import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { formatoCop } from "@/modules/cierre-financiero/domain/smlmv";
-import { PasoConsentimiento } from "@/modules/consentimiento/ui/PasoConsentimiento";
-import { SeccionFirma } from "@/modules/firma/ui/SeccionFirma";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 import { parsearIngresoCop } from "@/shared/normalizacion/texto";
 import { useAyuda } from "@/shared/ui/Ayuda";
@@ -16,12 +14,14 @@ import {
 } from "../domain/catalogos";
 import { AUTORIZACION_GIRO, DECLARACION, DECLARACION_TITULO, DECLARACION_VERSION, NOTA_FORMATO } from "../domain/texto";
 import { CampoEntidad, CampoMoneda, CampoSelect, Grupo } from "./campos";
+import { FirmaPostulacion } from "./FirmaPostulacion";
 
 const P = "postulacion.";
 
 /** Step 3: sections 3, 4, 4.1, 5 and 5.1 of the format; on creation also consent, sworn declaration (6) and signature. */
 export function PasoSubsidio({ creacion }: { creacion: boolean }) {
-  const { register, setValue, getValues } = useFormContext<FieldValues>();
+  const { register, setValue, getValues, setFocus } = useFormContext<FieldValues>();
+  const registroFuentes = register(P + "fuentes");
   const error = useError();
   const modalidad = useWatch({ name: P + "modalidad" }) as Modalidad | "";
   const fuentes = (useWatch({ name: P + "fuentes" }) as string[] | undefined) ?? [];
@@ -83,28 +83,48 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
       )}
 
       <Grupo titulo="Recursos para el cierre financiero" columnas={false} descripcion="El dinero con que cuenta para completar el valor de la vivienda.">
+        {/* Each source opens its own fields right under it: no going up and down between the list and the values. */}
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-semibold">Fuentes de recursos</legend>
           {ayudaFuentes.boton && <div className="flex items-center">{ayudaFuentes.boton}<span className="text-sm text-muted">¿Qué significa?</span></div>}
           {ayudaFuentes.panel}
-          <p className="text-sm text-muted">Marque las fuentes con las que cuenta; para cada una escriba el valor.</p>
-          <div className="flex flex-wrap gap-2">
-            {CODIGOS_FUENTES.map((f) => (
-              <label key={f} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-border px-4 has-checked:border-2 has-checked:border-primary has-checked:bg-surface">
-                <input type="checkbox" value={f} className="size-4" {...register(P + "fuentes")} />
-                <span className="font-medium">{FUENTES_RECURSOS[f].etiqueta}</span>
-              </label>
-            ))}
-          </div>
+          <p className="mb-1 text-sm text-muted">Marque cada fuente con la que cuenta y escriba su valor ahí mismo.</p>
+          <ul className="flex flex-col gap-2">
+            {CODIGOS_FUENTES.map((f) => {
+              const activa = fuentes.includes(f);
+              const valor = parsearIngresoCop(recursos[f]?.valor ?? "");
+              return (
+                <li key={f} className={`rounded-xl border transition-colors ${activa ? "border-primary bg-bg" : "border-border bg-bg hover:bg-surface"}`}>
+                  <label className="flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2">
+                    <input
+                      type="checkbox"
+                      value={f}
+                      className="size-5 shrink-0"
+                      {...registroFuentes}
+                      onChange={(e) => {
+                        void registroFuentes.onChange(e);
+                        if (e.target.checked) requestAnimationFrame(() => setFocus(`${P}recursos.${f}.valor`));
+                      }}
+                    />
+                    <span className="flex-1 font-semibold">{FUENTES_RECURSOS[f].etiqueta}</span>
+                    {activa && valor ? <span className="text-sm font-semibold tabular-nums text-primary-strong">{formatoCop(valor)}</span> : null}
+                  </label>
+                  {activa && (
+                    <div className="grid gap-4 border-t border-border px-4 pb-4 pt-4 sm:grid-cols-2">
+                      <CampoMoneda name={`${P}recursos.${f}.valor`} label={`Valor de ${FUENTES_RECURSOS[f].etiqueta.toLowerCase()}`} />
+                      <CampoEntidad name={`${P}recursos.${f}.entidad`} label={`${FUENTES_RECURSOS[f].entidad} (${FUENTES_RECURSOS[f].etiqueta.toLowerCase()})`} tipos={FUENTES_RECURSOS[f].tipos} />
+                      {f === "subsidio_familiar" && (
+                        <div className="sm:col-span-2">
+                          <CampoTexto name={`${P}recursos.${f}.resolucion`} label="Resolución o acta y fecha de expedición" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </fieldset>
-        {CODIGOS_FUENTES.filter((f) => fuentes.includes(f)).map((f) => (
-          <div key={f} className="grid gap-4 rounded-lg border border-border p-4 sm:grid-cols-2">
-            <p className="font-bold sm:col-span-2">{FUENTES_RECURSOS[f].etiqueta}</p>
-            <CampoMoneda name={`${P}recursos.${f}.valor`} label={`Valor de ${FUENTES_RECURSOS[f].etiqueta.toLowerCase()}`} />
-            <CampoEntidad name={`${P}recursos.${f}.entidad`} label={`${FUENTES_RECURSOS[f].entidad} (${FUENTES_RECURSOS[f].etiqueta.toLowerCase()})`} tipos={FUENTES_RECURSOS[f].tipos} />
-            {f === "subsidio_familiar" && <CampoTexto name={`${P}recursos.${f}.resolucion`} label="Resolución o acta y fecha de expedición" />}
-          </div>
-        ))}
         <div role="status" className="rounded-lg border border-border bg-surface p-4">
           <p className="text-sm font-semibold text-muted">Total aportes del hogar</p>
           <p className="text-2xl font-bold tabular-nums text-primary-strong">{formatoCop(total)}</p>
@@ -113,11 +133,8 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
 
       {creacion && (
         <>
-          <Grupo titulo="Autorización de tratamiento de datos" columnas={false}>
-            <PasoConsentimiento />
-          </Grupo>
           <Declaracion />
-          <SeccionFirma />
+          <FirmaPostulacion />
           <p className="text-sm text-muted">{NOTA_FORMATO}</p>
         </>
       )}
