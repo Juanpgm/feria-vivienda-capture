@@ -35,7 +35,7 @@ export async function conReintentos<T>(
   return { error: ultimo, intentos };
 }
 
-async function aBase64(blob: Blob): Promise<string> {
+export async function aBase64(blob: Blob): Promise<string> {
   const lector = new FileReader();
   const url = await new Promise<string>((ok, mal) => {
     lector.onload = () => ok(String(lector.result));

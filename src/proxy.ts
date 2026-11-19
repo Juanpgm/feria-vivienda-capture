@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_SESION } from "@/modules/auth/domain/roles";
 
-const PUBLICAS = ["/login", "/registro", "/pendiente"];
+// /postulacion is the public application form reached by QR (it checks its own on/off switch).
+const PUBLICAS = ["/login", "/registro", "/pendiente", "/postulacion"];
 
 // Presence-only guard for pages. Real verification happens in requireSesion (node runtime).
 // API routes are excluded: they answer 401/403 JSON themselves.

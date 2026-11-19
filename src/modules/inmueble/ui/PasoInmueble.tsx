@@ -10,7 +10,6 @@ import { RadioGroup } from "@/shared/ui/Radio";
 import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
 import divisiones from "../catalogo/divisiones.json";
 
-const P = "inmueble.";
 type Lugar = { id: string; nombre: string; codigo_division: string };
 
 const OPCIONES_DIVISION: OpcionBusqueda[] = divisiones.map((d) => ({
@@ -20,7 +19,8 @@ const OPCIONES_DIVISION: OpcionBusqueda[] = divisiones.map((d) => ({
 }));
 const ESTRATOS = [1, 2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: String(n) }));
 
-export function PasoInmueble() {
+/** `prefijo`: form section holding direccion / codigo_division / id_barrio_vereda / estrato (reused by the postulación form). */
+export function PasoInmueble({ prefijo: P = "inmueble.", etiquetaDireccion = "Dirección del inmueble" }: { prefijo?: string; etiquetaDireccion?: string } = {}) {
   const { register, setValue, getValues, control } = useFormContext<FieldValues>();
   const error = useError();
   const [lugares, setLugares] = useState<Lugar[]>([]);
@@ -45,7 +45,7 @@ export function PasoInmueble() {
         <div className="sm:col-span-2">
           <CampoTexto
             name={P + "direccion"}
-            label="Dirección del inmueble"
+            label={etiquetaDireccion}
             autoComplete="off"
             hint={norm?.es_completa ? `Se guardará como: ${norm.norm}` : undefined}
           />

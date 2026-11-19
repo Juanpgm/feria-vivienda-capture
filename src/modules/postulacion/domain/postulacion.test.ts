@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { armarDatos, validarSecciones, type Valores } from "./armar";
+import { aValores } from "./formulario";
 import { moneda } from "./schema";
 import { DECLARACION_VERSION } from "./texto";
 
@@ -103,6 +104,20 @@ describe("postulación y cierre financiero", () => {
   it("requires accepting the sworn declaration", () => {
     expect(validarSecciones({ declaracion: {} }, ["declaracion"])["declaracion.acepta"]).toBeTruthy();
     expect(validarSecciones({ declaracion: { acepta: true, version: DECLARACION_VERSION } }, ["declaracion"])).toEqual({});
+  });
+});
+
+describe("aValores (staff edit)", () => {
+  it("round-trips a stored record back to the same data", () => {
+    const valores = base({
+      solicitante: { ...solicitante, sisben: "si", sisben_grupo: "B", sisben_subgrupo: "4", estrato: "2", ingreso_mensual: "900000" },
+      hogar: { integrantes: [{ nombres_apellidos: "luis pérez", fecha_nacimiento: "2015-06-01", tipo_documento: "ti", numero_documento: "1100000001", ingresos: "0" }] },
+      postulacion: { modalidad: "10", entidad_acreedora: "fev", saldo_adeudado: "3.000.000", autoriza_giro: true, fuentes: ["creditos"], recursos: { creditos: { valor: "100", entidad: "Banco" } } },
+    });
+    const a = armarDatos(valores);
+    if (!a.ok) throw new Error("should build");
+    const b = armarDatos(aValores(a.datos));
+    expect(b.ok && b.datos).toEqual(a.datos);
   });
 });
 
