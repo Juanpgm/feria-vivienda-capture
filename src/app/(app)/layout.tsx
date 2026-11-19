@@ -21,6 +21,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           Registros
         </Link>
       )}
+      {sesion.aprobado && (
+        <Link href="/postulaciones" className={enlaceNav}>
+          Postulaciones
+        </Link>
+      )}
       {tieneRol(sesion.rol, "admin") && (
         <Link href="/admin/usuarios" className={enlaceNav}>
           Usuarios
@@ -29,6 +34,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {tieneRol(sesion.rol, "admin") && (
         <Link href="/admin/ciudadanos" className={enlaceNav}>
           Ciudadanos
+        </Link>
+      )}
+      {tieneRol(sesion.rol, "admin") && (
+        <Link href="/admin/postulaciones" className={enlaceNav}>
+          Formulario postulación
         </Link>
       )}
       <span className="hidden text-sm text-muted md:inline">{sesion.correo}</span>
