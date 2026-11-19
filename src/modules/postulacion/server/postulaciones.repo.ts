@@ -53,6 +53,8 @@ async function nombreDe(actor: Actor) {
 
 // ---- public form switch ----
 export async function formularioHabilitado(): Promise<boolean> {
+  // e2e on the dev server only (never in a production build): opens the public page without touching the real switch.
+  if (process.env.NODE_ENV !== "production" && process.env.E2E_POSTULACION_ABIERTA === "1") return true;
   return (await refConfig().get()).data()?.habilitado === true;
 }
 export async function fijarFormulario(habilitado: boolean, actor: Actor) {

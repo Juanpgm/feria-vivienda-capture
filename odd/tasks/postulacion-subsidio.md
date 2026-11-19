@@ -18,15 +18,17 @@ Plan: C:\Users\User\.claude\plans\purring-petting-nest.md
 - S17 Enable/disable like the citizen form. S18 Viewing and validation require login. S19 Dedicated records section unifying postulación + validación per person.
 
 ## Tasks
-- T1 S0,S5,S9-S11,S16 domain: catálogos, schemas, faltantes, totals + Vitest — inline — pending
-- T2 S7,S9,S12,S16,S17 server repo + API (consulta, crear, editar, toggle) — inline — pending
-- T3 S1,S3,S5,S15 form UI (stepper, 3 steps, modal) + public/staff routes — inline — pending
-- T4 S13,S18,S19 staff list/detail + validation — inline — pending
-- T5 S14,S17 admin toggle + QR — inline — pending
-- T6 S8 dashboard section — inline — pending
-- T7 Playwright e2e + review — inline — pending
+- T1 S0,S5,S9-S11,S16 domain: catálogos, schemas, faltantes, totals + Vitest — inline — done
+- T2 S7,S9,S12,S16,S17 server repo + API (consulta, crear, editar, toggle) — inline — done
+- T3 S1,S3,S5,S15 form UI (stepper, 3 steps, modal) + public/staff routes — inline — done
+- T4 S13,S18,S19 staff list/detail + validation — inline — done
+- T5 S14,S17 admin toggle + QR — inline — done
+- T6 S8 dashboard section — inline — done
+- T7 Playwright e2e (public flow, mocked API) — inline — done; staff pages e2e pending (needs login + real data, see L5)
 
 ## Log
 - L1 (2026-11-18) User request: see plan file Context and the /plan prompt (20 numbered points + "hazle pruebas o test al codigo y luego pruebalo con playwright cuando este listo para mi revisión me cuentas").
 - L2 Decisions: public existing doc → status only; no geocoder; validator = usuario+.
 - L3 Deviation from plan: dedicated lean stepper for postulación instead of generalizing registro `Stepper` (that one is coupled to registro drafts migration, Confirmacion and citizen routes); submission is ONE request (data + photos + signature, ~2.2 MB < 4.5 MB) so a record can never exist without photos (S16).
+- L4 (2026-11-18) Verified: tsc, eslint (0 errors), vitest 494 passed, Playwright publico 13 passed (incl. publico-postulacion 2/2). Commits c9e99bf, d5a484b, f7910f0, a694cf3 + e2e commit.
+- L5 Pending: staff list/detail/validation not exercised end to end (server components on real Firestore; .auth session expired; no emulator/Java). Needs user decision to run against real Firestore with test data.
