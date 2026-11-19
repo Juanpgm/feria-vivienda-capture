@@ -5,14 +5,14 @@ import { sesionOLogin } from "@/modules/auth/server/guard";
 import { BotonSalir } from "@/modules/auth/ui/BotonSalir";
 import { AppShell } from "@/shared/ui/AppShell";
 
-const enlaceNav = "inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-primary-strong hover:bg-bg";
+const enlaceNav = "inline-flex min-h-11 items-center rounded-lg px-3 text-base font-semibold text-primary-strong hover:bg-bg lg:text-sm";
 
 export const dynamic = "force-dynamic"; // always check the session cookie
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const sesion = await sesionOLogin("usuario", { soloLectura: true }); // pages that need approval guard themselves
   const nav = (
-    <nav aria-label="Principal" className="flex flex-wrap items-center gap-2">
+    <nav aria-label="Principal" className="flex flex-col gap-1 lg:flex-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-1">
       <Link href="/dashboard" className={enlaceNav}>
         Dashboard
       </Link>
@@ -41,12 +41,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           Formulario postulación
         </Link>
       )}
-      <span className="hidden text-sm text-muted md:inline">{sesion.correo}</span>
-      <BotonSalir />
+      <span className="truncate px-3 pt-2 text-sm text-muted lg:hidden">{sesion.correo}</span>
+      <div className="px-3 lg:ml-auto lg:px-0">
+        <BotonSalir />
+      </div>
     </nav>
   );
   return (
-    <AppShell nav={nav}>
+    <AppShell nav={nav} usuario={sesion.correo}>
       {!sesion.aprobado && (
         <p role="status" className="mb-4 rounded-lg border border-border bg-surface p-3 text-sm">
           Su cuenta aún no está aprobada: puede consultar, pero no ingresar datos. Cuando un administrador la apruebe,

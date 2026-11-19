@@ -10,10 +10,10 @@ export const metadata = { title: "Métricas de postulaciones" };
 
 function Cifra({ titulo, valor, nota }: { titulo: string; valor: string; nota?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <p className="text-sm font-semibold text-muted">{titulo}</p>
-      <p className="text-3xl font-bold tabular-nums text-primary-strong">{valor}</p>
-      {nota && <p className="text-sm text-muted">{nota}</p>}
+    <div className="rounded-xl border border-border bg-surface p-3 sm:p-4">
+      <p className="text-sm font-semibold leading-tight text-muted">{titulo}</p>
+      <p className="mt-1 text-2xl font-bold tabular-nums text-primary-strong sm:text-3xl">{valor}</p>
+      {nota && <p className="text-xs text-muted sm:text-sm">{nota}</p>}
     </div>
   );
 }
@@ -26,11 +26,11 @@ export default async function MetricasPostulaciones() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-primary-strong">Postulaciones al Subsidio Distrital de Vivienda</h1>
+        <h1 className="text-xl font-bold leading-tight text-primary-strong sm:text-2xl">Postulaciones al Subsidio Distrital de Vivienda</h1>
         <Link href="/postulaciones" className="font-semibold text-primary underline underline-offset-2">Ver postulaciones</Link>
       </div>
       <p className="text-sm text-muted">Datos actualizados cada minuto.</p>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Cifra titulo="Postulaciones" valor={entero(m.total)} nota={`${entero(m.publicas)} por el formulario público`} />
         <Cifra titulo="Validadas" valor={entero(m.validas)} nota={`${pct(m.validas)} del total · ${entero(m.sin_validar)} sin validar`} />
         <Cifra titulo="Con datos completos" valor={entero(m.completas)} nota={`${pct(m.completas)} listas para validar o validadas`} />

@@ -31,9 +31,9 @@ export default async function Postulaciones({ searchParams }: { searchParams: Pr
         </div>
       </div>
       <form className="flex flex-wrap items-end gap-3" role="search">
-        <label className="flex flex-col gap-1 text-sm font-semibold">
+        <label className="flex w-full flex-col gap-1 text-sm font-semibold sm:w-auto">
           Buscar
-          <input name="q" defaultValue={q} placeholder="Radicado, documento o nombre" className={`${controlClass} w-72 max-w-full`} />
+          <input name="q" defaultValue={q} placeholder="Radicado, documento o nombre" className={`${controlClass} w-full sm:w-72`} />
         </label>
         <label className="flex flex-col gap-1 text-sm font-semibold">
           Estado

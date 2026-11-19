@@ -38,7 +38,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-pressed={dark}
-      className="min-h-11 min-w-11 rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface"
+      className="min-h-11 min-w-11 self-start whitespace-nowrap rounded-lg border border-border px-3 text-sm font-medium hover:bg-surface"
     >
       {dark ? "Tema claro" : "Tema oscuro"}
     </button>
