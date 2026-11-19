@@ -86,6 +86,19 @@ test("the same document cannot start a second postulación", async ({ page }) =>
   await expect(page.getByRole("link", { name: "Ver la postulación" })).toHaveAttribute("href", detalle);
 });
 
+test("Completar opens the edit on the missing field; the panel jumps between steps", async ({ page }) => {
+  await page.goto(detalle);
+  await page.getByRole("link", { name: "Completar: Lugar de expedición del documento" }).click();
+  await page.waitForURL((u) => u.pathname.endsWith("/editar") && u.searchParams.get("campo") === "solicitante.lugar_expedicion");
+  await expect(page.getByRole("combobox", { name: "Lugar de expedición", exact: true })).toBeFocused({ timeout: 10_000 });
+  const panel = page.getByRole("region", { name: /Por completar/ });
+  await expect(panel).toBeVisible();
+  // A missing field of another step: the panel opens that step and focuses it.
+  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
+  await panel.getByRole("button", { name: "Tiempo de residencia en Cali" }).click();
+  await expect(page.getByLabel("Tiempo de residencia en Cali (años)", { exact: true })).toBeFocused({ timeout: 10_000 });
+});
+
 test("editing fills the missing data and the record becomes complete", async ({ page }) => {
   await page.goto(`${detalle}/editar`);
   await page.waitForLoadState("networkidle"); // typing before hydration would be overwritten
@@ -141,6 +154,8 @@ test("an official validates it with signature and confirmation of the document p
 test("list, public status and metrics reflect the validated postulación", async ({ page }) => {
   await page.goto(`/postulaciones?q=${DOC}`);
   await expect(page.getByRole("row", { name: /PRUEBA E2E/i }).getByText("Válido", ex)).toBeVisible();
+  // Editing updated the same record: still one postulación for the document (no duplicate).
+  await expect(page.getByText("1 postulación(es)")).toBeVisible();
   await page.goto("/dashboard/postulaciones");
   await expect(page.getByRole("heading", { name: "Validaciones por funcionario" })).toBeVisible();
   await expect(page.getByText("PRUEBA E2E Funcionario")).toBeVisible();

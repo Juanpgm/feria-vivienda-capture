@@ -19,6 +19,7 @@ import { validarSecciones, type Valores } from "../domain/armar";
 import { ESTADOS_POSTULACION } from "../domain/catalogos";
 import type { Seccion } from "../domain/schema";
 import { valoresIniciales } from "../domain/formulario";
+import { enfocarCampo, pasoDeCampo, PorCompletar } from "./PorCompletar";
 import { BarraAvance } from "./Progreso";
 import { PasoHogar } from "./PasoHogar";
 import { PasoSolicitante } from "./PasoSolicitante";
@@ -34,7 +35,8 @@ const PASOS = [
 type Borrador = { id: string; paso: number; maximo: number; valores: Valores; guardado_en: string };
 const claveBorrador = (uid: string, documento: string) => `postulacion:${uid}:${documento}`;
 
-export type Edicion = { id: string; radicado: string; valores: Valores };
+/** `campo`: field to open the edit on ("Completar" from the record): its step is shown and it gets the focus. */
+export type Edicion = { id: string; radicado: string; valores: Valores; campo?: string };
 type Resultado = { id: string; radicado: string; nombre: string; en: string };
 
 /** Loads the device draft for this document (a blank one otherwise), then mounts the form. */
@@ -58,7 +60,7 @@ export function FormularioPostulacion({ uid, documento, tipoDocumento, publico, 
 
 function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string; documento: string; inicial: Borrador; publico: boolean; edicion?: Edicion }) {
   const router = useRouter();
-  const [indice, setIndice] = useState(inicial.paso);
+  const [indice, setIndice] = useState(edicion?.campo ? pasoDeCampo(edicion.campo) : inicial.paso);
   const [maximo, setMaximo] = useState(inicial.maximo);
   const [aviso, setAviso] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -97,6 +99,21 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
       dejar();
     };
   }, [subscribe, getValues, uid, documento, inicial.id, indice, maximo, edicion]);
+
+  // Opened from "Completar": focus that field once its step is rendered.
+  useEffect(() => {
+    if (edicion?.campo) enfocarCampo(edicion.campo);
+  }, [edicion?.campo]);
+
+  /** Jump to a missing field (its step first). */
+  function irACampo(ruta: string) {
+    const i = pasoDeCampo(ruta);
+    if (i !== indice) {
+      setIndice(i);
+      setAviso("");
+    }
+    enfocarCampo(ruta);
+  }
 
   function irA(i: number) {
     setIndice(i);
@@ -203,6 +220,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
           <BarraAvance />
         </div>
 
+          {edicion && <PorCompletar alIr={irACampo} />}
           <header className="mb-8 border-l-4 border-accent pl-4">
             {edicion && <p className="mb-1 text-sm font-semibold text-muted">Editando la postulación {edicion.radicado}</p>}
             <p className="text-sm font-semibold text-primary">Paso {indice + 1} de {PASOS.length}, unos {paso.minutos} minutos</p>

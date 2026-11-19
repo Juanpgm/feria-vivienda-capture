@@ -211,6 +211,7 @@ export function PasoInmueble({
               {(a11y) => (
                 <Combobox
                   {...a11y}
+                  name={field.name}
                   disabled={buscando}
                   options={OPCIONES_DIVISION}
                   value={field.value ?? ""}
@@ -246,7 +247,7 @@ export function PasoInmueble({
               {(a11y) => (
                 // Validates on blur only when typed text was discarded: an error line appearing on every blur would
                 // shift the layout under a click aimed at the fields below.
-                <Combobox {...a11y} options={barrios} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} disabled={!division || buscando} />
+                <Combobox {...a11y} name={field.name} options={barrios} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} disabled={!division || buscando} />
               )}
             </Field>
           )}

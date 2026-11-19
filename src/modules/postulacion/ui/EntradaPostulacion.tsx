@@ -7,6 +7,7 @@ import { Button } from "@/shared/ui/Button";
 import { Field, TextInput } from "@/shared/ui/Field";
 import { Select } from "@/shared/ui/Select";
 import { ESTADOS_POSTULACION, TIPOS_DOCUMENTO_SOLICITANTE, opciones, type EstadoPostulacion } from "../domain/catalogos";
+import { DOCUMENTACION, DOCUMENTACION_NOTA, DOCUMENTACION_TITULO } from "../domain/texto";
 import { FormularioPostulacion } from "./FormularioPostulacion";
 
 type Existente = { radicado: string; estado: EstadoPostulacion; id?: string };
@@ -96,13 +97,14 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
             <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6">
             <p>Empiece con el documento de quien se postula como jefe del hogar. Revisamos que no tenga ya una postulación.</p>
             <div className="rounded-lg bg-surface p-4 text-sm">
-              <p className="font-semibold">Tenga a mano</p>
+              <p className="font-semibold">{DOCUMENTACION_TITULO}</p>
+              <p className="mt-1 text-muted">Se le pedirá:</p>
               <ul className="mt-2 flex flex-col gap-1.5">
-                <li className="flex gap-2"><span aria-hidden="true" className="text-primary">✓</span>Su documento de identidad: le pediremos foto del frente y del reverso.</li>
-                <li className="flex gap-2"><span aria-hidden="true" className="text-primary">✓</span>Nombres, documentos e ingresos de las personas de su hogar.</li>
-                <li className="flex gap-2"><span aria-hidden="true" className="text-primary">✓</span>Los valores de ahorros, cesantías o créditos con que cuente.</li>
+                {DOCUMENTACION.map((d) => (
+                  <li key={d} className="flex gap-2"><span aria-hidden="true" className="text-primary">✓</span>{d}</li>
+                ))}
               </ul>
-              <p className="mt-3 text-muted">Toma unos 12 minutos. Lo que escriba se guarda en este equipo, así que puede retomarlo.</p>
+              <p className="mt-3 text-muted">{DOCUMENTACION_NOTA} Toma unos 12 minutos y lo que escriba se guarda en este equipo, así que puede retomarlo.</p>
             </div>
             <Field label="Tipo de documento del solicitante">
               {(a11y) => <Select {...a11y} value={tipo} onChange={(e) => setTipo(e.target.value)} options={opciones(TIPOS_DOCUMENTO_SOLICITANTE)} placeholder="Seleccione…" />}

@@ -1,6 +1,7 @@
 // Printable PDF (letter) with the QR of the public postulación form and plain instructions. The link itself is never
 // written: people reach the form only by scanning. Built in the browser, so the QR points at this deployment.
 import QRCode from "qrcode";
+import { DOCUMENTACION, DOCUMENTACION_TITULO } from "../domain/texto";
 
 const AZUL: [number, number, number] = [0, 54, 95];
 const DORADO: [number, number, number] = [213, 177, 108];
@@ -66,44 +67,75 @@ export async function descargarCartel(destino: string) {
   doc.text("Escanee el código con la cámara de su celular para abrir el formulario.", ancho / 2, 76, { align: "center" });
 
   // QR, framed.
-  const lado = 100;
+  const lado = 72;
   const x = (ancho - lado) / 2;
   const y = 84;
   doc.setDrawColor(...AZUL);
   doc.setLineWidth(1.2);
-  doc.roundedRect(x - 6, y - 6, lado + 12, lado + 12, 4, 4, "S");
+  doc.roundedRect(x - 5, y - 5, lado + 10, lado + 10, 4, 4, "S");
   doc.addImage(qr, "PNG", x, y, lado, lado);
 
-  // Steps (a real sequence: numbered).
-  let yy = y + lado + 20;
+  // Two columns under the QR: the steps (a real sequence, numbered) and the documentation to have ready.
+  const arriba = y + lado + 16;
+  const col = (ancho - 2 * m - 10) / 2;
+  let yy = arriba;
   doc.setTextColor(...AZUL);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.text("Cómo postularse", m, yy);
-  yy += 8;
-  doc.setFontSize(12);
+  yy += 7;
+  doc.setFontSize(10.5);
   PASOS_CARTEL.forEach((paso, i) => {
     doc.setFillColor(...AZUL);
-    doc.circle(m + 3.5, yy - 1.4, 3.5, "F");
+    doc.circle(m + 3, yy - 1.2, 3, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.text(String(i + 1), m + 3.5, yy, { align: "center" });
+    doc.text(String(i + 1), m + 3, yy, { align: "center" });
     doc.setTextColor(...TEXTO);
     doc.setFont("helvetica", "normal");
-    const lineas = doc.splitTextToSize(paso, ancho - 2 * m - 12);
-    doc.text(lineas, m + 11, yy);
-    yy += lineas.length * 5.6 + 3.5;
+    const lineas = doc.splitTextToSize(paso, col - 9);
+    doc.text(lineas, m + 9, yy);
+    yy += lineas.length * 4.8 + 3;
   });
+
+  const x2 = m + col + 10;
+  // Measure first, so the background box fits its text exactly.
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  const titulo = doc.splitTextToSize(DOCUMENTACION_TITULO, col - 4);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  const items = DOCUMENTACION.map((d) => doc.splitTextToSize(d, col - 9) as string[]);
+  const altoCaja = 7 + titulo.length * 4.8 + 2 + 5 + items.reduce((t, l) => t + l.length * 4.3 + 1.8, 0) + 2;
+  doc.setFillColor(244, 245, 249);
+  doc.roundedRect(x2 - 4, arriba - 7, col + 4, altoCaja, 3, 3, "F");
+  let y2 = arriba;
+  doc.setTextColor(...AZUL);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(titulo, x2, y2);
+  y2 += titulo.length * 4.8 + 2;
+  doc.setTextColor(...GRIS);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.text("Se le pedirá:", x2, y2);
+  y2 += 5;
+  doc.setTextColor(...TEXTO);
+  for (const lineas of items) {
+    doc.text("•", x2, y2);
+    doc.text(lineas, x2 + 4, y2);
+    y2 += lineas.length * 4.3 + 1.8;
+  }
 
   // Footer.
   const alto = doc.internal.pageSize.getHeight();
   doc.setDrawColor(...DORADO);
   doc.setLineWidth(0.6);
-  doc.line(m, alto - 26, ancho - m, alto - 26);
+  doc.line(m, alto - 22, ancho - m, alto - 22);
   doc.setTextColor(...GRIS);
   doc.setFontSize(10.5);
-  doc.text("El formulario es gratuito. No entregue dinero ni sus datos a intermediarios.", ancho / 2, alto - 18, { align: "center" });
-  doc.text("Si tiene dudas, acérquese a la Secretaría de Vivienda Social y Hábitat con su documento.", ancho / 2, alto - 12, { align: "center" });
+  doc.text("El formulario es gratuito. No entregue dinero ni sus datos a intermediarios.", ancho / 2, alto - 15, { align: "center" });
+  doc.text("Si tiene dudas, acérquese a la Secretaría de Vivienda Social y Hábitat con su documento.", ancho / 2, alto - 10, { align: "center" });
 
   doc.save("postulacion-subsidio-qr.pdf");
 }

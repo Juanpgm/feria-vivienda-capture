@@ -3,6 +3,7 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/ui/Button";
+import { DOCUMENTACION, DOCUMENTACION_TITULO } from "../domain/texto";
 import { descargarCartel, PASOS_CARTEL } from "./pdfCartel";
 
 /**
@@ -69,6 +70,15 @@ export function CartelQr() {
               </li>
             ))}
           </ol>
+          <div className="mt-2 w-full max-w-md rounded-lg bg-[#f4f5f9] p-4 text-left">
+            <p className="font-bold text-[#00365f]">{DOCUMENTACION_TITULO}</p>
+            <p className="mt-1 text-sm text-[#4d4d4d]">Se le pedirá:</p>
+            <ul className="mt-1 list-disc pl-5 text-sm">
+              {DOCUMENTACION.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+          </div>
           <p className="mt-2 border-t border-[#d5b16c] pt-3 text-sm text-[#4d4d4d]">El formulario es gratuito. No entregue dinero ni sus datos a intermediarios.</p>
         </div>
       </article>

@@ -13,6 +13,11 @@ import { BotonValidar } from "./BotonValidar";
 import { QrPostulacion } from "./QrPostulacion";
 
 type Fila = [string, unknown];
+const EVENTOS: Record<string, { titulo: string; punto: string }> = {
+  creacion: { titulo: "Postulación registrada", punto: "bg-primary" },
+  edicion: { titulo: "Datos editados", punto: "bg-accent" },
+  validacion: { titulo: "Postulación validada", punto: "bg-success" },
+};
 const SIN = "Sin información";
 const de = (o: Record<string, string>, v: unknown) => (typeof v === "string" && v in o ? o[v] : v);
 const texto = (v: unknown): string =>
@@ -51,6 +56,7 @@ export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista
   const po = p.postulacion;
   const condiciones = (s.condiciones_especiales as string[]).map((c) => de(CONDICIONES_ESPECIALES, c) as string);
   const foto = (tipo: string) => `/api/postulaciones/${p.id}/adjuntos/${tipo}`;
+  const completar = (ruta: string) => `/postulaciones/${p.id}/editar?campo=${encodeURIComponent(ruta)}`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -79,10 +85,24 @@ export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista
 
       {p.faltantes.length > 0 ? (
         <section aria-labelledby="faltantes" className="rounded-lg border-2 border-warning-text bg-warning-bg p-4 text-warning-text">
-          <h2 id="faltantes" className="font-bold">Faltan {p.faltantes.length} dato(s) obligatorios para validar</h2>
-          <ul className="mt-2 list-disc pl-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="faltantes" className="font-bold">Faltan {p.faltantes.length} dato(s) obligatorios para validar</h2>
+            {p.estado === "sin_validar" && (
+              <Link href={completar(p.faltantes[0].ruta)} className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 font-semibold text-on-primary">
+                Subsanar datos faltantes
+              </Link>
+            )}
+          </div>
+          <ul className="mt-3 flex flex-col divide-y divide-warning-text/20">
             {p.faltantes.map((f) => (
-              <li key={f.ruta}>{f.etiqueta}</li>
+              <li key={f.ruta} className="flex items-center justify-between gap-3 py-1.5">
+                <span>{f.etiqueta}</span>
+                {p.estado === "sin_validar" && (
+                  <Link href={completar(f.ruta)} className="shrink-0 font-semibold underline underline-offset-2" aria-label={`Completar: ${f.etiqueta}`}>
+                    Completar
+                  </Link>
+                )}
+              </li>
             ))}
           </ul>
         </section>
@@ -206,16 +226,29 @@ export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista
         )}
       </section>
 
-      <section aria-labelledby="sec-historial" className="flex flex-col gap-2">
+      <section aria-labelledby="sec-historial" className="flex flex-col gap-3">
         <h2 id="sec-historial" className="text-lg font-bold text-primary-strong">Historial</h2>
-        <ol className="flex flex-col gap-1 text-sm">
-          {p.historial.map((h) => (
-            <li key={h.id}>
-              <span className="font-semibold">{h.tipo === "creacion" ? "Creación" : h.tipo === "edicion" ? "Edición" : h.tipo === "validacion" ? "Validación" : h.tipo}</span> · {h.por_nombre} ·{" "}
-              {h.en ? fechaHoraBogota(h.en) : ""}
-              {typeof h.faltantes === "number" ? ` · ${h.faltantes} dato(s) faltante(s)` : ""}
-            </li>
-          ))}
+        <ol className="relative ml-1.5 border-l border-border">
+          {p.historial.map((h) => {
+            const e = EVENTOS[h.tipo] ?? { titulo: h.tipo, punto: "bg-muted" };
+            return (
+              <li key={h.id} className="relative pb-5 pl-6 last:pb-0">
+                <span aria-hidden="true" className={`absolute -left-[0.4rem] top-1.5 size-3 rounded-full ring-4 ring-bg ${e.punto}`} />
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+                  <p className="font-semibold">{e.titulo}</p>
+                  {h.en && <time dateTime={h.en} className="text-sm tabular-nums text-muted">{fechaHoraBogota(h.en)}</time>}
+                </div>
+                <p className="text-sm text-muted">
+                  {h.por_nombre}
+                  {typeof h.faltantes === "number" && h.tipo !== "validacion" && (
+                    <span className={h.faltantes ? "text-warning-text" : "text-success"}>
+                      {h.faltantes ? `, quedaron ${h.faltantes} dato(s) por completar` : ", con todos los datos completos"}
+                    </span>
+                  )}
+                </p>
+              </li>
+            );
+          })}
         </ol>
       </section>
     </div>

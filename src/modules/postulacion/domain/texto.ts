@@ -27,3 +27,14 @@ export const CONFIRMACION_PAQUETE = "Confirmo la recepción del paquete de docum
 
 export const textoDeclaracion = () => [DECLARACION_TITULO, ...DECLARACION].join("\n");
 export const textoValidacion = () => [AVISO_VALIDACION, CONFIRMACION_PAQUETE].join("\n");
+
+/** What to have ready before starting (entry modal, QR poster and its PDF): what the form will ask for. */
+export const DOCUMENTACION_TITULO = "Asegúrese de tener toda la documentación de radicación preparada y completa";
+export const DOCUMENTACION: readonly string[] = [
+  "Su documento de identidad: le pediremos una foto del frente y otra del reverso.",
+  "Los documentos de identidad de las personas de su hogar (números y fechas de nacimiento).",
+  "Lo que gana al mes cada persona del hogar.",
+  "Los valores y entidades de sus ahorros, cesantías, créditos o subsidios, si cuenta con ellos.",
+  "Los datos del proyecto de vivienda (nombre, constructora y valor) o, si es deudor, los de su obligación.",
+];
+export const DOCUMENTACION_NOTA = "La Secretaría revisará esta documentación para validar su postulación.";

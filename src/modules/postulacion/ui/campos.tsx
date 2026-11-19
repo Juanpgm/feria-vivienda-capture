@@ -89,7 +89,7 @@ export function CampoMunicipio({ name, label, exterior = false }: { name: string
       name={name}
       render={({ field }) => (
         <Field label={label} hint="Escriba el municipio y elíjalo de la lista" error={error}>
-          {(a11y) => <Combobox {...a11y} options={opciones} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} />}
+          {(a11y) => <Combobox {...a11y} name={field.name} options={opciones} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} />}
         </Field>
       )}
     />
@@ -129,6 +129,7 @@ export function CampoEntidad({ name, label, tipos }: { name: string; label: stri
           {(a11y) => (
             <Combobox
               {...a11y}
+              name={field.name}
               options={[...opciones, { value: OTRA, label: "Otra entidad (escribir el nombre)", keywords: "otra otro no esta" }]}
               value={field.value ?? ""}
               limite={200}
