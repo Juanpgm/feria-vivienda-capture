@@ -1,0 +1,39 @@
+{
+ "intro": [
+  { "t": "Cómo validar una postulación al Subsidio Distrital de Vivienda." },
+  { "t": "Toda postulación la valida un funcionario, en persona, con la documentación en la mano." },
+  { "t": "No importa si la registró el ciudadano con el código QR o un funcionario: sin validación, no cuenta." }
+ ],
+ "buscar": [
+  { "t": "Cuando llame a la persona, abra Postulaciones y busque su número de documento." },
+  { "t": "Las postulaciones nuevas aparecen como Sin validar. Abra la de la persona." }
+ ],
+ "revisar": [
+  { "t": "Arriba ve el número de postulación, el titular y quién la registró: aquí, el formulario público." },
+  { "t": "Pida el documento de identidad y compárelo con las fotos que se tomaron al registrar." },
+  { "t": "Revise con la persona sus datos, su hogar y la modalidad que solicita." }
+ ],
+ "faltantes": [
+  { "t": "Si faltan datos obligatorios, aparecen en amarillo y el botón Validar registro está bloqueado." },
+  { "t": "Pulse Subsanar datos faltantes, o Completar en cada dato: la aplicación lo lleva directo al campo." }
+ ],
+ "subsanar": [
+  { "t": "Complete con la persona lo que falta, según los documentos que le entrega." },
+  { "t": "Pulse Guardar cambios. Se actualiza la misma postulación, nunca se duplica." }
+ ],
+ "validar": [
+  { "t": "Con todos los datos completos, pulse Validar registro." },
+  { "t": "Lea el aviso: la validación queda firmada a su nombre, con fecha y hora, y no se puede deshacer." },
+  { "t": "Confirme que recibió el paquete de documentación completo y que se hace responsable." },
+  { "t": "Anote el número de folios, firme y pulse Confirmar validación." }
+ ],
+ "resultado": [
+  { "t": "La postulación queda Válida, con su código de validación, la fecha y su firma." },
+  { "t": "El historial muestra cada paso: el registro, las ediciones y la validación." }
+ ],
+ "cierre": [
+  { "t": "Recuerde lo esencial." },
+  { "t": "Cada registro se valida en persona. Compare el documento físico con las fotos y reciba el paquete completo." },
+  { "t": "Si la persona no se presenta, su registro no se valida y no cuenta dentro de la postulación." }
+ ]
+}

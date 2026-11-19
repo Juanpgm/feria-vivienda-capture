@@ -1,0 +1,159 @@
+1
+00:00:00,226 --> 00:00:04,042
+Cómo validar una postulación al Subsidio Distrital de Vivienda.
+
+2
+00:00:04,353 --> 00:00:07,810
+Toda postulación la valida un funcionario, en persona,
+
+3
+00:00:07,810 --> 00:00:09,858
+con la documentación en la mano.
+
+4
+00:00:10,166 --> 00:00:14,180
+No importa si la registró el ciudadano con el código QR o un
+
+5
+00:00:14,180 --> 00:00:14,983
+funcionario:
+
+6
+00:00:14,983 --> 00:00:16,723
+sin validación, no cuenta.
+
+7
+00:00:17,026 --> 00:00:18,644
+Cuando llame a la persona,
+
+8
+00:00:18,644 --> 00:00:21,817
+abra Postulaciones y busque su número de documento.
+
+9
+00:00:22,117 --> 00:00:25,746
+Las postulaciones nuevas aparecen como Sin validar.
+
+10
+00:00:25,746 --> 00:00:27,311
+Abra la de la persona.
+
+11
+00:00:27,624 --> 00:00:29,868
+Arriba ve el número de postulación,
+
+12
+00:00:29,868 --> 00:00:33,714
+el titular y quién la registró: aquí, el formulario público.
+
+13
+00:00:34,017 --> 00:00:37,560
+Pida el documento de identidad y compárelo con las fotos que se
+
+14
+00:00:37,560 --> 00:00:38,741
+tomaron al registrar.
+
+15
+00:00:39,046 --> 00:00:41,132
+Revise con la persona sus datos,
+
+16
+00:00:41,132 --> 00:00:43,545
+su hogar y la modalidad que solicita.
+
+17
+00:00:43,871 --> 00:00:45,671
+Si faltan datos obligatorios,
+
+18
+00:00:45,671 --> 00:00:49,642
+aparecen en amarillo y el botón Validar registro está bloqueado.
+
+19
+00:00:49,944 --> 00:00:53,615
+Pulse Subsanar datos faltantes, o Completar en cada dato:
+
+20
+00:00:53,615 --> 00:00:56,191
+la aplicación lo lleva directo al campo.
+
+21
+00:00:56,494 --> 00:00:58,786
+Complete con la persona lo que falta,
+
+22
+00:00:58,786 --> 00:01:01,016
+según los documentos que le entrega.
+
+23
+00:01:02,461 --> 00:01:06,881
+Pulse Guardar cambios. Se actualiza la misma postulación,
+
+24
+00:01:06,881 --> 00:01:08,199
+nunca se duplica.
+
+25
+00:01:09,299 --> 00:01:13,093
+Con todos los datos completos, pulse Validar registro.
+
+26
+00:01:13,399 --> 00:01:16,937
+Lea el aviso: la validación queda firmada a su nombre,
+
+27
+00:01:16,937 --> 00:01:19,623
+con fecha y hora, y no se puede deshacer.
+
+28
+00:01:19,936 --> 00:01:23,607
+Confirme que recibió el paquete de documentación completo y que
+
+29
+00:01:23,607 --> 00:01:24,772
+se hace responsable.
+
+30
+00:01:25,080 --> 00:01:29,386
+Anote el número de folios, firme y pulse Confirmar validación.
+
+31
+00:01:30,486 --> 00:01:34,383
+La postulación queda Válida, con su código de validación,
+
+32
+00:01:34,383 --> 00:01:35,750
+la fecha y su firma.
+
+33
+00:01:36,057 --> 00:01:39,096
+El historial muestra cada paso: el registro,
+
+34
+00:01:39,096 --> 00:01:41,168
+las ediciones y la validación.
+
+35
+00:01:41,489 --> 00:01:43,342
+Recuerde lo esencial.
+
+36
+00:01:43,651 --> 00:01:45,941
+Cada registro se valida en persona.
+
+37
+00:01:45,941 --> 00:01:49,931
+Compare el documento físico con las fotos y reciba el paquete
+
+38
+00:01:49,931 --> 00:01:50,520
+completo.
+
+39
+00:01:50,827 --> 00:01:52,626
+Si la persona no se presenta,
+
+40
+00:01:52,626 --> 00:01:56,472
+su registro no se valida y no cuenta dentro de la postulación.

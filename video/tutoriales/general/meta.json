@@ -1,0 +1,17 @@
+{
+ "titulo": "Guía general: cuenta, ingreso, menú, métricas y reportes",
+ "archivo": "04-guia-general.mp4",
+ "nota": "Grabado en la aplicación con datos ficticios; usuarios, registros y el resumen son respuestas simuladas; las métricas de postulaciones son agregadas (sin datos personales).",
+ "escenas": {
+  "intro": ["Portada", "Título y temario."],
+  "cuenta": ["Crear cuenta", "Pantalla Crear cuenta: nombre, correo, contraseña o Google; queda pendiente."],
+  "ingreso": ["Ingresar", "Correo y contraseña o Ingresar con Google."],
+  "usuarios": ["Usuarios", "Pendientes, Aprobar, No aprobar con motivo, No aprobados, Crear usuario."],
+  "menu": ["Menú", "Enlaces del menú; botón Menú en el celular."],
+  "dashboard": ["Dashboard", "Resumen de registros con gráficos y filtros."],
+  "registros": ["Registros", "Búsqueda y detalle."],
+  "postulaciones": ["Postulaciones", "Listado y Métricas del subsidio."],
+  "salir": ["Tema y salir", "Tema oscuro y Cerrar sesión."],
+  "cierre": ["Recuerde", "Tarjetas finales."]
+ }
+}

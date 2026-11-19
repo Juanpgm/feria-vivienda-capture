@@ -1,0 +1,15 @@
+{
+ "titulo": "Cómo iniciar el evento: código QR del formulario público",
+ "archivo": "03-iniciar-evento-qr.mp4",
+ "nota": "Grabado en la aplicación; habilitar, deshabilitar, anular y emitir el código son respuestas simuladas (no cambió el estado real y el QR del video no abre el formulario).",
+ "escenas": {
+  "intro": ["Portada", "Título y temario."],
+  "panel": ["Panel del formulario", "Formulario postulación: estado Habilitado y botón para cambiarlo."],
+  "generar": ["Generar el QR", "Descargar QR en PDF, vigencia del código, vista previa del cartel con fecha de vencimiento."],
+  "imprimir": ["Imprimir", "Descargar PDF tamaño carta; dónde pegarlo."],
+  "porque": ["Por qué vence", "Tarjetas: solo en el punto de atención, la foto deja de servir, cartel nuevo cada día."],
+  "anular": ["Anular", "Anular códigos QR emitidos con confirmación."],
+  "terminar": ["Terminar el evento", "Deshabilitar formulario."],
+  "cierre": ["Resumen", "Tarjetas con la secuencia del evento."]
+ }
+}

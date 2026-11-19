@@ -1,0 +1,15 @@
+{
+ "titulo": "Cómo validar una postulación (funcionarios)",
+ "archivo": "01-validar-postulaciones.mp4",
+ "nota": "Grabado en la aplicación con una postulación ficticia de prueba, borrada después.",
+ "escenas": {
+  "intro": ["Portada", "Título y regla: toda postulación se valida en persona."],
+  "buscar": ["Buscar la postulación", "Postulaciones, búsqueda por documento, estado Sin validar."],
+  "revisar": ["Revisar", "Encabezado (origen: formulario público), fotos del documento, datos."],
+  "faltantes": ["Datos faltantes", "Recuadro amarillo, botón Validar bloqueado, Subsanar y Completar."],
+  "subsanar": ["Subsanar", "Edición directa del campo, proyecto y recursos, Guardar cambios."],
+  "validar": ["Validar", "Diálogo: aviso, paquete completo, responsabilidad, folios, firma, confirmar."],
+  "resultado": ["Resultado", "Estado Válido, código de validación, firma e historial."],
+  "cierre": ["Recuerde", "Tarjetas con las reglas de la validación presencial."]
+ }
+}

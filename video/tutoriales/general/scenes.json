@@ -1,0 +1,41 @@
+{
+ "intro": [
+  { "t": "Guía general de la aplicación de la Secretaría de Vivienda Social y Hábitat." },
+  { "t": "Verá cómo crear su cuenta, ingresar, moverse por el menú y consultar métricas y reportes." }
+ ],
+ "cuenta": [
+  { "t": "Si es nuevo, en la pantalla de ingreso pulse Crear cuenta." },
+  { "t": "Escriba su nombre completo, su correo y una contraseña de al menos ocho caracteres." },
+  { "t": "Con un correo arroba cali punto gov punto co también puede crearla con Google. La cuenta queda pendiente de aprobación." }
+ ],
+ "ingreso": [
+  { "t": "Para ingresar, escriba su correo y su contraseña y pulse Ingresar, o use Ingresar con Google." },
+  { "t": "Mientras su cuenta no esté aprobada, puede consultar, pero no registrar datos." }
+ ],
+ "usuarios": [
+  { "t": "Los administradores aprueban las cuentas en Usuarios." },
+  { "t": "Cada solicitud tiene Aprobar y No aprobar, con un motivo opcional." },
+  { "t": "Las no aprobadas se pueden reconsiderar, y también se puede crear un usuario." }
+ ],
+ "menu": [
+  { "t": "Arriba está el menú: Dashboard, Registros y Postulaciones; los administradores ven además Usuarios, Ciudadanos y Formulario postulación." },
+  { "t": "En el celular, el menú se abre con el botón Menú." }
+ ],
+ "dashboard": [
+  { "t": "El Dashboard resume los registros: totales, avance por día, comunas, barrios, estratos e ingresos." },
+  { "t": "Los administradores pueden filtrar por fechas y por funcionario, y pulsar Actualizar para ver lo último." }
+ ],
+ "registros": [
+  { "t": "En Registros busca por documento, radicado o nombre, y abre el detalle de cada persona." }
+ ],
+ "postulaciones": [
+  { "t": "En Postulaciones está el listado del subsidio; Métricas muestra el avance: validadas, sin validar y los datos que más faltan." },
+  { "t": "Las cifras se actualizan cada minuto y no muestran datos personales." }
+ ],
+ "salir": [
+  { "t": "Puede cambiar a Tema oscuro. Al terminar, pulse Cerrar sesión, sobre todo en equipos compartidos." }
+ ],
+ "cierre": [
+  { "t": "Recuerde: no comparta su contraseña y cierre sesión al terminar." }
+ ]
+}

@@ -1,0 +1,34 @@
+{
+ "intro": [
+  { "t": "Cómo iniciar el evento: el código QR del formulario público." },
+  { "t": "Verá cómo habilitar el formulario, generar e imprimir el cartel, y cuándo renovarlo." }
+ ],
+ "panel": [
+  { "t": "Ingrese con una cuenta de administrador y abra Formulario postulación." },
+  { "t": "Verifique que el formulario público diga Habilitado. Si dice Deshabilitado, pulse Habilitar formulario." }
+ ],
+ "generar": [
+  { "t": "Pulse Descargar QR en PDF." },
+  { "t": "Elija la vigencia del código: solo hoy, siete días o treinta días." },
+  { "t": "La vista previa muestra el cartel: el código, los pasos, la documentación que se pedirá y la fecha de vencimiento." }
+ ],
+ "imprimir": [
+  { "t": "Pulse Descargar PDF para imprimir. El cartel sale en una hoja tamaño carta." },
+  { "t": "Imprímalo y péguelo a la vista, a la altura del pecho, en el lugar donde las personas esperan." }
+ ],
+ "porque": [
+  { "t": "¿Por qué vence el código? Para que solo se registren las personas que están en el punto de atención." },
+  { "t": "Si alguien toma una foto del cartel y la comparte, deja de servir cuando el código vence." },
+  { "t": "Recomendación: use Solo hoy e imprima un cartel nuevo cada día del evento." }
+ ],
+ "anular": [
+  { "t": "Si un cartel se pierde o una foto suya circula, pulse Anular códigos QR emitidos y confirme." },
+  { "t": "Todos los carteles impresos dejan de funcionar al instante: descargue e imprima uno nuevo." }
+ ],
+ "terminar": [
+  { "t": "Al terminar el evento, pulse Deshabilitar formulario: nadie más podrá registrarse hasta el próximo." }
+ ],
+ "cierre": [
+  { "t": "En resumen: habilite, genere el código de hoy, imprima, renueve cada día, anule si se pierde y deshabilite al terminar." }
+ ]
+}

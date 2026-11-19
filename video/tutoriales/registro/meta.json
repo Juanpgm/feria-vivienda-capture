@@ -1,0 +1,16 @@
+{
+ "titulo": "Cómo registrar su postulación (ciudadanos y funcionarios)",
+ "archivo": "02-registrar-postulacion.mp4",
+ "nota": "Grabado en el formulario público con una persona ficticia; la consulta y el envío son respuestas simuladas (no se creó ningún registro).",
+ "escenas": {
+  "intro": ["Portada", "Título; el registro es gratuito y sin intermediarios."],
+  "qr": ["Antes de empezar", "Escanear el QR del cartel; tener los documentos a mano."],
+  "documento": ["Documento", "Modal con la documentación que se pedirá, tipo y número de documento, Continuar."],
+  "paso1": ["Paso 1: Usted", "Autorizaciones, datos personales, dirección ubicada automáticamente, ingresos y fotos del documento."],
+  "paso2": ["Paso 2: Su hogar", "Agregar integrante con todos sus datos."],
+  "paso3": ["Paso 3: Vivienda y recursos", "Modalidad, proyecto, recursos, declaración, firma y envío."],
+  "confirmacion": ["Constancia", "Número de postulación, QR de consulta y siguientes pasos."],
+  "validacion": ["Validación", "Esperar el llamado y entregar la documentación; sin validación no cuenta."],
+  "cierre": ["Recuerde", "Tarjetas finales."]
+ }
+}

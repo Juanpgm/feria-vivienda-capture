@@ -1,0 +1,41 @@
+{
+ "intro": [
+  { "t": "Cómo registrar su postulación al Subsidio Distrital de Vivienda, paso a paso." },
+  { "t": "El registro es gratuito: no entregue dinero ni sus datos a intermediarios." }
+ ],
+ "qr": [
+  { "t": "En el punto de atención, escanee con la cámara de su celular el código QR del cartel." },
+  { "t": "Tenga a mano su documento de identidad y los datos de las personas de su hogar." }
+ ],
+ "documento": [
+  { "t": "Lea la documentación que se le pedirá: la Secretaría la revisará para validar su postulación." },
+  { "t": "Elija el tipo de documento, escriba el número y pulse Continuar. Si ya tiene una postulación, verá su estado." }
+ ],
+ "paso1": [
+  { "t": "Paso uno: autorice el uso de sus datos y escriba su nombre, su documento y su fecha de nacimiento." },
+  { "t": "Escriba su teléfono, su correo y su dirección: la aplicación la ubica y llena la comuna, el barrio y el estrato." },
+  { "t": "Complete su ocupación, sus ingresos, la caja de compensación, el Sisbén y su condición especial." },
+  { "t": "Tome las fotos del frente y del reverso de su documento: completas, con buena luz y sin reflejos." }
+ ],
+ "paso2": [
+  { "t": "Paso dos: agregue a cada persona que vive con usted, con su documento, su parentesco y sus ingresos." },
+  { "t": "Si vive solo, pulse Siguiente sin agregar a nadie." }
+ ],
+ "paso3": [
+  { "t": "Paso tres: elija la modalidad del subsidio. Según la modalidad, se le piden el proyecto o la obligación." },
+  { "t": "Marque los recursos con que cuenta y escriba sus valores." },
+  { "t": "Acepte la declaración, firme en la pantalla con el dedo y pulse Enviar postulación." }
+ ],
+ "confirmacion": [
+  { "t": "Recibirá su número de postulación y un código QR para consultar el estado cuando quiera." },
+  { "t": "Importante: su registro todavía no está validado." }
+ ],
+ "validacion": [
+  { "t": "Permanezca en el sitio y esté atento al llamado de un funcionario." },
+  { "t": "Cuando lo llamen, entregue su documentación completa: el funcionario la revisa y valida su registro." },
+  { "t": "Si no se presenta al llamado, su registro no se valida y no cuenta dentro de la postulación." }
+ ],
+ "cierre": [
+  { "t": "Recuerde: guarde su número de postulación y espere el llamado para entregar sus documentos." }
+ ]
+}

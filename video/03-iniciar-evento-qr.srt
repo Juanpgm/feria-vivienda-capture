@@ -1,0 +1,115 @@
+1
+00:00:00,081 --> 00:00:04,270
+Cómo iniciar el evento: el código QR del formulario público.
+
+2
+00:00:04,586 --> 00:00:08,669
+Verá cómo habilitar el formulario, generar e imprimir el cartel,
+
+3
+00:00:08,669 --> 00:00:09,881
+y cuándo renovarlo.
+
+4
+00:00:10,198 --> 00:00:13,606
+Ingrese con una cuenta de administrador y abra Formulario
+
+5
+00:00:13,606 --> 00:00:14,324
+postulación.
+
+6
+00:00:14,634 --> 00:00:18,122
+Verifique que el formulario público diga Habilitado.
+
+7
+00:00:18,122 --> 00:00:21,476
+Si dice Deshabilitado, pulse Habilitar formulario.
+
+8
+00:00:21,777 --> 00:00:24,443
+Pulse Descargar QR en PDF.
+
+9
+00:00:24,746 --> 00:00:29,582
+Elija la vigencia del código: solo hoy, siete días o treinta días.
+
+10
+00:00:29,887 --> 00:00:33,402
+La vista previa muestra el cartel: el código, los pasos,
+
+11
+00:00:33,402 --> 00:00:36,979
+la documentación que se pedirá y la fecha de vencimiento.
+
+12
+00:00:37,287 --> 00:00:39,908
+Pulse Descargar PDF para imprimir.
+
+13
+00:00:39,908 --> 00:00:42,992
+El cartel sale en una hoja tamaño carta.
+
+14
+00:00:43,298 --> 00:00:46,683
+Imprímalo y péguelo a la vista, a la altura del pecho,
+
+15
+00:00:46,683 --> 00:00:49,127
+en el lugar donde las personas esperan.
+
+16
+00:00:49,445 --> 00:00:53,483
+¿Por qué vence el código? Para que solo se registren las personas
+
+17
+00:00:53,483 --> 00:00:55,595
+que están en el punto de atención.
+
+18
+00:00:55,904 --> 00:00:58,970
+Si alguien toma una foto del cartel y la comparte,
+
+19
+00:00:58,970 --> 00:01:01,301
+deja de servir cuando el código vence.
+
+20
+00:01:01,608 --> 00:01:02,543
+Recomendación:
+
+21
+00:01:02,543 --> 00:01:06,484
+use Solo hoy e imprima un cartel nuevo cada día del evento.
+
+22
+00:01:06,795 --> 00:01:09,978
+Si un cartel se pierde o una foto suya circula,
+
+23
+00:01:09,978 --> 00:01:12,957
+pulse Anular códigos QR emitidos y confirme.
+
+24
+00:01:13,269 --> 00:01:16,937
+Todos los carteles impresos dejan de funcionar al instante:
+
+25
+00:01:16,937 --> 00:01:18,802
+descargue e imprima uno nuevo.
+
+26
+00:01:19,111 --> 00:01:22,480
+Al terminar el evento, pulse Deshabilitar formulario:
+
+27
+00:01:22,480 --> 00:01:25,340
+nadie más podrá registrarse hasta el próximo.
+
+28
+00:01:25,666 --> 00:01:29,428
+En resumen: habilite, genere el código de hoy, imprima,
+
+29
+00:01:29,428 --> 00:01:33,738
+renueve cada día, anule si se pierde y deshabilite al terminar.

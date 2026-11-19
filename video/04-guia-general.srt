@@ -1,0 +1,143 @@
+1
+00:00:00,239 --> 00:00:04,030
+Guía general de la aplicación de la Secretaría de Vivienda Social
+
+2
+00:00:04,030 --> 00:00:04,613
+y Hábitat.
+
+3
+00:00:04,923 --> 00:00:07,364
+Verá cómo crear su cuenta, ingresar,
+
+4
+00:00:07,364 --> 00:00:10,891
+moverse por el menú y consultar métricas y reportes.
+
+5
+00:00:11,194 --> 00:00:15,110
+Si es nuevo, en la pantalla de ingreso pulse Crear cuenta.
+
+6
+00:00:15,424 --> 00:00:17,187
+Escriba su nombre completo,
+
+7
+00:00:17,187 --> 00:00:20,777
+su correo y una contraseña de al menos ocho caracteres.
+
+8
+00:00:21,090 --> 00:00:24,667
+Con un correo arroba cali punto gov punto co también puede
+
+9
+00:00:24,667 --> 00:00:25,839
+crearla con Google.
+
+10
+00:00:25,839 --> 00:00:28,306
+La cuenta queda pendiente de aprobación.
+
+11
+00:00:28,618 --> 00:00:32,922
+Para ingresar, escriba su correo y su contraseña y pulse Ingresar,
+
+12
+00:00:32,922 --> 00:00:34,618
+o use Ingresar con Google.
+
+13
+00:00:34,926 --> 00:00:38,540
+Mientras su cuenta no esté aprobada, puede consultar,
+
+14
+00:00:38,540 --> 00:00:40,176
+pero no registrar datos.
+
+15
+00:00:40,487 --> 00:00:43,908
+Los administradores aprueban las cuentas en Usuarios.
+
+16
+00:00:44,217 --> 00:00:48,464
+Cada solicitud tiene Aprobar y No aprobar, con un motivo opcional.
+
+17
+00:00:48,771 --> 00:00:51,212
+Las no aprobadas se pueden reconsiderar,
+
+18
+00:00:51,212 --> 00:00:53,409
+y también se puede crear un usuario.
+
+19
+00:00:53,719 --> 00:00:57,605
+Arriba está el menú: Dashboard, Registros y Postulaciones;
+
+20
+00:00:57,605 --> 00:01:00,286
+los administradores ven además Usuarios,
+
+21
+00:01:00,286 --> 00:01:02,698
+Ciudadanos y Formulario postulación.
+
+22
+00:01:03,011 --> 00:01:06,293
+En el celular, el menú se abre con el botón Menú.
+
+23
+00:01:06,597 --> 00:01:11,083
+El Dashboard resume los registros: totales, avance por día,
+
+24
+00:01:11,083 --> 00:01:13,972
+comunas, barrios, estratos e ingresos.
+
+25
+00:01:14,277 --> 00:01:18,125
+Los administradores pueden filtrar por fechas y por funcionario,
+
+26
+00:01:18,125 --> 00:01:20,470
+y pulsar Actualizar para ver lo último.
+
+27
+00:01:20,782 --> 00:01:24,239
+En Registros busca por documento, radicado o nombre,
+
+28
+00:01:24,239 --> 00:01:26,499
+y abre el detalle de cada persona.
+
+29
+00:01:26,806 --> 00:01:29,744
+En Postulaciones está el listado del subsidio;
+
+30
+00:01:29,744 --> 00:01:32,170
+Métricas muestra el avance: validadas,
+
+31
+00:01:32,170 --> 00:01:34,661
+sin validar y los datos que más faltan.
+
+32
+00:01:34,973 --> 00:01:38,542
+Las cifras se actualizan cada minuto y no muestran datos
+
+33
+00:01:38,542 --> 00:01:39,243
+personales.
+
+34
+00:01:39,557 --> 00:01:44,063
+Puede cambiar a Tema oscuro. Al terminar, pulse Cerrar sesión,
+
+35
+00:01:44,063 --> 00:01:46,534
+sobre todo en equipos compartidos.
+
+36
+00:01:46,854 --> 00:01:51,223
+Recuerde: no comparta su contraseña y cierre sesión al terminar.

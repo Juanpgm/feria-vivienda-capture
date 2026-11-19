@@ -1,0 +1,128 @@
+{
+ "intro": [
+  {
+   "t": "Bienvenido a la guía de la Feria de Vivienda."
+  },
+  {
+   "t": "En menos de tres minutos verá cómo registrar a una persona y consultar el avance."
+  }
+ ],
+ "login": [
+  {
+   "t": "Para ingresar, escriba su correo y contraseña, o use Ingresar con Google, solo con cuentas @cali.gov.co.",
+   "s": "Para ingresar, escriba su correo y contraseña, o use Ingresar con Google, solo con cuentas arroba cali punto gov punto co."
+  },
+  {
+   "t": "Si no tiene cuenta, pulse Crear cuenta con cualquier correo; quedará pendiente de aprobación."
+  },
+  {
+   "t": "Con Google institucional, sin aprobar, solo verá el dashboard."
+  }
+ ],
+ "admin": [
+  {
+   "t": "Los administradores aprueban las cuentas en Usuarios."
+  },
+  {
+   "t": "Cada solicitud tiene Aprobar y No aprobar, con motivo opcional."
+  },
+  {
+   "t": "Las no aprobadas se pueden reconsiderar, y también se puede crear un usuario."
+  }
+ ],
+ "nuevo": [
+  {
+   "t": "Para registrar a una persona, pulse Nuevo registro."
+  },
+  {
+   "t": "Puede tener varios borradores en curso; se guardan solos."
+  },
+  {
+   "t": "Siguiente y Atrás le llevan por los seis pasos."
+  }
+ ],
+ "p1": [
+  {
+   "t": "Paso uno, Solicitante: nombre en cuatro campos, tipo de documento, nacionalidad, número y fecha de expedición."
+  },
+  {
+   "t": "Si el documento ya existe, verá un aviso que no bloquea."
+  },
+  {
+   "t": "Los teléfonos llevan indicativo, más cincuenta y siete por defecto; el correo es obligatorio."
+  },
+  {
+   "t": "La fecha de nacimiento se escribe seguida: día, mes y año. Solo se atiende a mayores de dieciocho."
+  }
+ ],
+ "p2": [
+  {
+   "t": "Paso dos, Hogar: personas, adultos mayores con sus edades e ingreso mensual en pesos, con su rango en salarios mínimos."
+  },
+  {
+   "t": "Aquí se marca la especial protección."
+  }
+ ],
+ "p3": [
+  {
+   "t": "Paso tres, Vivienda: comuna y barrio solo de las listas, estrato del uno al seis y dirección."
+  },
+  {
+   "t": "Luego el RUD, el dictamen técnico, la titularidad, la única propiedad y la matrícula, opcional."
+  }
+ ],
+ "p4": [
+  {
+   "t": "Paso cuatro, Cierre financiero: fuentes, seguro y aseguradora. Las observaciones son opcionales."
+  }
+ ],
+ "p5": [
+  {
+   "t": "Paso cinco: primero se acepta el consentimiento de datos."
+  },
+  {
+   "t": "Solo entonces se habilitan las dos fotos del documento, frente y reverso."
+  }
+ ],
+ "p6": [
+  {
+   "t": "Paso seis, Revisión y firma: revise el resumen con la persona; cada sección tiene su botón Editar."
+  },
+  {
+   "t": "La firma se toma con el dedo, el lápiz o el mouse, o se registra una verificación manual."
+  },
+  {
+   "t": "Al pulsar Enviar registro aparece el radicado."
+  }
+ ],
+ "registros": [
+  {
+   "t": "En Registros busque por documento o radicado y abra el detalle; los administradores ven también los documentos."
+  }
+ ],
+ "dashboard": [
+  {
+   "t": "El dashboard muestra totales, registros por día, comuna, barrio, estrato, ingresos y revisión, y por funcionario."
+  }
+ ],
+ "reco": [
+  {
+   "t": "Para terminar, algunas recomendaciones."
+  },
+  {
+   "t": "Fotos: luz natural sin flash, documento plano sobre fondo oscuro liso, con sus cuatro bordes visibles, sin reflejos ni dedos."
+  },
+  {
+   "t": "Enfoque antes de tomar, verifique que se lea el texto, use el celular en horizontal y repita si sale borrosa."
+  },
+  {
+   "t": "En la feria: equipo cargado, wifi o datos estables, y consulte si la persona ya fue atendida; un borrador por persona."
+  },
+  {
+   "t": "Lea el consentimiento, revise el resumen con ella, pida la firma en pantalla y anote el radicado."
+  },
+  {
+   "t": "No comparta contraseñas y cierre sesión en equipos compartidos."
+  }
+ ]
+}

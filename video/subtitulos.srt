@@ -1,0 +1,219 @@
+1
+00:00:00,096 --> 00:00:02,530
+Bienvenido a la guía de la Feria de Vivienda.
+
+2
+00:00:02,780 --> 00:00:06,009
+En menos de tres minutos verá cómo registrar a una persona y
+
+3
+00:00:06,009 --> 00:00:07,085
+consultar el avance.
+
+4
+00:00:07,341 --> 00:00:10,507
+Para ingresar, escriba su correo y contraseña,
+
+5
+00:00:10,507 --> 00:00:14,430
+o use Ingresar con Google, solo con cuentas @cali.gov.co.
+
+6
+00:00:14,680 --> 00:00:18,019
+Si no tiene cuenta, pulse Crear cuenta con cualquier correo;
+
+7
+00:00:18,019 --> 00:00:19,800
+quedará pendiente de aprobación.
+
+8
+00:00:20,051 --> 00:00:23,981
+Con Google institucional, sin aprobar, solo verá el dashboard.
+
+9
+00:00:24,236 --> 00:00:27,298
+Los administradores aprueban las cuentas en Usuarios.
+
+10
+00:00:27,560 --> 00:00:31,254
+Cada solicitud tiene Aprobar y No aprobar, con motivo opcional.
+
+11
+00:00:31,515 --> 00:00:33,700
+Las no aprobadas se pueden reconsiderar,
+
+12
+00:00:33,700 --> 00:00:35,666
+y también se puede crear un usuario.
+
+13
+00:00:35,928 --> 00:00:39,252
+Para registrar a una persona, pulse Nuevo registro.
+
+14
+00:00:39,503 --> 00:00:42,996
+Puede tener varios borradores en curso; se guardan solos.
+
+15
+00:00:43,246 --> 00:00:46,014
+Siguiente y Atrás le llevan por los seis pasos.
+
+16
+00:00:46,268 --> 00:00:50,622
+Paso uno, Solicitante: nombre en cuatro campos, tipo de documento,
+
+17
+00:00:50,622 --> 00:00:53,458
+nacionalidad, número y fecha de expedición.
+
+18
+00:00:53,717 --> 00:00:57,152
+Si el documento ya existe, verá un aviso que no bloquea.
+
+19
+00:00:57,405 --> 00:00:59,270
+Los teléfonos llevan indicativo,
+
+20
+00:00:59,270 --> 00:01:02,766
+más cincuenta y siete por defecto; el correo es obligatorio.
+
+21
+00:01:03,017 --> 00:01:06,706
+La fecha de nacimiento se escribe seguida: día, mes y año.
+
+22
+00:01:06,706 --> 00:01:09,186
+Solo se atiende a mayores de dieciocho.
+
+23
+00:01:09,449 --> 00:01:11,056
+Paso dos, Hogar: personas,
+
+24
+00:01:11,056 --> 00:01:14,640
+adultos mayores con sus edades e ingreso mensual en pesos,
+
+25
+00:01:14,640 --> 00:01:16,679
+con su rango en salarios mínimos.
+
+26
+00:01:16,929 --> 00:01:19,313
+Aquí se marca la especial protección.
+
+27
+00:01:19,617 --> 00:01:23,028
+Paso tres, Vivienda: comuna y barrio solo de las listas,
+
+28
+00:01:23,028 --> 00:01:25,220
+estrato del uno al seis y dirección.
+
+29
+00:01:25,476 --> 00:01:28,774
+Luego el RUD, el dictamen técnico, la titularidad,
+
+30
+00:01:28,774 --> 00:01:31,677
+la única propiedad y la matrícula, opcional.
+
+31
+00:01:31,926 --> 00:01:36,318
+Paso cuatro, Cierre financiero: fuentes, seguro y aseguradora.
+
+32
+00:01:36,318 --> 00:01:38,655
+Las observaciones son opcionales.
+
+33
+00:01:38,904 --> 00:01:42,510
+Paso cinco: primero se acepta el consentimiento de datos.
+
+34
+00:01:42,771 --> 00:01:45,967
+Solo entonces se habilitan las dos fotos del documento,
+
+35
+00:01:45,967 --> 00:01:46,955
+frente y reverso.
+
+36
+00:01:47,213 --> 00:01:51,022
+Paso seis, Revisión y firma: revise el resumen con la persona;
+
+37
+00:01:51,022 --> 00:01:53,173
+cada sección tiene su botón Editar.
+
+38
+00:01:53,436 --> 00:01:56,352
+La firma se toma con el dedo, el lápiz o el mouse,
+
+39
+00:01:56,352 --> 00:01:58,568
+o se registra una verificación manual.
+
+40
+00:01:58,834 --> 00:02:01,575
+Al pulsar Enviar registro aparece el radicado.
+
+41
+00:02:01,827 --> 00:02:05,139
+En Registros busque por documento o radicado y abra el detalle;
+
+42
+00:02:05,139 --> 00:02:07,610
+los administradores ven también los documentos.
+
+43
+00:02:07,863 --> 00:02:12,114
+El dashboard muestra totales, registros por día, comuna, barrio,
+
+44
+00:02:12,114 --> 00:02:15,302
+estrato, ingresos y revisión, y por funcionario.
+
+45
+00:02:15,579 --> 00:02:18,375
+Para terminar, algunas recomendaciones.
+
+46
+00:02:18,631 --> 00:02:20,425
+Fotos: luz natural sin flash,
+
+47
+00:02:20,425 --> 00:02:22,898
+documento plano sobre fondo oscuro liso,
+
+48
+00:02:22,898 --> 00:02:26,238
+con sus cuatro bordes visibles, sin reflejos ni dedos.
+
+49
+00:02:26,489 --> 00:02:29,462
+Enfoque antes de tomar, verifique que se lea el texto,
+
+50
+00:02:29,462 --> 00:02:32,436
+use el celular en horizontal y repita si sale borrosa.
+
+51
+00:02:32,700 --> 00:02:35,875
+En la feria: equipo cargado, wifi o datos estables,
+
+52
+00:02:35,875 --> 00:02:39,983
+y consulte si la persona ya fue atendida; un borrador por persona.
+
+53
+00:02:40,235 --> 00:02:43,091
+Lea el consentimiento, revise el resumen con ella,
+
+54
+00:02:43,091 --> 00:02:45,719
+pida la firma en pantalla y anote el radicado.
+
+55
+00:02:45,984 --> 00:02:49,653
+No comparta contraseñas y cierre sesión en equipos compartidos.
