@@ -149,6 +149,14 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await page.getByLabel("Fecha de nacimiento del integrante", exacto).fill("01062015");
   await page.getByLabel("Tipo de documento (TD)", exacto).selectOption("cc");
   await page.getByLabel("Ingresos mensuales del integrante", exacto).fill("300.000");
+  // A spouse is married or in a marital union (fixed); heterosexual is not a gender identity; conditions are multiple.
+  await page.getByLabel("Parentesco con el jefe del hogar", exacto).selectOption("conyuge");
+  await expect(page.getByLabel("Estado civil", exacto)).toHaveValue("casado_union");
+  await expect(page.getByLabel("Estado civil", exacto)).toBeDisabled();
+  await page.getByLabel("Parentesco con el jefe del hogar", exacto).selectOption("hijo");
+  await expect(page.getByLabel("Estado civil", exacto)).toBeEnabled();
+  await expect(page.getByLabel("Identidad de género", exacto).locator("option", { hasText: "Heterosexual" })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Condición especial del integrante", ...exacto })).toBeVisible();
   await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
   await expect(page.getByText("Un menor de 18 años se identifica con R.C., T.I. o NUIP (M.E.)")).toBeVisible();
   await page.getByLabel("Tipo de documento (TD)", exacto).selectOption("ti");

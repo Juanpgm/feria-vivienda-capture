@@ -16,7 +16,7 @@ import { normalizarDocumento, normalizarNombre, parsearIngresoCop } from "@/shar
 import { fechaBogota } from "@/shared/tiempo";
 import { enumDe, esFechaIso, telefono, telefonoOpcional } from "@/shared/validacion";
 import {
-  CODIGOS_FUENTES, CONDICIONES_ESPECIALES, DOCUMENTOS_ADULTO, ENTIDADES_ACREEDORAS, ESTADOS_CIVILES, ESTADOS_OBLIGACION,
+  CODIGOS_FUENTES, CONDICIONES_ESPECIALES, DOCUMENTOS_ADULTO, ESTADO_CIVIL_CONYUGE, ENTIDADES_ACREEDORAS, ESTADOS_CIVILES, ESTADOS_OBLIGACION,
   FUENTES_RECURSOS, GENEROS_SOLICITANTE, GRUPOS_SISBEN, IDENTIDADES_GENERO, MAX_INTEGRANTES, MODALIDAD_DEUDORES,
   MODALIDADES, MODALIDADES_CON_PROYECTO, OCUPACIONES_INTEGRANTE, OCUPACIONES_SOLICITANTE, PARENTESCOS, SUBGRUPO_MAX,
   TIPOS_DOCUMENTO_INTEGRANTE, TIPOS_DOCUMENTO_SOLICITANTE, TIPOS_VIVIENDA, type FuenteRecurso,
@@ -64,6 +64,12 @@ export const moneda = z
 const entero = (min: number, max: number, msg: string) =>
   z.union([z.number(), z.string()]).transform((v) => Number(v)).pipe(z.number({ error: msg }).int(msg).min(min, msg).max(max, msg));
 
+/** Multi-select of special conditions (titular and members): "ninguna" cannot be combined. */
+const condiciones = z
+  .array(enumDe(CONDICIONES_ESPECIALES))
+  .default([])
+  .refine((l) => !l.includes("ninguna") || l.length === 1, "«Ninguna» no se puede combinar con otras opciones");
+
 const documento = z.string().transform(normalizarDocumento).refine((d) => /^[A-Z0-9]{4,20}$/.test(d), "Número de documento inválido");
 
 // ---------------------------------------------------------------- section 1: solicitante
@@ -102,10 +108,7 @@ export const solicitanteSchema = z
     sisben: opcional(siNo),
     sisben_grupo: opcional(enumDe(GRUPOS_SISBEN)),
     sisben_subgrupo: opcional(entero(1, SUBGRUPO_MAX, `El subgrupo va de 1 a ${SUBGRUPO_MAX}`)),
-    condiciones_especiales: z
-      .array(enumDe(CONDICIONES_ESPECIALES))
-      .default([])
-      .refine((l) => !l.includes("ninguna") || l.length === 1, "«Ninguna» no se puede combinar con otras opciones"),
+    condiciones_especiales: condiciones,
   })
   .superRefine((v, ctx) => {
     const err = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
@@ -162,7 +165,7 @@ export const integranteSchema = z
     fecha_nacimiento: opcional(fecha),
     tipo_documento: opcional(enumDe(TIPOS_DOCUMENTO_INTEGRANTE)),
     numero_documento: opcional(documento),
-    condicion_especial: opcional(enumDe(CONDICIONES_ESPECIALES)),
+    condiciones_especiales: condiciones,
     parentesco: opcional(enumDe(PARENTESCOS)),
     estado_civil: opcional(enumDe(ESTADOS_CIVILES)),
     ocupacion: opcional(enumDe(OCUPACIONES_INTEGRANTE)),
@@ -179,7 +182,9 @@ export const integranteSchema = z
       if (adulto !== deAdulto)
         err("tipo_documento", adulto ? "Una persona de 18 años o más se identifica con C.C. o C.E." : "Un menor de 18 años se identifica con R.C., T.I. o NUIP (M.E.)");
     }
-  });
+  })
+  // A spouse or partner is married or in a marital union, whatever was chosen.
+  .transform((v) => (v.parentesco === "conyuge" ? { ...v, estado_civil: ESTADO_CIVIL_CONYUGE } : v));
 export type Integrante = z.output<typeof integranteSchema>;
 
 export const hogarSchema = z.object({

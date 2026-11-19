@@ -10,7 +10,6 @@ import { useEffect, useState } from "react";
 export function QrPostulacion({ id, radicado }: { id: string; radicado: string }) {
   const [svg, setSvg] = useState("");
   const [png, setPng] = useState("");
-  const [url, setUrl] = useState("");
   useEffect(() => {
     const u = `${window.location.origin}/postulacion/estado/${id}`;
     Promise.all([
@@ -18,11 +17,10 @@ export function QrPostulacion({ id, radicado }: { id: string; radicado: string }
       QRCode.toDataURL(u, { errorCorrectionLevel: "M", margin: 2, width: 600 }),
     ])
       .then(([s, p]) => {
-        setUrl(u);
         setSvg(s);
         setPng(p);
       })
-      .catch(() => setUrl(u));
+      .catch(() => undefined);
   }, [id]);
 
   return (

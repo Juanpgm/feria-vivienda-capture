@@ -141,7 +141,7 @@ export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista
                     <td className="p-2">{texto(de(ESTADOS_CIVILES, m.estado_civil))}</td>
                     <td className="p-2">{texto(de(OCUPACIONES_INTEGRANTE, m.ocupacion))}</td>
                     <td className="p-2">{texto(de(IDENTIDADES_GENERO, m.identidad_genero))}</td>
-                    <td className="p-2">{texto(de(CONDICIONES_ESPECIALES, m.condicion_especial))}</td>
+                    <td className="p-2">{texto(m.condiciones_especiales.map((c) => de(CONDICIONES_ESPECIALES, c) as string))}</td>
                     <td className="p-2 tabular-nums">{dinero(m.ingresos)}</td>
                   </tr>
                 ))}

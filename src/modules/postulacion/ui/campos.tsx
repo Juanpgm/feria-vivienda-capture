@@ -40,12 +40,12 @@ export function CampoMoneda({ name, label, hint, disabled }: { name: string; lab
   );
 }
 
-export function CampoSelect({ name, label, options, hint }: { name: string; label: string; options: Option[]; hint?: string }) {
+export function CampoSelect({ name, label, options, hint, disabled }: { name: string; label: string; options: Option[]; hint?: string; disabled?: boolean }) {
   const { register } = useFormContext<FieldValues>();
   const error = useError()(name);
   return (
     <Field label={label} hint={hint} error={error}>
-      {(a11y) => <Select {...a11y} options={options} {...register(name)} />}
+      {(a11y) => <Select {...a11y} options={options} disabled={disabled} {...register(name)} />}
     </Field>
   );
 }

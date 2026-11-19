@@ -159,3 +159,21 @@ describe("tipo de proyecto VIS / VIP", () => {
     expect(sinValor.ok && sinValor.faltantes.map((f) => f.ruta)).toContain("postulacion.valor_vis");
   });
 });
+
+describe("integrantes: cónyuge y condiciones", () => {
+  const conyuge = { nombres_apellidos: "maría lópez", fecha_nacimiento: "1987-02-01", tipo_documento: "cc", numero_documento: "1100000002", parentesco: "conyuge", estado_civil: "soltero", ingresos: "0" };
+  it("a spouse or partner is stored as married or in a marital union", () => {
+    const r = armarDatos(base({ hogar: { integrantes: [conyuge] } }));
+    expect(r.ok && r.datos.hogar.integrantes[0].estado_civil).toBe("casado_union");
+  });
+  it("members take several special conditions; «Ninguna» is exclusive", () => {
+    const r = armarDatos(base({ hogar: { integrantes: [{ ...conyuge, condiciones_especiales: ["discapacidad", "campesino"] }] } }));
+    expect(r.ok && r.datos.hogar.integrantes[0].condiciones_especiales).toEqual(["discapacidad", "campesino"]);
+    const e = validarSecciones(base({ hogar: { integrantes: [{ ...conyuge, condiciones_especiales: ["ninguna", "campesino"] }] } }), ["hogar"]);
+    expect(e["hogar.integrantes.0.condiciones_especiales"]).toMatch(/Ninguna/);
+  });
+  it("heterosexual is not a gender identity option (cisgénero covers it)", async () => {
+    const { IDENTIDADES_GENERO } = await import("./catalogos");
+    expect(Object.keys(IDENTIDADES_GENERO)).not.toContain("heterosexual");
+  });
+});

@@ -4,7 +4,7 @@ import { CODIGOS_FUENTES } from "./catalogos";
 import type { Valores } from "./armar";
 
 export const INTEGRANTE_VACIO = {
-  nombres_apellidos: "", fecha_nacimiento: "", tipo_documento: "", numero_documento: "", condicion_especial: "",
+  nombres_apellidos: "", fecha_nacimiento: "", tipo_documento: "", numero_documento: "", condiciones_especiales: [] as string[],
   parentesco: "", estado_civil: "", ocupacion: "", identidad_genero: "", ingresos: "",
 };
 

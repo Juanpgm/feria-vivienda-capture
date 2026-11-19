@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useFieldArray, useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { derivarIngreso, formatoCop, RANGOS_SMLMV } from "@/modules/cierre-financiero/domain/smlmv";
 import { CampoFecha } from "@/modules/registro/ui/CampoFecha";
@@ -8,10 +9,10 @@ import { normalizarDocumento, normalizarNombre, parsearIngresoCop } from "@/shar
 import { fechaBogota } from "@/shared/tiempo";
 import { Button } from "@/shared/ui/Button";
 import {
-  CONDICIONES_ESPECIALES, ESTADOS_CIVILES, IDENTIDADES_GENERO, MAX_INTEGRANTES, OCUPACIONES_INTEGRANTE, PARENTESCOS, TIPOS_DOCUMENTO_INTEGRANTE, opciones,
+  CONDICIONES_ESPECIALES, ESTADO_CIVIL_CONYUGE, ESTADOS_CIVILES, IDENTIDADES_GENERO, MAX_INTEGRANTES, OCUPACIONES_INTEGRANTE, PARENTESCOS, TIPOS_DOCUMENTO_INTEGRANTE, opciones,
 } from "../domain/catalogos";
 import { INTEGRANTE_VACIO } from "../domain/formulario";
-import { CampoMoneda, CampoSelect } from "./campos";
+import { CampoMoneda, CampoMultiple, CampoSelect } from "./campos";
 
 const pesos = (v: unknown) => (typeof v === "string" ? (parsearIngresoCop(v) ?? 0) : 0);
 
@@ -24,6 +25,13 @@ export function PasoHogar() {
   const ingresoSolicitante = useWatch({ name: "solicitante.ingreso_mensual" });
   const total = pesos(ingresoSolicitante) + integrantes.reduce((s, m) => s + pesos(m.ingresos), 0);
   const rango = RANGOS_SMLMV.find((r) => r.codigo === derivarIngreso(total).rango_ingresos_smlmv);
+
+  // A spouse or partner is married or in a marital union: fill it in (the field is then fixed).
+  const { setValue } = useFormContext<FieldValues>();
+  const conyuges = integrantes.map((m, i) => (m.parentesco === "conyuge" && m.estado_civil !== ESTADO_CIVIL_CONYUGE ? i : -1)).filter((i) => i >= 0).join(",");
+  useEffect(() => {
+    for (const i of conyuges ? conyuges.split(",") : []) setValue(`hogar.integrantes.${i}.estado_civil`, ESTADO_CIVIL_CONYUGE, { shouldDirty: true });
+  }, [conyuges, setValue]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,10 +68,18 @@ export function PasoHogar() {
               <CampoSelect name={P + "parentesco"} label="Parentesco con el jefe del hogar" options={opciones(PARENTESCOS)} />
               <CampoSelect name={P + "tipo_documento"} label="Tipo de documento (TD)" options={opciones(TIPOS_DOCUMENTO_INTEGRANTE)} />
               <CampoTexto name={P + "numero_documento"} label="Número de documento del integrante" inputMode="numeric" normalizar={(v) => normalizarDocumento(v) || null} />
-              <CampoSelect name={P + "estado_civil"} label="Estado civil" options={opciones(ESTADOS_CIVILES)} />
+              <CampoSelect
+                name={P + "estado_civil"}
+                label="Estado civil"
+                options={opciones(ESTADOS_CIVILES)}
+                disabled={m.parentesco === "conyuge"}
+                hint={m.parentesco === "conyuge" ? "Para cónyuge o compañero(a) es casado(a) o unión marital de hecho." : undefined}
+              />
               <CampoSelect name={P + "ocupacion"} label="Ocupación del integrante" options={opciones(OCUPACIONES_INTEGRANTE)} />
               <CampoSelect name={P + "identidad_genero"} label="Identidad de género" options={opciones(IDENTIDADES_GENERO)} />
-              <CampoSelect name={P + "condicion_especial"} label="Condición especial del integrante" options={opciones(CONDICIONES_ESPECIALES)} />
+              <div className="sm:col-span-2">
+                <CampoMultiple name={P + "condiciones_especiales"} label="Condición especial del integrante" options={opciones(CONDICIONES_ESPECIALES)} exclusiva="ninguna" />
+              </div>
               <CampoMoneda name={P + "ingresos"} label="Ingresos mensuales del integrante" hint="Escriba 0 si no tiene ingresos" />
             </div>
           </section>

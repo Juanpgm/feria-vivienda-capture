@@ -80,6 +80,9 @@ export const PARENTESCOS = {
   ninguno: "Ninguno",
 } as const;
 
+/** A spouse or partner of the head of household is, by definition, married or in a marital union. */
+export const ESTADO_CIVIL_CONYUGE = "casado_union";
+
 export const ESTADOS_CIVILES = {
   soltero: "Soltero(a)",
   casado_union: "Casado(a) o unión marital de hecho",
@@ -100,7 +103,6 @@ export const IDENTIDADES_GENERO = {
   cis_masculino: "Cisgénero masculino",
   cis_femenino: "Cisgénero femenino",
   transgenero: "Transgénero",
-  heterosexual: "Heterosexual",
   bisexual: "Bisexual",
   gay: "Gay",
   lesbiana: "Lesbiana",
