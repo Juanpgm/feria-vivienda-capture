@@ -5,7 +5,6 @@ import { formatoCop } from "@/modules/cierre-financiero/domain/smlmv";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 import { parsearIngresoCop } from "@/shared/normalizacion/texto";
 import { useAyuda } from "@/shared/ui/Ayuda";
-import { Field, TextArea } from "@/shared/ui/Field";
 import { RadioGroup } from "@/shared/ui/Radio";
 import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import {
@@ -46,9 +45,6 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
     <div className="flex flex-col gap-8">
       <Grupo titulo="Modalidad del subsidio" columnas={false} descripcion="Elija el tipo de subsidio que solicita. Según la modalidad le pediremos los datos que correspondan.">
         <RadioGroup lista legend="Modalidad a la que se postula" name={P + "modalidad"} options={opciones(MODALIDADES)} error={error(P + "modalidad")} inputProps={register(P + "modalidad")} />
-        <Field label="Observaciones (opcional)" error={error(P + "observaciones")}>
-          {(a11y) => <TextArea {...a11y} rows={3} maxLength={1000} {...register(P + "observaciones")} />}
-        </Field>
       </Grupo>
 
       {modalidad === MODALIDAD_DEUDORES && (

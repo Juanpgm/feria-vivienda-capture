@@ -156,7 +156,7 @@ export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista
         id="sec-subsidio"
         titulo="3. Modalidad del subsidio"
         filas={[
-          ["Modalidad", `${po.modalidad}. ${MODALIDADES[po.modalidad]}`], ["Observaciones", po.observaciones],
+          ["Modalidad", `${po.modalidad}. ${MODALIDADES[po.modalidad]}`],
           ...(po.obligacion
             ? ([
                 ["Entidad acreedora", de(ENTIDADES_ACREEDORAS, po.obligacion.entidad_acreedora)], ["No. de obligación", po.obligacion.numero_obligacion],

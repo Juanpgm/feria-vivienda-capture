@@ -211,7 +211,6 @@ const recursoSchema = z.object({ valor: opcional(moneda), entidad: opcional(text
 export const postulacionSchema = z
   .object({
     modalidad: enumDe(MODALIDADES),
-    observaciones: opcional(texto(1000)),
     entidad_acreedora: opcional(enumDe(ENTIDADES_ACREEDORAS)),
     numero_obligacion: opcional(texto(60)),
     programa_obligacion: opcional(texto()),
@@ -241,7 +240,6 @@ export const postulacionSchema = z
     }
     return {
       modalidad: v.modalidad,
-      observaciones: v.observaciones,
       obligacion: deudores
         ? { entidad_acreedora: v.entidad_acreedora, numero_obligacion: v.numero_obligacion, programa: v.programa_obligacion, saldo_adeudado: v.saldo_adeudado, estado: v.estado_obligacion, autoriza_giro: v.autoriza_giro }
         : null,
