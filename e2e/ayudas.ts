@@ -11,12 +11,12 @@ export const HOY = fechaBogota();
 const RUTA = process.env.E2E_RUTA_NUEVO ?? "/registros/nuevo";
 
 export const TITULO_PASO = {
-  1: "Solicitante",
-  2: "Hogar",
-  3: "Vivienda",
-  4: "Cierre financiero",
-  5: "Autorización y documento",
-  6: "Revisión y firma",
+  1: "Sus datos",
+  2: "Su hogar",
+  3: "La vivienda afectada",
+  4: "Recursos y seguro",
+  5: "Autorización y cédula",
+  6: "Verifique su registro y envíe",
 } as const;
 export type NumeroPaso = keyof typeof TITULO_PASO;
 

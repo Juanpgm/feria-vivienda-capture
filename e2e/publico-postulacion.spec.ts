@@ -262,6 +262,15 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await dibujarFirma(page);
   await page.getByRole("button", { name: "Usar esta firma", ...exacto }).click();
   await expect(page.getByText("Firma registrada.", exacto)).toBeVisible();
+  // The network drops while sending: a clear message, the form stays as it is.
+  await page.route("**/api/postulaciones", (r) => r.abort("internetdisconnected"), { times: 1 });
+  await page.getByRole("button", { name: "Enviar postulación" }).click();
+  await expect(page.getByText(/No hay conexión o la red está muy lenta. Su avance quedó guardado/)).toBeVisible();
+  // The first send had reached the server (only its answer was lost): the retry gets 409 and shows the receipt.
+  await page.route("**/api/postulaciones", async (r) => {
+    envios.push(r.request().postDataJSON());
+    await r.fulfill({ status: 409, json: { error: "Ya existe una postulación con este documento", radicado: "PSE-000008", id: "00000000-0000-4000-8000-000000000001" } });
+  }, { times: 1 });
   await page.getByRole("button", { name: "Enviar postulación" }).click();
 
   await expect(page.getByTestId("radicado")).toHaveText("PSE-000008");

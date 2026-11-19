@@ -46,7 +46,9 @@ export function FormularioPostulacion({ uid, documento, tipoDocumento, publico, 
   const [inicial, setInicial] = useState<Borrador | null>(() => (edicion ? nuevo() : null));
   useEffect(() => {
     if (edicion) return;
-    get<Borrador>(claveBorrador(uid, documento))
+    // idb-keyval opens IndexedDB synchronously: where it is blocked, it throws before returning a promise.
+    Promise.resolve()
+      .then(() => get<Borrador>(claveBorrador(uid, documento)))
       .catch(() => undefined)
       .then((b) => setInicial(b ? { ...b, valores: { ...valoresIniciales(documento, tipoDocumento), ...b.valores } } : nuevo()));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `nuevo` only reads these same props
@@ -71,10 +73,11 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
   const recuperado = !edicion && !!inicial.guardado_en;
   async function empezarDeCero() {
     terminado.current = true;
-    await Promise.all([del(claveBorrador(uid, documento)), descartarFotos(inicial.id)]).catch(() => undefined);
+    await Promise.resolve().then(() => Promise.all([del(claveBorrador(uid, documento)), descartarFotos(inicial.id)])).catch(() => undefined);
     window.location.reload();
   }
   const terminado = useRef(false);
+  const enviandoRef = useRef(false); // a double tap must not send twice
   const paso = PASOS[indice];
   // On edit the consent, declaration and signature already exist; photos are optional replacements.
   // On edit the consent, declaration and signature already exist; photos are optional replacements.
@@ -99,7 +102,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
       t = setTimeout(() => {
         if (terminado.current) return;
         const ahora = new Date().toISOString();
-        void guardar(claveBorrador(uid, documento), { id: inicial.id, paso: indice, maximo, valores: getValues(), guardado_en: ahora }).then(() => setGuardadoEn(ahora), () => undefined);
+        void Promise.resolve().then(() => guardar(claveBorrador(uid, documento), { id: inicial.id, paso: indice, maximo, valores: getValues(), guardado_en: ahora })).then(() => setGuardadoEn(ahora), () => undefined);
       }, 1000);
     };
     escribir(); // the step position changed
@@ -163,13 +166,15 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
   }
 
   async function enviar() {
-    if (!(await trigger())) {
-      setAviso("Revise los campos marcados antes de enviar.");
-      return;
-    }
+    if (enviandoRef.current) return;
+    enviandoRef.current = true;
     setEnviando(true);
     setAviso("");
     try {
+      if (!(await trigger())) {
+        setAviso("Revise los campos marcados antes de enviar.");
+        return;
+      }
       const v = getValues() as Valores;
       const adjuntos: Record<string, string> = {};
       for (const tipo of TIPOS_FOTO) {
@@ -186,15 +191,24 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
         method: edicion ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ valores, adjuntos }),
+      }).catch(() => {
+        throw new Error("No hay conexión o la red está muy lenta. Su avance quedó guardado en este equipo: intente enviar de nuevo.");
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
+      // Already registered for this document (e.g. the answer of a first send was lost): show it as sent.
+      const yaRegistrada = !edicion && res.status === 409 && j?.radicado && j?.id;
+      if (!res.ok && !yaRegistrada) {
         const campos = j?.campos as Record<string, string[]> | undefined;
-        for (const [ruta, m] of Object.entries(campos ?? {})) form.setError(ruta, { type: "server", message: m[0] });
-        throw new Error(res.status === 409 && j?.radicado ? `Ya existe la postulación ${j.radicado} para este documento.` : (j?.error ?? "No se pudo enviar. Intente de nuevo."));
+        const rutas = Object.keys(campos ?? {});
+        for (const ruta of rutas) form.setError(ruta, { type: "server", message: campos![ruta][0] });
+        if (rutas.length) {
+          irACampo(rutas[0]); // the field may be on another step
+          throw new Error("Hay datos por corregir. Lo llevamos al primero.");
+        }
+        throw new Error(res.status >= 500 ? "El servidor no respondió. Su avance quedó guardado: intente de nuevo en un momento." : (j?.error ?? "No se pudo enviar. Intente de nuevo."));
       }
       terminado.current = true;
-      await Promise.all([del(claveBorrador(uid, documento)), descartarFotos(inicial.id)]).catch(() => undefined);
+      await Promise.resolve().then(() => Promise.all([del(claveBorrador(uid, documento)), descartarFotos(inicial.id)])).catch(() => undefined);
       if (edicion) {
         router.push(`/postulaciones/${edicion.id}`);
         router.refresh();
@@ -205,6 +219,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
     } catch (e) {
       setAviso((e as Error).message);
     } finally {
+      enviandoRef.current = false;
       setEnviando(false);
     }
   }

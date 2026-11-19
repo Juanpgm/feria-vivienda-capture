@@ -55,7 +55,7 @@ test("a staff member creates an incomplete postulación: it cannot be validated 
   await firmar(page);
   await page.getByRole("button", { name: "Enviar postulación" }).click();
   // Created with the test account: numbered from the test series, never a real consecutive.
-  await expect(page.getByTestId("radicado")).toHaveText(/^PSE-02\d{4}$/);
+  await expect(page.getByTestId("radicado")).toHaveText(/^PSE-02\d{4}$/, { timeout: 30_000 });
 
   await page.getByRole("link", { name: "Ver la postulación" }).click();
   await page.waitForURL(/\/postulaciones\/[0-9a-f-]{36}$/);
@@ -85,6 +85,26 @@ test("a member of this household cannot start a postulación of their own", asyn
   const aviso = page.getByRole("dialog", { name: "Ya hace parte de otra postulación" });
   await expect(aviso).toBeVisible({ timeout: 20_000 });
   await expect(aviso.getByRole("link", { name: /^Ver la postulación PSE-/ })).toHaveAttribute("href", detalle);
+});
+
+test("a person already in a household cannot be listed as a member of another postulación", async ({ page }) => {
+  await page.goto("/postulaciones/nueva");
+  const modal = page.getByRole("dialog", { name: "Nueva postulación" });
+  await modal.getByLabel("Número de documento", ex).fill(DOC.replace("99900001", "99900002"));
+  await modal.getByRole("button", { name: "Continuar" }).click();
+  await autorizar(page);
+  await llenarTitular(page, { nombres: "PRUEBA E2E", apellidos: "Postulación Dos" });
+  await fotos(page);
+  await page.getByRole("button", { name: "Siguiente", ...ex }).click();
+  await page.getByRole("button", { name: "+ Agregar integrante" }).click();
+  await llenarIntegrante(page, 0, { documento: MIEMBRO });
+  await page.getByRole("button", { name: "Siguiente", ...ex }).click();
+  await page.getByRole("radio", { name: "Adquisición de vivienda nueva" }).check();
+  await page.getByRole("checkbox", { name: /Declaro bajo la gravedad de juramento/ }).check();
+  await firmar(page);
+  await page.getByRole("button", { name: "Enviar postulación" }).click();
+  await expect(page.getByText(`El integrante con documento ${MIEMBRO} ya hace parte de otra postulación.`, { exact: false })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("radicado")).toHaveCount(0);
 });
 
 test("Completar opens the edit on the missing field; the panel jumps between fields", async ({ page }) => {

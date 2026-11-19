@@ -4,7 +4,7 @@
 //   contadores/radicado_postulaciones                 consecutive of the radicado (PSE-000001), never reused
 //   configuracion/postulaciones                       { habilitado } kill switch of the public form (fail closed)
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { FieldValue, type Timestamp } from "firebase-admin/firestore";
+import { FieldValue, type Timestamp, type Transaction } from "firebase-admin/firestore";
 import { obtenerUsuario } from "@/modules/auth/server/usuarios.repo";
 import { hashConsentimiento } from "@/modules/consentimiento/server/hash";
 import { derivar } from "@/modules/ciudadano/server/ciudadanos.repo";
@@ -111,6 +111,41 @@ const documentosIntegrantes = (d: DatosPostulacion) => [...new Set(d.hogar.integ
 /** The postulación where `documento` is listed as a household member, if any. */
 const comoIntegrante = (documento: string) => col().where("documentos_integrantes", "array-contains", documento).limit(1);
 
+/**
+ * One person, one postulación: a member cannot be the applicant of another postulación nor a member of another
+ * household. Reads only (call before any write of the transaction). `propia`: the postulación being saved.
+ */
+async function exigirIntegrantesLibres(tx: Transaction, d: DatosPostulacion, propia: string) {
+  const docs = documentosIntegrantes(d);
+  if (!docs.length) return;
+  const [titulares, hogares] = await Promise.all([
+    tx.getAll(...docs.map((n) => col().doc(postulacionIdDe(n)))),
+    tx.get(col().where("documentos_integrantes", "array-contains-any", docs)),
+  ]);
+  const comoTitular = docs.find((_, i) => titulares[i].exists && titulares[i].id !== propia);
+  const otro = hogares.docs.find((h) => h.id !== propia);
+  const repetido = comoTitular ?? (otro && docs.find((n) => (otro.data().documentos_integrantes as string[] | undefined)?.includes(n)));
+  if (repetido) throw new PostulacionError(409, `El integrante con documento ${repetido} ya hace parte de otra postulación. Una persona solo puede estar en una postulación.`);
+}
+
+// ---- brake on public lookups, per IP. The valid QR code is the real gate; this only caps abuse, so the limit fits a
+// whole event behind one Wi-Fi IP. Its own collection: it never shares the counter with the citizen login. ----
+const LIMITE_CONSULTAS = 600;
+const VENTANA_CONSULTAS_MS = 15 * 60_000;
+
+/** Counts one public lookup; true when this IP is over the limit. Approximate count (no transaction) on purpose. */
+export async function frenoConsulta(ip: string, ahora = Date.now()): Promise<boolean> {
+  const ref = db().collection("intentos_postulacion").doc(createHash("sha256").update(ip).digest("hex").slice(0, 32));
+  const d = (await ref.get()).data();
+  if (!d || ahora - d.desde >= VENTANA_CONSULTAS_MS) {
+    await ref.set({ n: 1, desde: ahora });
+    return false;
+  }
+  if (d.n >= LIMITE_CONSULTAS) return true;
+  await ref.update({ n: FieldValue.increment(1) });
+  return false;
+}
+
 export async function consultarPorDocumento(documento: string): Promise<Consulta> {
   const id = postulacionIdDe(documento);
   const d = (await col().doc(id).get()).data();
@@ -156,9 +191,11 @@ export async function crearPostulacion(e: Envio, actor: Actor | null) {
   const contadorRef = prueba ? refContadorPruebas() : refContador();
   return db().runTransaction(async (tx) => {
     const [existente, contador, integrante] = await Promise.all([tx.get(ref), tx.get(contadorRef), tx.get(comoIntegrante(e.datos.solicitante.numero_documento))]);
-    if (existente.exists) throw new PostulacionError(409, "Ya existe una postulación con este documento", { radicado: existente.data()?.radicado });
+    // The same document again (a retry after a lost answer, or a second device): the client shows the existing one.
+    if (existente.exists) throw new PostulacionError(409, "Ya existe una postulación con este documento", { radicado: existente.data()?.radicado, id });
     // A person already counted in another household cannot apply on their own.
     if (!integrante.empty) throw new PostulacionError(409, "Este documento ya hace parte del grupo familiar de otra postulación. No puede registrar una postulación propia.");
+    await exigirIntegrantesLibres(tx, e.datos, id);
     const numero = ((contador.data()?.ultimo as number | undefined) ?? (prueba ? BASE_PRUEBAS : 0)) + 1;
     const radicado = formatearRadicado(PREFIJO_RADICADO, numero);
     tx.set(contadorRef, { ultimo: numero, actualizado_en: FieldValue.serverTimestamp() });
@@ -198,6 +235,7 @@ export async function editarPostulacion(id: string, e: Omit<Envio, "consentimien
     if (!d) throw new PostulacionError(404, "Postulación no encontrada");
     if (d.estado === "valido") throw new PostulacionError(409, "La postulación ya fue validada y no se puede modificar");
     if (d.solicitante?.numero_documento !== e.datos.solicitante.numero_documento) throw new PostulacionError(422, "El número de documento no se puede cambiar");
+    await exigirIntegrantesLibres(tx, e.datos, id);
     tx.update(ref, {
       ...e.datos,
       documentos_integrantes: documentosIntegrantes(e.datos),
