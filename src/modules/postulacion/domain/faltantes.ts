@@ -73,7 +73,8 @@ export function calcularFaltantes(r: Registro): Faltante[] {
   if (MODALIDADES_CON_PROYECTO.includes(p.modalidad)) {
     const pr = p.proyecto ?? {};
     for (const [k, etiqueta] of Object.entries(PROYECTO)) if (falta(pr[k])) out.push({ ruta: `postulacion.${k === "nombre" ? "proyecto_nombre" : k}`, etiqueta });
-    if (falta(pr.valor_vis) && falta(pr.valor_vip)) out.push({ ruta: "postulacion.valor_vis", etiqueta: "Valor de la solución de vivienda (VIS o VIP)" });
+    if (falta(pr.tipo_vivienda)) out.push({ ruta: "postulacion.tipo_vivienda", etiqueta: "Tipo de proyecto (VIS o VIP)" });
+    else if (!pr[pr.tipo_vivienda === "vis" ? "valor_vis" : "valor_vip"]) out.push({ ruta: `postulacion.valor_${pr.tipo_vivienda}`, etiqueta: `Valor de la solución de vivienda ${String(pr.tipo_vivienda).toUpperCase()}` });
   }
   for (const f of p.fuentes) if (falta(p.recursos[f]?.valor)) out.push({ ruta: `postulacion.recursos.${f}.valor`, etiqueta: `Valor de: ${FUENTES_RECURSOS[f as FuenteRecurso]?.etiqueta ?? f}` });
   if (MODALIDADES_CON_CIERRE.includes(p.modalidad) && !p.fuentes.some((f) => (p.recursos[f]?.valor ?? 0) > 0))

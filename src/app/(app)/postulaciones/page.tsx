@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { tieneRol } from "@/modules/auth/domain/roles";
 import { sesionOLogin } from "@/modules/auth/server/guard";
 import { MODALIDADES, type Modalidad } from "@/modules/postulacion/domain/catalogos";
 import { listarPostulaciones } from "@/modules/postulacion/server/postulaciones.repo";
+import { BotonBorrar } from "@/modules/postulacion/ui/BotonBorrar";
 import { EstadoBadge } from "@/modules/postulacion/ui/DetallePostulacion";
 import { fechaHoraBogota } from "@/shared/tiempo";
 import { controlClass } from "@/shared/ui/Field";
@@ -12,7 +14,8 @@ const enlace = "font-semibold text-primary underline underline-offset-2";
 
 /** S18/S19: staff-only list of postulaciones with their validation state. */
 export default async function Postulaciones({ searchParams }: { searchParams: Promise<{ q?: string; estado?: string }> }) {
-  await sesionOLogin();
+  const sesion = await sesionOLogin();
+  const esAdmin = tieneRol(sesion.rol, "admin");
   const { q = "", estado = "" } = await searchParams;
   const filas = await listarPostulaciones({ q, estado });
   return (
@@ -47,7 +50,7 @@ export default async function Postulaciones({ searchParams }: { searchParams: Pr
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface">
-              <tr>{["Radicado", "Postulante", "Documento", "Modalidad", "Estado", "Faltantes", "Registrada"].map((h) => <th key={h} className="p-2">{h}</th>)}</tr>
+              <tr>{["Radicado", "Postulante", "Documento", "Modalidad", "Estado", "Faltantes", "Registrada", ...(esAdmin ? ["Acciones"] : [])].map((h) => <th key={h} className="p-2">{h}</th>)}</tr>
             </thead>
             <tbody>
               {filas.map((f) => (
@@ -59,6 +62,7 @@ export default async function Postulaciones({ searchParams }: { searchParams: Pr
                   <td className="p-2"><EstadoBadge estado={f.estado} /></td>
                   <td className={`p-2 ${f.faltantes ? "font-semibold text-warning-text" : "text-success"}`}>{f.faltantes || "Completa"}</td>
                   <td className="p-2">{f.creado_en ? fechaHoraBogota(f.creado_en) : ""}</td>
+                  {esAdmin && <td className="p-2"><BotonBorrar id={f.id} radicado={f.radicado} nombre={f.nombre} compacto /></td>}
                 </tr>
               ))}
             </tbody>

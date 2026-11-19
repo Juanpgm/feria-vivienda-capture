@@ -129,6 +129,9 @@ export const MODALIDADES_CON_PROYECTO: readonly Modalidad[] = ["1", "2"];
 /** Modalities where the financial closure (5.1) needs at least one source with a value. */
 export const MODALIDADES_CON_CIERRE: readonly Modalidad[] = ["1", "2", "8"];
 
+/** Section 5: the project the household applies to; only its value is asked, the other one is 0. */
+export const TIPOS_VIVIENDA = { vis: "VIS (vivienda de interés social)", vip: "VIP (vivienda de interés prioritario)" } as const;
+
 export const ENTIDADES_ACREEDORAS = { fev: "Fondo Especial de Vivienda (FEV)", svsh: "Secretaría de Vivienda Social y Hábitat (SVSH)" } as const;
 export const ESTADOS_OBLIGACION = {
   al_dia: "Al día",
@@ -139,16 +142,24 @@ export const ESTADOS_OBLIGACION = {
   facilidad_pago: "Facilidad de pago vigente",
 } as const;
 
-/** Section 5.1 sources. `entidad` is the label of the text that goes with the amount. */
-export const FUENTES_RECURSOS = {
-  subsidio_familiar: { etiqueta: "Subsidio familiar de vivienda", entidad: "Entidad otorgante" },
-  ahorro_programado: { etiqueta: "Ahorro programado", entidad: "Entidad financiera" },
-  cesantias: { etiqueta: "Cesantías", entidad: "Fondo de cesantías" },
-  creditos: { etiqueta: "Créditos", entidad: "Entidad financiera" },
-  aportes_gubernamentales: { etiqueta: "Aportes gubernamentales", entidad: "Entidad" },
-  otros: { etiqueta: "Otros", entidad: "¿Cuál?" },
-} as const;
-export type FuenteRecurso = keyof typeof FUENTES_RECURSOS;
+/** Kinds of entity in catalogo/entidades.json (Superfinanciera + Supersubsidio open data, scripts/build-catalogos-postulacion.mjs). */
+export type TipoEntidad =
+  | "banco" | "corporacion_financiera" | "compania_financiamiento" | "cooperativa_financiera" | "entidad_oficial" | "fondo_cesantias" | "caja_compensacion" | "entidad_publica";
+const CREDITO: TipoEntidad[] = ["banco", "cooperativa_financiera", "compania_financiamiento", "corporacion_financiera", "entidad_oficial", "caja_compensacion"];
+
+/**
+ * Section 5.1 sources. `entidad` is the label of the entity field; `tipos` the kinds of entity offered in its list
+ * (empty = free text, e.g. "Otros").
+ */
+export type FuenteRecurso = "subsidio_familiar" | "ahorro_programado" | "cesantias" | "creditos" | "aportes_gubernamentales" | "otros";
+export const FUENTES_RECURSOS: Record<FuenteRecurso, { etiqueta: string; entidad: string; tipos: readonly TipoEntidad[] }> = {
+  subsidio_familiar: { etiqueta: "Subsidio familiar de vivienda", entidad: "Entidad otorgante", tipos: ["caja_compensacion", "entidad_publica", "entidad_oficial"] },
+  ahorro_programado: { etiqueta: "Ahorro programado", entidad: "Entidad financiera", tipos: ["banco", "cooperativa_financiera", "compania_financiamiento", "entidad_oficial"] },
+  cesantias: { etiqueta: "Cesantías", entidad: "Fondo de cesantías", tipos: ["fondo_cesantias", "entidad_oficial"] },
+  creditos: { etiqueta: "Créditos", entidad: "Entidad financiera", tipos: CREDITO },
+  aportes_gubernamentales: { etiqueta: "Aportes gubernamentales", entidad: "Entidad", tipos: ["entidad_publica", "entidad_oficial"] },
+  otros: { etiqueta: "Otros", entidad: "¿Cuál?", tipos: [] },
+};
 export const CODIGOS_FUENTES = Object.keys(FUENTES_RECURSOS) as FuenteRecurso[];
 
 /** The format has 10 rows for household members. */

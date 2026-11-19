@@ -95,6 +95,7 @@ export const AYUDAS: Record<string, string> = {
   "Estado de la obligación": "Cómo está la deuda hoy: al día, en mora, en cobro (persuasivo, coactivo o jurídico) o con una facilidad de pago vigente.",
   "Nombre del proyecto habitacional": "El nombre del proyecto de vivienda donde quiere comprar.",
   "Nombre de la constructora": "La empresa que construye o vende el proyecto.",
+  "¿A qué tipo de proyecto aplicará?": "VIS es vivienda de interés social y VIP de interés prioritario (la de menor precio). Elija la del proyecto: solo se pide el valor de ese tipo y el otro queda en 0.",
   "Valor de la solución de vivienda VIS": "Precio de la vivienda de interés social (VIS) en pesos. Solo números.",
   "Valor de la solución de vivienda VIP": "Precio de la vivienda de interés prioritario (VIP) en pesos. Solo números.",
   "Fuentes de recursos": "Con qué dinero cuenta para completar el valor de la vivienda (cierre financiero): subsidios, ahorro, cesantías, créditos u otros aportes.",

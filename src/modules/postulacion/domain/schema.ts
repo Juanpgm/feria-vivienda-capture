@@ -19,7 +19,7 @@ import {
   CODIGOS_FUENTES, CONDICIONES_ESPECIALES, DOCUMENTOS_ADULTO, ENTIDADES_ACREEDORAS, ESTADOS_CIVILES, ESTADOS_OBLIGACION,
   FUENTES_RECURSOS, GENEROS_SOLICITANTE, GRUPOS_SISBEN, IDENTIDADES_GENERO, MAX_INTEGRANTES, MODALIDAD_DEUDORES,
   MODALIDADES, MODALIDADES_CON_PROYECTO, OCUPACIONES_INTEGRANTE, OCUPACIONES_SOLICITANTE, PARENTESCOS, SUBGRUPO_MAX,
-  TIPOS_DOCUMENTO_INTEGRANTE, TIPOS_DOCUMENTO_SOLICITANTE, type FuenteRecurso,
+  TIPOS_DOCUMENTO_INTEGRANTE, TIPOS_DOCUMENTO_SOLICITANTE, TIPOS_VIVIENDA, type FuenteRecurso,
 } from "./catalogos";
 import { DECLARACION_VERSION } from "./texto";
 
@@ -215,6 +215,7 @@ export const postulacionSchema = z
     autoriza_giro: z.boolean().default(false),
     proyecto_nombre: opcional(texto()),
     constructora: opcional(texto()),
+    tipo_vivienda: opcional(enumDe(TIPOS_VIVIENDA)),
     valor_vis: opcional(moneda),
     valor_vip: opcional(moneda),
     fuentes: z.array(z.enum(CODIGOS_FUENTES as [FuenteRecurso, ...FuenteRecurso[]])).default([]),
@@ -239,7 +240,10 @@ export const postulacionSchema = z
       obligacion: deudores
         ? { entidad_acreedora: v.entidad_acreedora, numero_obligacion: v.numero_obligacion, programa: v.programa_obligacion, saldo_adeudado: v.saldo_adeudado, estado: v.estado_obligacion, autoriza_giro: v.autoriza_giro }
         : null,
-      proyecto: proyecto ? { nombre: v.proyecto_nombre, constructora: v.constructora, valor_vis: v.valor_vis, valor_vip: v.valor_vip } : null,
+      // Only the value of the chosen project type counts; the other one is 0. Without a type there is no value yet.
+      proyecto: proyecto
+        ? { nombre: v.proyecto_nombre, constructora: v.constructora, tipo_vivienda: v.tipo_vivienda, valor_vis: v.tipo_vivienda ? (v.tipo_vivienda === "vis" ? v.valor_vis : 0) : null, valor_vip: v.tipo_vivienda ? (v.tipo_vivienda === "vip" ? v.valor_vip : 0) : null }
+        : null,
       fuentes: Object.keys(recursos) as FuenteRecurso[],
       recursos,
       total_aportes: totalAportes(recursos),

@@ -152,3 +152,21 @@ test("list, public status and metrics reflect the validated postulación", async
   await expect(existente.getByText("Válido", ex)).toBeVisible();
   await expect(existente.getByRole("link")).toHaveCount(0);
 });
+
+test("an admin deletes the postulación with a reason; it is gone and the document is free again", async ({ page }) => {
+  await page.goto(`/postulaciones?q=${DOC}`);
+  await page.getByRole("button", { name: /^Borrar la postulación PSE-/ }).click();
+  const d = page.getByRole("dialog", { name: /^Borrar la postulación PSE-/ });
+  const confirmar = d.getByRole("button", { name: "Borrar definitivamente" });
+  await expect(confirmar).toBeDisabled();
+  await d.getByLabel("Motivo del borrado").fill("Registro de prueba e2e");
+  await expect(confirmar).toBeDisabled();
+  await d.getByRole("checkbox", { name: "Entiendo que el borrado es definitivo" }).check();
+  await confirmar.click();
+  await expect(page.getByText("0 postulación(es)")).toBeVisible();
+  await page.goto("/postulaciones/nueva");
+  const modal = page.getByRole("dialog", { name: "Nueva postulación" });
+  await modal.getByLabel("Número de documento", ex).fill(DOC);
+  await modal.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Datos del solicitante" })).toBeVisible();
+});

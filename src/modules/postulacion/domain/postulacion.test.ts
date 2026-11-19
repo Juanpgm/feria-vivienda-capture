@@ -139,8 +139,23 @@ describe("faltantes", () => {
         estrato: "2", anios_residencia: "20", notificacion_electronica: "si", caja_compensacion: "no", sisben: "si", sisben_grupo: "A", sisben_subgrupo: "3",
       },
       hogar: { integrantes: [{ nombres_apellidos: "luis pérez", fecha_nacimiento: "2015-06-01", tipo_documento: "ti", numero_documento: "1100000001", parentesco: "hijo", ingresos: "0" }] },
-      postulacion: { modalidad: "1", proyecto_nombre: "Altos", constructora: "C", valor_vis: "150.000.000", fuentes: ["ahorro_programado"], recursos: { ahorro_programado: { valor: "5000000" } } },
+      postulacion: { modalidad: "1", proyecto_nombre: "Altos", constructora: "C", tipo_vivienda: "vis", valor_vis: "150.000.000", fuentes: ["ahorro_programado"], recursos: { ahorro_programado: { valor: "5000000" } } },
     });
     expect(r.ok && r.faltantes).toEqual([]);
+  });
+});
+
+describe("tipo de proyecto VIS / VIP", () => {
+  const conProyecto = (extra: Record<string, unknown>) =>
+    armarDatos(base({ postulacion: { modalidad: "1", proyecto_nombre: "Altos", constructora: "C", fuentes: [], recursos: {}, ...extra } }));
+  it("keeps only the value of the chosen type; the other one is 0", () => {
+    const r = conProyecto({ tipo_vivienda: "vip", valor_vis: "999", valor_vip: "90.000.000" });
+    expect(r.ok && r.datos.postulacion.proyecto).toMatchObject({ tipo_vivienda: "vip", valor_vis: 0, valor_vip: 90000000 });
+  });
+  it("asks first for the type, then for its value", () => {
+    const sinTipo = conProyecto({});
+    expect(sinTipo.ok && sinTipo.faltantes.map((f) => f.ruta)).toContain("postulacion.tipo_vivienda");
+    const sinValor = conProyecto({ tipo_vivienda: "vis" });
+    expect(sinValor.ok && sinValor.faltantes.map((f) => f.ruta)).toContain("postulacion.valor_vis");
   });
 });

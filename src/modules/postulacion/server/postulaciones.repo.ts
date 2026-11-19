@@ -203,6 +203,34 @@ export async function listarPostulaciones({ estado, q }: { estado?: string; q?: 
   return t ? porEstado.filter((f) => f.radicado.includes(t) || f.documento.includes(t.replace(/[^A-Z0-9]/g, "")) || f.nombre.toUpperCase().includes(t)) : porEstado;
 }
 
+/**
+ * Admin+ only (checked by the route). Deletes the postulación with its photos, signature, history and access logs, and its
+ * validation if any. The audit entry is written FIRST: if it cannot be written, nothing is deleted. The radicado is not
+ * reused (the counter is left as is).
+ */
+export async function borrarPostulacion(id: string, motivo: string, actor: Actor) {
+  const ref = col().doc(id);
+  const d = (await ref.get()).data();
+  if (!d) throw new PostulacionError(404, "Postulación no encontrada");
+  await db().collection("auditoria_borrado_postulaciones").add({
+    postulacion_id: id,
+    radicado: d.radicado ?? null,
+    documento: d.solicitante?.numero_documento ?? null,
+    nombre: d.solicitante?.nombre_completo ?? null,
+    estado: d.estado ?? null,
+    validacion_codigo: d.validacion_codigo ?? null,
+    motivo,
+    por_uid: actor.uid,
+    por_correo: actor.correo,
+    por_nombre: await nombreDe(actor),
+    en: FieldValue.serverTimestamp(),
+  });
+  if (d.validacion_codigo) await db().recursiveDelete(db().collection(COLECCION_VALIDACIONES).doc(String(d.validacion_codigo)));
+  await db().recursiveDelete(ref);
+  cache = null;
+  return { radicado: String(d.radicado) };
+}
+
 // ponytail: per-instance 60 s cache of one projected full scan; move to counters when volume grows past a few thousand.
 let cache: { en: number; filas: FilaMetrica[] } | null = null;
 export async function filasMetricas(): Promise<FilaMetrica[]> {

@@ -11,22 +11,32 @@ import { Field, TextArea } from "@/shared/ui/Field";
 import { RadioGroup } from "@/shared/ui/Radio";
 import {
   CODIGOS_FUENTES, ENTIDADES_ACREEDORAS, ESTADOS_OBLIGACION, FUENTES_RECURSOS, MODALIDAD_DEUDORES, MODALIDADES, MODALIDADES_CON_PROYECTO,
-  opciones, type Modalidad,
+  TIPOS_VIVIENDA, opciones, type Modalidad,
 } from "../domain/catalogos";
 import { AUTORIZACION_GIRO, DECLARACION, DECLARACION_TITULO, DECLARACION_VERSION, NOTA_FORMATO } from "../domain/texto";
-import { CampoMoneda, CampoSelect } from "./campos";
+import { CampoEntidad, CampoMoneda, CampoSelect } from "./campos";
 
 const P = "postulacion.";
 
 /** Step 3: sections 3, 4, 4.1, 5 and 5.1 of the format; on creation also consent, sworn declaration (6) and signature. */
 export function PasoSubsidio({ creacion }: { creacion: boolean }) {
-  const { register } = useFormContext<FieldValues>();
+  const { register, setValue } = useFormContext<FieldValues>();
   const error = useError();
   const modalidad = useWatch({ name: P + "modalidad" }) as Modalidad | "";
   const fuentes = (useWatch({ name: P + "fuentes" }) as string[] | undefined) ?? [];
   const recursos = (useWatch({ name: P + "recursos" }) as Record<string, { valor?: string }> | undefined) ?? {};
   const total = fuentes.reduce((s, f) => s + (parsearIngresoCop(recursos[f]?.valor ?? "") ?? 0), 0);
   const ayudaFuentes = useAyuda("Fuentes de recursos");
+  const tipo = useWatch({ name: P + "tipo_vivienda" }) as string | undefined;
+  // The value of the other project type is 0 (not asked).
+  const registroTipo = register(P + "tipo_vivienda");
+  const tipoVivienda = {
+    ...registroTipo,
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      setValue(P + (e.target.value === "vis" ? "valor_vip" : "valor_vis"), "0", { shouldDirty: true });
+      return registroTipo.onChange(e);
+    },
+  };
 
   return (
     <div className="flex flex-col gap-10">
@@ -60,8 +70,11 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
         <Seccion titulo="Datos del proyecto de vivienda">
           <CampoTexto name={P + "proyecto_nombre"} label="Nombre del proyecto habitacional" />
           <CampoTexto name={P + "constructora"} label="Nombre de la constructora" />
-          <CampoMoneda name={P + "valor_vis"} label="Valor de la solución de vivienda VIS" />
-          <CampoMoneda name={P + "valor_vip"} label="Valor de la solución de vivienda VIP" />
+          <div className="sm:col-span-2">
+            <RadioGroup legend="¿A qué tipo de proyecto aplicará?" name={P + "tipo_vivienda"} options={opciones(TIPOS_VIVIENDA)} error={error(P + "tipo_vivienda")} inputProps={tipoVivienda} />
+          </div>
+          <CampoMoneda name={P + "valor_vis"} label="Valor de la solución de vivienda VIS" disabled={tipo !== "vis"} hint={tipo === "vip" ? "No aplica: el proyecto es VIP (queda en 0)" : tipo ? undefined : "Primero elija el tipo de proyecto"} />
+          <CampoMoneda name={P + "valor_vip"} label="Valor de la solución de vivienda VIP" disabled={tipo !== "vip"} hint={tipo === "vis" ? "No aplica: el proyecto es VIS (queda en 0)" : tipo ? undefined : "Primero elija el tipo de proyecto"} />
         </Seccion>
       )}
 
@@ -85,7 +98,7 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
           <div key={f} className="grid gap-4 rounded-lg border border-border p-4 sm:grid-cols-2">
             <p className="font-bold sm:col-span-2">{FUENTES_RECURSOS[f].etiqueta}</p>
             <CampoMoneda name={`${P}recursos.${f}.valor`} label={`Valor de ${FUENTES_RECURSOS[f].etiqueta.toLowerCase()}`} />
-            <CampoTexto name={`${P}recursos.${f}.entidad`} label={`${FUENTES_RECURSOS[f].entidad} (${FUENTES_RECURSOS[f].etiqueta.toLowerCase()})`} />
+            <CampoEntidad name={`${P}recursos.${f}.entidad`} label={`${FUENTES_RECURSOS[f].entidad} (${FUENTES_RECURSOS[f].etiqueta.toLowerCase()})`} tipos={FUENTES_RECURSOS[f].tipos} />
             {f === "subsidio_familiar" && <CampoTexto name={`${P}recursos.${f}.resolucion`} label="Resolución o acta y fecha de expedición" />}
           </div>
         ))}

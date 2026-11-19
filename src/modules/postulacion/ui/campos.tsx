@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { Combobox } from "@/shared/ui/Combobox";
+import entidades from "../catalogo/entidades.json";
+import type { TipoEntidad } from "../domain/catalogos";
 import { formatoCop } from "@/modules/cierre-financiero/domain/smlmv";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 import { parsearIngresoCop } from "@/shared/normalizacion/texto";
@@ -18,7 +20,7 @@ export const SI_NO: Option[] = [
 ];
 
 /** Money: shown and stored as plain digits (S5); the hint reads it back formatted so the person can check it. */
-export function CampoMoneda({ name, label, hint }: { name: string; label: string; hint?: string }) {
+export function CampoMoneda({ name, label, hint, disabled }: { name: string; label: string; hint?: string; disabled?: boolean }) {
   const valor = useWatch({ name }) as string | undefined;
   const n = valor ? parsearIngresoCop(String(valor)) : null;
   return (
@@ -28,6 +30,7 @@ export function CampoMoneda({ name, label, hint }: { name: string; label: string
       inputMode="numeric"
       autoComplete="off"
       placeholder="Ejemplo: 1500000"
+      disabled={disabled}
       hint={n !== null ? `Valor: ${formatoCop(n)}` : (hint ?? "Solo números, sin puntos ni signo $")}
       normalizar={(v) => {
         const p = parsearIngresoCop(v);
@@ -87,6 +90,56 @@ export function CampoMunicipio({ name, label, exterior = false }: { name: string
       render={({ field }) => (
         <Field label={label} hint="Escriba el municipio y elíjalo de la lista" error={error}>
           {(a11y) => <Combobox {...a11y} options={opciones} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} />}
+        </Field>
+      )}
+    />
+  );
+}
+
+const OTRA = "__otra";
+
+/**
+ * Entity of a source of resources: searchable list of the entities of Colombia of the kinds in `tipos` (Superfinanciera
+ * and cajas de compensación), plus "Otra entidad" to type a name that is not listed. Stores the entity name.
+ */
+export function CampoEntidad({ name, label, tipos }: { name: string; label: string; tipos: readonly TipoEntidad[] }) {
+  const { control, setValue } = useFormContext<FieldValues>();
+  const error = useError()(name);
+  const valor = (useWatch({ name }) as string | undefined) ?? "";
+  const opciones = useMemo(() => entidades.filter((e) => (tipos as string[]).includes(e.tipo)).map((e) => ({ value: e.nombre, label: e.nombre, keywords: e.keywords })), [tipos]);
+  // Free text when "Otra" was chosen or a saved name is not in the list.
+  const [otra, setOtra] = useState(() => !!valor && !opciones.some((o) => o.value === valor));
+  if (!tipos.length || otra)
+    return (
+      <div className="flex flex-col gap-1">
+        <CampoTexto name={name} label={label} hint={tipos.length ? "Escriba el nombre de la entidad" : undefined} />
+        {tipos.length > 0 && (
+          <button type="button" onClick={() => { setOtra(false); setValue(name, "", { shouldDirty: true }); }} className="self-start text-sm font-semibold text-primary underline underline-offset-2">
+            Elegir de la lista de entidades
+          </button>
+        )}
+      </div>
+    );
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <Field label={label} hint="Escriba para buscar la entidad; si no está, elija «Otra entidad»" error={error}>
+          {(a11y) => (
+            <Combobox
+              {...a11y}
+              options={[...opciones, { value: OTRA, label: "Otra entidad (escribir el nombre)", keywords: "otra otro no esta" }]}
+              value={field.value ?? ""}
+              limite={200}
+              onChange={(v) => {
+                if (v !== OTRA) return field.onChange(v);
+                setOtra(true);
+                field.onChange("");
+              }}
+              alDescartarTexto={field.onBlur}
+            />
+          )}
         </Field>
       )}
     />

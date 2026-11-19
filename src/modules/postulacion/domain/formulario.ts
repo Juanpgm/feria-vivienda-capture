@@ -24,7 +24,7 @@ export function valoresIniciales(documento: string, tipo = "cc"): Valores {
     hogar: { integrantes: [] },
     postulacion: {
       modalidad: "", observaciones: "", entidad_acreedora: "", numero_obligacion: "", programa_obligacion: "", saldo_adeudado: "",
-      estado_obligacion: "", autoriza_giro: false, proyecto_nombre: "", constructora: "", valor_vis: "", valor_vip: "",
+      estado_obligacion: "", autoriza_giro: false, proyecto_nombre: "", constructora: "", tipo_vivienda: "", valor_vis: "", valor_vip: "",
       fuentes: [], recursos: recursosVacios(),
     },
     consentimiento: { acepta_tratamiento: false, acepta_datos_sensibles: false, version: "" },
@@ -59,7 +59,7 @@ export function aValores(r: Guardado): Valores {
       observaciones: str(r.postulacion.observaciones),
       entidad_acreedora: str(o.entidad_acreedora), numero_obligacion: str(o.numero_obligacion), programa_obligacion: str(o.programa),
       saldo_adeudado: str(o.saldo_adeudado), estado_obligacion: str(o.estado), autoriza_giro: o.autoriza_giro === true,
-      proyecto_nombre: str(pr.nombre), constructora: str(pr.constructora), valor_vis: str(pr.valor_vis), valor_vip: str(pr.valor_vip),
+      proyecto_nombre: str(pr.nombre), constructora: str(pr.constructora), tipo_vivienda: str(pr.tipo_vivienda), valor_vis: str(pr.valor_vis), valor_vip: str(pr.valor_vip),
       fuentes: [...r.postulacion.fuentes],
       recursos,
     },

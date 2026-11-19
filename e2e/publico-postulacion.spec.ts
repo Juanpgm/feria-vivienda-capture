@@ -69,10 +69,22 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await page.getByLabel("Teléfono o celular", exacto).fill("3001234567");
   // A barrio named in the address is used when the geocoder cannot locate it; the estrato then comes from the barrio.
   const dir = page.getByLabel("Dirección de domicilio actual", exacto);
+  const comuna = page.getByRole("combobox", { name: "Comuna o corregimiento", ...exacto });
+  // Without an address there is nothing to choose: comuna, barrio and estrato stay hidden.
+  await expect(comuna).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Estrato", ...exacto })).toHaveCount(0);
+  // An address that cannot be located shows them, to be filled by hand.
+  await dir.fill("Carrera 99 # 9-99");
+  await expect(page.getByTestId("aviso-ubicacion")).toContainText("No pudimos ubicar la dirección");
+  await expect(comuna).toBeVisible();
+  // Erasing the address hides them again.
+  await dir.fill("");
+  await expect(comuna).toHaveCount(0);
+  await expect(page.getByTestId("aviso-ubicacion")).toHaveCount(0);
   // Searched as soon as the person stops typing (no need to leave the field), with a visible notice meanwhile.
   await dir.fill("Av 5 Norte # 5N-02, Barrio Centenario");
   await expect(page.getByTestId("aviso-ubicacion")).toHaveText(/Buscando la comuna y el barrio de esta dirección/);
-  await expect(page.getByRole("combobox", { name: "Comuna o corregimiento", ...exacto })).toBeDisabled();
+  await expect(comuna).toHaveCount(0); // nothing to choose until the search answers
   await expect(page.getByTestId("aviso-ubicacion")).toHaveText("Ubicamos la dirección en el barrio Centenario (barrio escrito en la dirección) y lo seleccionamos abajo. Cámbielo si no es correcto.");
   await expect(dir).toBeFocused();
   await expect(page.getByRole("combobox", { name: "Barrio o vereda", ...exacto })).toHaveValue("Centenario");
@@ -134,11 +146,36 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await expect(page.getByRole("heading", { level: 2, name: "Subsidio y cierre financiero" })).toBeVisible();
   await page.getByRole("radio", { name: "Adquisición de vivienda nueva" }).check();
   await expect(page.getByRole("heading", { name: "Datos del proyecto de vivienda" })).toBeVisible();
+  // First the project type; only its value is enabled and the other one is 0.
+  const vis = page.getByLabel("Valor de la solución de vivienda VIS", exacto);
+  const vip = page.getByLabel("Valor de la solución de vivienda VIP", exacto);
+  await expect(vis).toBeDisabled();
+  await expect(vip).toBeDisabled();
+  await page.getByRole("radio", { name: "VIP (vivienda de interés prioritario)" }).check();
+  await expect(vip).toBeEnabled();
+  await expect(vis).toBeDisabled();
+  await expect(vis).toHaveValue("0");
+  await vip.fill("95.000.000");
   await expect(page.getByRole("heading", { name: "Datos de la obligación" })).toHaveCount(0);
   await page.getByRole("checkbox", { name: "Ahorro programado" }).check();
   await page.getByRole("checkbox", { name: "Cesantías" }).check();
   await page.getByLabel("Valor de ahorro programado", exacto).fill("2.000.000");
   await page.getByLabel("Valor de cesantías", exacto).fill("1,000,000");
+  // Entities are picked from the official list (Superfinanciera / cajas de compensación) of the right kind.
+  const banco = page.getByRole("combobox", { name: "Entidad financiera (ahorro programado)", ...exacto });
+  await banco.fill("bancol");
+  await expect(page.getByRole("listbox").getByRole("option", { name: "Bancolombia" })).toBeVisible();
+  await banco.press("Enter");
+  await expect(banco).toHaveValue("Bancolombia");
+  const fondo = page.getByRole("combobox", { name: "Fondo de cesantías (cesantías)", ...exacto });
+  await fondo.fill("porv");
+  await expect(page.getByRole("listbox").getByRole("option").first()).toHaveText("Porvenir (fondo de pensiones y cesantías)");
+  await fondo.fill("bancolombia");
+  await expect(page.getByRole("listbox").getByRole("option", { name: "Bancolombia" })).toHaveCount(0); // a bank is not a fondo de cesantías
+  // Not listed: "Otra entidad" lets the name be typed.
+  await fondo.fill("otra entidad");
+  await page.getByRole("listbox").getByRole("option", { name: "Otra entidad (escribir el nombre)" }).click();
+  await page.getByLabel("Fondo de cesantías (cesantías)", exacto).fill("Fondo de empleados XYZ");
   await expect(page.getByText("$3.000.000 COP")).toBeVisible();
 
   await page.getByRole("button", { name: "Enviar postulación" }).click();
@@ -161,7 +198,9 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
     nombres: "Ana María", numero_documento: DOC, ingreso_mensual: "1200000", lugar_expedicion: "76001",
     codigo_division: "19", id_barrio_vereda: "1908", estrato: "4", latitud: 3.427998, longitud: -76.545395, direccion_catastral: "CL 5 # 38 - 20",
   });
-  expect(cuerpo.valores.postulacion).toMatchObject({ modalidad: "1", fuentes: ["ahorro_programado", "cesantias"] });
+  expect(cuerpo.valores.postulacion).toMatchObject({ modalidad: "1", fuentes: ["ahorro_programado", "cesantias"], tipo_vivienda: "vip", valor_vis: "0", valor_vip: "95000000" });
+  expect((cuerpo.valores.postulacion.recursos as Record<string, { entidad: string }>).ahorro_programado.entidad).toBe("Bancolombia");
+  expect((cuerpo.valores.postulacion.recursos as Record<string, { entidad: string }>).cesantias.entidad).toBe("Fondo de empleados XYZ");
   expect((cuerpo.valores.postulacion.recursos as Record<string, { valor: string }>).cesantias.valor).toBe("1000000");
   expect(cuerpo.valores.firma).toEqual({ metodo_firma: "dibujada" });
   expect(cuerpo.valores.documentos).toBeUndefined();

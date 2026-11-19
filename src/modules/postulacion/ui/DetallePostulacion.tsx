@@ -8,6 +8,7 @@ import {
   type FuenteRecurso,
 } from "../domain/catalogos";
 import type { PostulacionVista } from "../server/postulaciones.repo";
+import { BotonBorrar } from "./BotonBorrar";
 import { BotonValidar } from "./BotonValidar";
 
 type Fila = [string, unknown];
@@ -44,7 +45,7 @@ export function EstadoBadge({ estado }: { estado: keyof typeof ESTADOS_POSTULACI
   );
 }
 
-export function DetallePostulacion({ p }: { p: PostulacionVista }) {
+export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista; esAdmin?: boolean }) {
   const s = p.solicitante;
   const po = p.postulacion;
   const condiciones = (s.condiciones_especiales as string[]).map((c) => de(CONDICIONES_ESPECIALES, c) as string);
@@ -64,6 +65,7 @@ export function DetallePostulacion({ p }: { p: PostulacionVista }) {
         </div>
         <div className="flex flex-col items-end gap-2">
           <EstadoBadge estado={p.estado} />
+          {esAdmin && <BotonBorrar id={p.id} radicado={p.radicado} nombre={String(s.nombre_completo)} despues="listado" />}
           {p.estado === "sin_validar" && (
             <Link href={`/postulaciones/${p.id}/editar`} className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2">
               Editar datos
@@ -160,7 +162,7 @@ export function DetallePostulacion({ p }: { p: PostulacionVista }) {
               ] as Fila[])
             : []),
           ...(po.proyecto
-            ? ([["Proyecto habitacional", po.proyecto.nombre], ["Constructora", po.proyecto.constructora], ["Valor VIS", dinero(po.proyecto.valor_vis)], ["Valor VIP", dinero(po.proyecto.valor_vip)]] as Fila[])
+            ? ([["Proyecto habitacional", po.proyecto.nombre], ["Constructora", po.proyecto.constructora], ["Tipo de proyecto", po.proyecto.tipo_vivienda ? String(po.proyecto.tipo_vivienda).toUpperCase() : null], ["Valor VIS", dinero(po.proyecto.valor_vis)], ["Valor VIP", dinero(po.proyecto.valor_vip)]] as Fila[])
             : []),
         ]}
       />

@@ -126,6 +126,30 @@ export function PasoInmueble({
   }, [direccion, ubicar]);
 
   const buscando = estado?.tipo === "buscando";
+  // Postulación: comuna and barrio appear only once the address was located (pre-filled, editable) or could not be
+  // located (to be chosen by hand); never without an address. The estrato appears with the barrio.
+  const hayDireccion = direccion.trim().length >= 5;
+  const mostrarUbicacion = !ubicar || (hayDireccion && (!!division || !!barrio || estado?.tipo === "no_hallado" || estado?.tipo === "sugerencia"));
+  const mostrarEstrato = !ubicar || (mostrarUbicacion && !!barrio);
+
+  // Address erased: what was found for it no longer applies.
+  const { subscribe } = useFormContext<FieldValues>();
+  useEffect(() => {
+    if (!ubicar) return;
+    return subscribe({
+      name: P + "direccion",
+      formState: { values: true },
+      callback: ({ values }) => {
+        const v = String((values as Record<string, Record<string, unknown>>)[P.slice(0, -1)]?.direccion ?? "");
+        if (v.trim()) return;
+        consulta.current++;
+        buscada.current = "";
+        automatico.current = "";
+        setEstado(null);
+        for (const k of ["codigo_division", "id_barrio_vereda", "estrato", "latitud", "longitud", "direccion_catastral"]) if (getValues(P + k)) setValue(P + k, "", { shouldDirty: true });
+      },
+    });
+  }, [ubicar, subscribe, P, getValues, setValue]);
   const desde = (h: Hallazgo) => (h.fuente === "alcaldia" ? " (geocodificador de la Alcaldía)" : " (barrio escrito en la dirección)");
   const avisoUbicacion =
     !ubicar || !estado ? null
@@ -177,6 +201,7 @@ export function PasoInmueble({
         </div>
       </Seccion>
 
+      {mostrarUbicacion && (
       <Seccion sub titulo="Ubicación">
         <Controller
           control={control}
@@ -227,7 +252,9 @@ export function PasoInmueble({
           )}
         />
       </Seccion>
+      )}
 
+      {mostrarEstrato && (
       <section className="flex flex-col gap-4">
         <h4 className="text-lg font-bold text-primary-strong">Estrato</h4>
         {estratoAuto ? (
@@ -241,6 +268,7 @@ export function PasoInmueble({
           </>
         )}
       </section>
+      )}
     </div>
   );
 }
