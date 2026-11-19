@@ -63,7 +63,10 @@ export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-muted">Postulación</p>
-          <h1 className="text-3xl font-bold tabular-nums text-primary-strong">{p.radicado}</h1>
+          <h1 className="text-3xl font-bold tabular-nums text-primary-strong">
+            {p.radicado}
+            {p.prueba && <span className="ml-3 rounded bg-surface px-2 py-0.5 align-middle text-sm font-semibold text-muted">Prueba</span>}
+          </h1>
           <p className="mt-1 text-lg font-semibold">{s.nombre_completo}</p>
           <p className="text-sm text-muted">
             {de(TIPOS_DOCUMENTO_SOLICITANTE, s.tipo_documento) as string} {s.numero_documento} · Registrada {p.creado_en ? fechaHoraBogota(p.creado_en) : ""} ·{" "}

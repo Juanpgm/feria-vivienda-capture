@@ -26,6 +26,13 @@ export const PREFIJO_RADICADO = "PSE";
 const db = () => adminDb();
 const col = () => db().collection(COLECCION);
 const refContador = () => db().collection("contadores").doc("radicado_postulaciones");
+/**
+ * Postulaciones created by a test account (usuarios/{uid}.prueba = true) number from their own series, PSE-020001 on,
+ * so test data never takes a real consecutive (same idea as the test citizen's FV-005001 series).
+ */
+export const BASE_PRUEBAS = 20_000;
+const refContadorPruebas = () => db().collection("contadores").doc("radicado_postulaciones_pruebas");
+const esCuentaDePrueba = async (actor: Actor | null) => !!actor && (await db().collection("usuarios").doc(actor.uid).get()).data()?.prueba === true;
 const refConfig = () => db().collection("configuracion").doc("postulaciones");
 
 export class PostulacionError extends Error {
@@ -145,20 +152,23 @@ export async function crearPostulacion(e: Envio, actor: Actor | null) {
   const ref = col().doc(id);
   const nombre = actor ? await nombreDe(actor) : null;
   const por = actor ? actor.correo : "ciudadano";
+  const prueba = await esCuentaDePrueba(actor);
+  const contadorRef = prueba ? refContadorPruebas() : refContador();
   return db().runTransaction(async (tx) => {
-    const [existente, contador, integrante] = await Promise.all([tx.get(ref), tx.get(refContador()), tx.get(comoIntegrante(e.datos.solicitante.numero_documento))]);
+    const [existente, contador, integrante] = await Promise.all([tx.get(ref), tx.get(contadorRef), tx.get(comoIntegrante(e.datos.solicitante.numero_documento))]);
     if (existente.exists) throw new PostulacionError(409, "Ya existe una postulación con este documento", { radicado: existente.data()?.radicado });
     // A person already counted in another household cannot apply on their own.
     if (!integrante.empty) throw new PostulacionError(409, "Este documento ya hace parte del grupo familiar de otra postulación. No puede registrar una postulación propia.");
-    const numero = ((contador.data()?.ultimo as number | undefined) ?? 0) + 1;
+    const numero = ((contador.data()?.ultimo as number | undefined) ?? (prueba ? BASE_PRUEBAS : 0)) + 1;
     const radicado = formatearRadicado(PREFIJO_RADICADO, numero);
-    tx.set(refContador(), { ultimo: numero, actualizado_en: FieldValue.serverTimestamp() });
+    tx.set(contadorRef, { ultimo: numero, actualizado_en: FieldValue.serverTimestamp() });
     tx.create(ref, {
       ...e.datos,
       documentos_integrantes: documentosIntegrantes(e.datos),
       id,
       radicado,
       radicado_numero: numero,
+      prueba,
       estado: "sin_validar" satisfies EstadoPostulacion,
       faltantes: e.faltantes,
       completa: e.faltantes.length === 0,
@@ -226,7 +236,7 @@ export type Validacion = {
   codigo_validacion: string; funcionario_nombre: string; funcionario_correo: string; validado_en: string; folios_anexos: number | null; texto_version: string;
 };
 export type PostulacionVista = DatosPostulacion & {
-  id: string; radicado: string; estado: EstadoPostulacion; faltantes: Faltante[]; origen: string; adjuntos: string[];
+  id: string; radicado: string; estado: EstadoPostulacion; faltantes: Faltante[]; origen: string; adjuntos: string[]; prueba?: boolean;
   firma: Record<string, unknown>; consentimiento: Record<string, unknown>; declaracion: Record<string, unknown>;
   creado_en: string | null; actualizado_en: string | null; creado_por_nombre: string | null;
   historial: { id: string; tipo: string; por_nombre: string; en: string | null; faltantes?: number }[];
@@ -234,19 +244,19 @@ export type PostulacionVista = DatosPostulacion & {
 };
 
 export type FilaPostulacion = {
-  id: string; radicado: string; nombre: string; documento: string; modalidad: string; estado: EstadoPostulacion; faltantes: number; creado_en: string | null; origen: string;
+  id: string; radicado: string; nombre: string; documento: string; modalidad: string; estado: EstadoPostulacion; faltantes: number; creado_en: string | null; origen: string; prueba: boolean;
 };
 
 /** Newest first. ponytail: one bounded scan (500) filtered in memory; paginate with a cursor when volume grows. */
 export async function listarPostulaciones({ estado, q }: { estado?: string; q?: string } = {}): Promise<FilaPostulacion[]> {
   // Filtered in memory (no composite index to deploy).
-  const snap = await col().orderBy("radicado_numero", "desc").limit(500).select("radicado", "solicitante.nombre_completo", "solicitante.numero_documento", "postulacion.modalidad", "estado", "faltantes", "creado_en", "origen").get();
+  const snap = await col().orderBy("radicado_numero", "desc").limit(500).select("radicado", "solicitante.nombre_completo", "solicitante.numero_documento", "postulacion.modalidad", "estado", "faltantes", "creado_en", "origen", "prueba").get();
   const filas = snap.docs.map((s) => {
     const d = s.data();
     return {
       id: s.id, radicado: String(d.radicado), nombre: String(d.solicitante?.nombre_completo ?? ""), documento: String(d.solicitante?.numero_documento ?? ""),
       modalidad: String(d.postulacion?.modalidad ?? ""), estado: d.estado as EstadoPostulacion, faltantes: Array.isArray(d.faltantes) ? d.faltantes.length : 0,
-      creado_en: aIso(d.creado_en), origen: String(d.origen ?? ""),
+      creado_en: aIso(d.creado_en), origen: String(d.origen ?? ""), prueba: d.prueba === true,
     };
   });
   const t = q?.trim().toUpperCase();
@@ -289,9 +299,10 @@ export async function filasMetricas(): Promise<FilaMetrica[]> {
   const snap = await col()
     .select("estado", "fecha_bogota", "origen", "faltantes", "solicitante.nombre_division", "solicitante.estrato", "solicitante.genero", "solicitante.condiciones_especiales",
       "solicitante.sisben", "solicitante.sisben_grupo", "solicitante.caja_compensacion", "hogar.personas", "hogar.rango_ingresos_smlmv", "postulacion.modalidad",
-      "postulacion.recursos", "postulacion.total_aportes", "validado_por_nombre")
+      "postulacion.recursos", "postulacion.total_aportes", "validado_por_nombre", "prueba")
     .get();
-  cache = { en: Date.now(), filas: snap.docs.map((d) => d.data() as FilaMetrica) };
+  // Test-account postulaciones (PSE-020001 series) never count in the metrics.
+  cache = { en: Date.now(), filas: snap.docs.map((d) => d.data()).filter((d) => d.prueba !== true) as FilaMetrica[] };
   return cache.filas;
 }
 

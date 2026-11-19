@@ -54,7 +54,8 @@ test("a staff member creates an incomplete postulación: it cannot be validated 
   await expect(page.getByText("verificación manual", { exact: false })).toHaveCount(0);
   await firmar(page);
   await page.getByRole("button", { name: "Enviar postulación" }).click();
-  await expect(page.getByTestId("radicado")).toHaveText(/^PSE-\d{6}$/);
+  // Created with the test account: numbered from the test series, never a real consecutive.
+  await expect(page.getByTestId("radicado")).toHaveText(/^PSE-02\d{4}$/);
 
   await page.getByRole("link", { name: "Ver la postulación" }).click();
   await page.waitForURL(/\/postulaciones\/[0-9a-f-]{36}$/);
@@ -148,7 +149,8 @@ test("list, public status and metrics reflect the validated postulación", async
   await expect(page.getByText("1 postulación(es)")).toBeVisible();
   await page.goto("/dashboard/postulaciones");
   await expect(page.getByRole("heading", { name: "Validaciones por funcionario" })).toBeVisible();
-  await expect(page.getByText("PRUEBA E2E Funcionario")).toBeVisible();
+  // Test-account postulaciones (PSE-020001 series) are left out of the metrics.
+  await expect(page.getByText("PRUEBA E2E Funcionario")).toHaveCount(0);
   // The public lookup (dev server with E2E_POSTULACION_ABIERTA=1) only tells the status.
   await page.context().clearCookies();
   await page.goto("/postulacion");

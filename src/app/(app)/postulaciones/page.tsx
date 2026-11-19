@@ -55,7 +55,7 @@ export default async function Postulaciones({ searchParams }: { searchParams: Pr
             <tbody>
               {filas.map((f) => (
                 <tr key={f.id} className="border-t border-border">
-                  <td className="p-2 tabular-nums"><Link href={`/postulaciones/${f.id}`} className={enlace}>{f.radicado}</Link></td>
+                  <td className="p-2 tabular-nums"><Link href={`/postulaciones/${f.id}`} className={enlace}>{f.radicado}</Link>{f.prueba && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs font-semibold text-muted">Prueba</span>}</td>
                   <td className="p-2 font-medium">{f.nombre}</td>
                   <td className="p-2 tabular-nums">{f.documento}</td>
                   <td className="p-2">{MODALIDADES[f.modalidad as Modalidad] ?? f.modalidad}</td>
