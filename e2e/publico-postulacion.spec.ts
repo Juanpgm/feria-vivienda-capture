@@ -205,3 +205,17 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   expect(cuerpo.valores.firma).toEqual({ metodo_firma: "dibujada" });
   expect(cuerpo.valores.documentos).toBeUndefined();
 });
+
+for (const [nombre, vp] of [["laptop baja", { width: 1280, height: 640 }], ["celular pequeño", { width: 360, height: 600 }]] as const) {
+  test(`the entry modal fits a short screen (${nombre}): Continuar is visible and works with a click`, async ({ page }) => {
+    await page.setViewportSize(vp);
+    await servidor(page);
+    await page.goto("/postulacion");
+    const modal = page.getByRole("dialog", { name: "Nueva postulación" });
+    await modal.getByLabel("Número de documento", exacto).fill(DOC);
+    const continuar = modal.getByRole("button", { name: "Continuar" });
+    await expect(continuar).toBeInViewport({ ratio: 1 });
+    await continuar.click();
+    await expect(page.getByRole("heading", { level: 2, name: "Datos del solicitante" })).toBeVisible();
+  });
+}

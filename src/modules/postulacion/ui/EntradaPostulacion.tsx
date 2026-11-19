@@ -58,18 +58,17 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
         ref={dialogo}
         aria-labelledby="entrada-titulo"
         onCancel={(e) => e.preventDefault()}
-        className="m-auto w-[min(34rem,calc(100%-2rem))] overflow-hidden rounded-xl border border-border bg-bg p-0 text-text shadow-[0_24px_60px_-20px_rgb(0_54_95/0.6)] backdrop:bg-primary-strong/60 backdrop:backdrop-blur-sm"
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100%-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-bg p-0 text-text shadow-[0_24px_60px_-20px_rgb(0_54_95/0.6)] backdrop:bg-primary-strong/60 backdrop:backdrop-blur-sm open:flex"
       >
-        <div className="relative bg-[#00365f] px-6 pb-5 pt-5 text-white">
+        <div className="relative shrink-0 bg-[#00365f] px-6 pb-5 pt-5 text-white">
           <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-accent" />
           <p className="text-sm text-white/80">Subsidio Distrital de Vivienda</p>
           <h2 id="entrada-titulo" className="mt-1 text-2xl font-bold">
             {existente ? "Ya existe una postulación" : "Nueva postulación"}
           </h2>
         </div>
-        <div className="p-6">
         {existente ? (
-          <div className="mt-4 flex flex-col gap-4">
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6">
             <p>Este documento ya tiene una postulación registrada. No se puede crear otra.</p>
             <dl className="grid grid-cols-[8rem_1fr] gap-1">
               <dt className="text-sm text-muted">Radicado</dt>
@@ -93,7 +92,8 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
             </div>
           </div>
         ) : (
-          <form onSubmit={consultar} noValidate className="mt-4 flex flex-col gap-4">
+          <form onSubmit={consultar} noValidate className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6">
             <p>Empiece con el documento de quien se postula como jefe del hogar. Revisamos que no tenga ya una postulación.</p>
             <div className="rounded-lg bg-surface p-4 text-sm">
               <p className="font-semibold">Tenga a mano</p>
@@ -110,14 +110,14 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
             <Field label="Número de documento" error={error || undefined}>
               {(a11y) => <TextInput {...a11y} autoFocus inputMode="numeric" autoComplete="off" value={numero} onChange={(e) => setNumero(e.target.value)} />}
             </Field>
-            <div>
-              <Button type="submit" disabled={consultando || !tipo}>
+            </div>
+            <div className="shrink-0 border-t border-border bg-bg px-6 py-4">
+              <Button type="submit" disabled={consultando || !tipo} className="w-full sm:w-auto sm:px-8">
                 {consultando ? "Revisando…" : "Continuar"}
               </Button>
             </div>
           </form>
         )}
-        </div>
       </dialog>
     </>
   );
