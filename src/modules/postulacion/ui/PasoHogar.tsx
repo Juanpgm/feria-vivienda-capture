@@ -27,20 +27,27 @@ export function PasoHogar() {
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-muted">
-        Agregue a cada persona que vive con usted: cónyuge o compañero(a), luego hijos y otros familiares. Usted ya está registrado como jefe del hogar.
-        Si vive solo, puede continuar sin agregar a nadie.
-      </p>
+      <p className="text-muted">Agréguelas en este orden: cónyuge o compañero(a), hijos y otros familiares. Usted ya está registrado como jefe del hogar.</p>
       {error("hogar.integrantes") && <p role="alert" className="font-medium text-danger">{error("hogar.integrantes")}</p>}
 
       {fields.map((f, i) => {
         const P = `hogar.integrantes.${i}.`;
+        const m = integrantes[i] ?? {};
+        const nombre = String(m.nombres_apellidos ?? "").trim();
+        const parentesco = PARENTESCOS[String(m.parentesco ?? "") as keyof typeof PARENTESCOS];
+        const iniciales = nombre.split(/s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || String(i + 1);
         return (
-          <section key={f.id} aria-labelledby={`integrante-${f.id}`} className="flex flex-col gap-4 rounded-lg border border-border p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 id={`integrante-${f.id}`} className="text-lg font-bold text-primary-strong">
-                Integrante {i + 1}
-              </h3>
+          <section key={f.id} aria-labelledby={`integrante-${f.id}`} className="flex flex-col gap-5 rounded-xl border border-border bg-bg p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span aria-hidden="true" className="grid size-10 shrink-0 place-items-center rounded-full bg-surface font-bold text-primary-strong ring-2 ring-accent">{iniciales}</span>
+                <div className="min-w-0">
+                  <h3 id={`integrante-${f.id}`} className="font-bold text-primary-strong">
+                    Integrante {i + 1}
+                  </h3>
+                  <p className="truncate text-sm text-muted">{nombre ? `${nombre}${parentesco ? `, ${parentesco.toLowerCase()}` : ""}` : "Escriba sus datos"}</p>
+                </div>
+              </div>
               <Button variant="secondary" onClick={() => remove(i)} aria-label={`Quitar integrante ${i + 1}`}>
                 Quitar
               </Button>
@@ -64,11 +71,13 @@ export function PasoHogar() {
       })}
 
       {fields.length < MAX_INTEGRANTES ? (
-        <div>
-          <Button variant="secondary" onClick={() => append({ ...INTEGRANTE_VACIO })}>
-            + Agregar integrante
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={() => append({ ...INTEGRANTE_VACIO })}
+          className="flex min-h-16 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border font-semibold text-primary hover:border-primary hover:bg-surface"
+        >
+          + Agregar integrante
+        </button>
       ) : (
         <p className="text-sm text-muted">El formato admite hasta {MAX_INTEGRANTES} integrantes.</p>
       )}
@@ -77,7 +86,7 @@ export function PasoHogar() {
         <p className="text-sm font-semibold text-muted">Total ingresos del grupo familiar (incluye al solicitante)</p>
         <p className="text-2xl font-bold tabular-nums text-primary-strong">{formatoCop(total)}</p>
         <p className="text-sm text-muted">
-          {fields.length + 1} persona(s) · {rango?.etiqueta}
+          {fields.length + 1} {fields.length ? "personas" : "persona"}, {rango?.etiqueta}
         </p>
       </div>
     </div>

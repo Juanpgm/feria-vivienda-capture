@@ -139,7 +139,7 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
   await expect(page.getByText("Un menor de 18 años se identifica con R.C., T.I. o NUIP (M.E.)")).toBeVisible();
   await page.getByLabel("Tipo de documento (TD)", exacto).selectOption("ti");
-  await expect(page.getByText("$1.500.000 COP")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Total ingresos del grupo familiar" })).toContainText("$1.500.000 COP");
   await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
 
   // Step 3: modality 1 shows the project block; sources are picked first, then their values.
@@ -176,7 +176,7 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await fondo.fill("otra entidad");
   await page.getByRole("listbox").getByRole("option", { name: "Otra entidad (escribir el nombre)" }).click();
   await page.getByLabel("Fondo de cesantías (cesantías)", exacto).fill("Fondo de empleados XYZ");
-  await expect(page.getByText("$3.000.000 COP")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Total aportes del hogar" })).toContainText("$3.000.000 COP");
 
   await page.getByRole("button", { name: "Enviar postulación" }).click();
   await expect(page.getByText("Debe aceptar la declaración bajo juramento para enviar la postulación")).toBeVisible();

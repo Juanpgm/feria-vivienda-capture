@@ -4,7 +4,7 @@ import { useFormContext, useWatch, type FieldValues } from "react-hook-form";
 import { formatoCop } from "@/modules/cierre-financiero/domain/smlmv";
 import { PasoConsentimiento } from "@/modules/consentimiento/ui/PasoConsentimiento";
 import { SeccionFirma } from "@/modules/firma/ui/SeccionFirma";
-import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
+import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 import { parsearIngresoCop } from "@/shared/normalizacion/texto";
 import { useAyuda } from "@/shared/ui/Ayuda";
 import { Field, TextArea } from "@/shared/ui/Field";
@@ -14,7 +14,7 @@ import {
   TIPOS_VIVIENDA, opciones, type Modalidad,
 } from "../domain/catalogos";
 import { AUTORIZACION_GIRO, DECLARACION, DECLARACION_TITULO, DECLARACION_VERSION, NOTA_FORMATO } from "../domain/texto";
-import { CampoEntidad, CampoMoneda, CampoSelect } from "./campos";
+import { CampoEntidad, CampoMoneda, CampoSelect, Grupo } from "./campos";
 
 const P = "postulacion.";
 
@@ -39,17 +39,16 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
   };
 
   return (
-    <div className="flex flex-col gap-10">
-      <section className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Modalidad del subsidio</h3>
+    <div className="flex flex-col gap-8">
+      <Grupo titulo="Modalidad del subsidio" columnas={false} descripcion="Elija el tipo de subsidio que solicita. Según la modalidad le pediremos los datos que correspondan.">
         <RadioGroup lista legend="Modalidad a la que se postula" name={P + "modalidad"} options={opciones(MODALIDADES)} error={error(P + "modalidad")} inputProps={register(P + "modalidad")} />
         <Field label="Observaciones (opcional)" error={error(P + "observaciones")}>
           {(a11y) => <TextArea {...a11y} rows={3} maxLength={1000} {...register(P + "observaciones")} />}
         </Field>
-      </section>
+      </Grupo>
 
       {modalidad === MODALIDAD_DEUDORES && (
-        <Seccion titulo="Datos de la obligación">
+        <Grupo titulo="Datos de la obligación" descripcion="Solo para quien debe un crédito de vivienda al FEV o a la Secretaría de Vivienda.">
           <CampoSelect name={P + "entidad_acreedora"} label="Entidad acreedora" options={opciones(ENTIDADES_ACREEDORAS)} />
           <CampoTexto name={P + "numero_obligacion"} label="Número de obligación o crédito" />
           <CampoTexto name={P + "programa_obligacion"} label="Programa o proyecto de vivienda de la obligación" />
@@ -63,11 +62,11 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
               Autorizo
             </label>
           </div>
-        </Seccion>
+        </Grupo>
       )}
 
       {MODALIDADES_CON_PROYECTO.includes(modalidad as Modalidad) && (
-        <Seccion titulo="Datos del proyecto de vivienda">
+        <Grupo titulo="Datos del proyecto de vivienda" descripcion="La vivienda que quiere adquirir.">
           <CampoTexto name={P + "proyecto_nombre"} label="Nombre del proyecto habitacional" />
           <CampoTexto name={P + "constructora"} label="Nombre de la constructora" />
           <div className="sm:col-span-2">
@@ -75,11 +74,10 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
           </div>
           <CampoMoneda name={P + "valor_vis"} label="Valor de la solución de vivienda VIS" disabled={tipo !== "vis"} hint={tipo === "vip" ? "No aplica: el proyecto es VIP (queda en 0)" : tipo ? undefined : "Primero elija el tipo de proyecto"} />
           <CampoMoneda name={P + "valor_vip"} label="Valor de la solución de vivienda VIP" disabled={tipo !== "vip"} hint={tipo === "vis" ? "No aplica: el proyecto es VIS (queda en 0)" : tipo ? undefined : "Primero elija el tipo de proyecto"} />
-        </Seccion>
+        </Grupo>
       )}
 
-      <section className="flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-primary-strong">Recursos para el cierre financiero</h3>
+      <Grupo titulo="Recursos para el cierre financiero" columnas={false} descripcion="El dinero con que cuenta para completar el valor de la vivienda.">
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-semibold">Fuentes de recursos</legend>
           {ayudaFuentes.boton && <div className="flex items-center">{ayudaFuentes.boton}<span className="text-sm text-muted">¿Qué significa?</span></div>}
@@ -106,14 +104,13 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
           <p className="text-sm font-semibold text-muted">Total aportes del hogar</p>
           <p className="text-2xl font-bold tabular-nums text-primary-strong">{formatoCop(total)}</p>
         </div>
-      </section>
+      </Grupo>
 
       {creacion && (
         <>
-          <section className="flex flex-col gap-4">
-            <h3 className="text-lg font-bold text-primary-strong">Autorización de tratamiento de datos</h3>
+          <Grupo titulo="Autorización de tratamiento de datos" columnas={false}>
             <PasoConsentimiento />
-          </section>
+          </Grupo>
           <Declaracion />
           <SeccionFirma />
           <p className="text-sm text-muted">{NOTA_FORMATO}</p>
@@ -128,8 +125,7 @@ function Declaracion() {
   const error = useError()("declaracion.acepta");
   const r = register("declaracion.acepta");
   return (
-    <section className="flex flex-col gap-3">
-      <h3 className="text-lg font-bold text-primary-strong">{DECLARACION_TITULO}</h3>
+    <Grupo titulo={DECLARACION_TITULO} columnas={false}>
       {DECLARACION.map((p) => (
         <p key={p.slice(0, 20)}>{p}</p>
       ))}
@@ -147,6 +143,6 @@ function Declaracion() {
         Declaro bajo la gravedad de juramento que la información es verídica y acepto lo anterior
       </label>
       {error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}
-    </section>
+    </Grupo>
   );
 }

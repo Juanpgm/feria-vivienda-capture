@@ -19,15 +19,16 @@ import { validarSecciones, type Valores } from "../domain/armar";
 import { ESTADOS_POSTULACION } from "../domain/catalogos";
 import type { Seccion } from "../domain/schema";
 import { valoresIniciales } from "../domain/formulario";
+import { Ficha, FichaEscritorio } from "./Ficha";
 import { PasoHogar } from "./PasoHogar";
 import { PasoSolicitante } from "./PasoSolicitante";
 import { PasoSubsidio } from "./PasoSubsidio";
 
 const PASOS = [
-  { id: "solicitante", titulo: "Datos del solicitante", descripcion: "Quién se postula (jefe del hogar), dónde vive y las fotos de su documento.", secciones: ["solicitante", "documentos"] },
-  { id: "hogar", titulo: "Grupo familiar", descripcion: "Las personas que viven con usted y sus ingresos.", secciones: ["hogar"] },
-  { id: "subsidio", titulo: "Subsidio y cierre financiero", descripcion: "La modalidad, el proyecto de vivienda y los recursos con que cuenta. Al final, autorice y firme.", secciones: ["postulacion", "consentimiento", "declaracion", "firma"] },
-] as const satisfies readonly { id: string; titulo: string; descripcion: string; secciones: readonly Seccion[] }[];
+  { id: "solicitante", corto: "Usted", titulo: "Datos del solicitante", descripcion: "Quién se postula como jefe del hogar, dónde vive y las fotos de su documento.", minutos: 5, secciones: ["solicitante", "documentos"] },
+  { id: "hogar", corto: "Su hogar", titulo: "Grupo familiar", descripcion: "Las personas que viven con usted y lo que ganan al mes. Si vive solo, siga al siguiente paso.", minutos: 3, secciones: ["hogar"] },
+  { id: "subsidio", corto: "Vivienda y recursos", titulo: "Subsidio y cierre financiero", descripcion: "El subsidio que solicita, el proyecto y el dinero con que cuenta. Al final autoriza y firma.", minutos: 4, secciones: ["postulacion", "consentimiento", "declaracion", "firma"] },
+] as const satisfies readonly { id: string; corto: string; titulo: string; descripcion: string; minutos: number; secciones: readonly Seccion[] }[];
 
 type Borrador = { id: string; paso: number; maximo: number; valores: Valores; guardado_en: string };
 const claveBorrador = (uid: string, documento: string) => `postulacion:${uid}:${documento}`;
@@ -61,6 +62,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
   const [aviso, setAviso] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [guardadoEn, setGuardadoEn] = useState(inicial.guardado_en);
   const terminado = useRef(false);
   const paso = PASOS[indice];
   // On edit the consent, declaration and signature already exist; photos are optional replacements.
@@ -82,7 +84,9 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
     const escribir = () => {
       clearTimeout(t);
       t = setTimeout(() => {
-        if (!terminado.current) void guardar(claveBorrador(uid, documento), { id: inicial.id, paso: indice, maximo, valores: getValues(), guardado_en: new Date().toISOString() }).catch(() => undefined);
+        if (terminado.current) return;
+        const ahora = new Date().toISOString();
+        void guardar(claveBorrador(uid, documento), { id: inicial.id, paso: indice, maximo, valores: getValues(), guardado_en: ahora }).then(() => setGuardadoEn(ahora), () => undefined);
       }, 1000);
     };
     escribir(); // the step position changed
@@ -156,47 +160,73 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
 
   if (resultado) return <Confirmacion r={resultado} publico={publico} />;
 
+  const hora = guardadoEn ? new Date(guardadoEn).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" }) : "";
   return (
     <FormProvider {...form}>
-      <div className="mx-auto max-w-3xl">
-        <ol className="mb-6 grid grid-cols-3 gap-2" aria-label="Pasos de la postulación">
-          {PASOS.map((p, i) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                disabled={i > maximo || enviando}
-                aria-current={i === indice ? "step" : undefined}
-                onClick={() => irA(i)}
-                className="flex min-h-11 w-full flex-col items-start rounded-lg text-left disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className={`h-2 w-full rounded-full ${i <= indice ? "bg-primary" : "bg-border"}`} />
-                <span className={`mt-1 text-sm ${i === indice ? "font-bold" : "font-semibold text-muted"}`}>
-                  {i + 1}. {p.titulo}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ol>
-        {edicion && <p className="mb-2 text-sm font-semibold text-muted">Editando la postulación {edicion.radicado}</p>}
-        <h2 className="text-2xl font-bold text-primary-strong">{paso.titulo}</h2>
-        <p className="mb-6 mt-1 text-muted">{paso.descripcion}</p>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
+        <div className="min-w-0">
+          <nav aria-label="Pasos de la postulación" className="mb-8">
+            <ol className="flex items-start">
+              {PASOS.map((p, i) => {
+                const hecho = i < indice;
+                const actual = i === indice;
+                return (
+                  <li key={p.id} className="flex flex-1 items-start last:flex-none">
+                    <button
+                      type="button"
+                      disabled={i > maximo || enviando}
+                      aria-current={actual ? "step" : undefined}
+                      onClick={() => irA(i)}
+                      className="group flex min-h-11 flex-col items-center gap-1.5 rounded-lg px-1 text-center disabled:cursor-not-allowed"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`grid size-9 place-items-center rounded-full border-2 text-sm font-bold transition-colors ${
+                          actual ? "border-primary bg-primary text-on-primary ring-4 ring-primary/15"
+                          : hecho ? "border-primary bg-bg text-primary group-hover:bg-surface"
+                          : "border-border bg-bg text-muted"
+                        }`}
+                      >
+                        {hecho ? "✓" : i + 1}
+                      </span>
+                      <span className={`max-w-[7rem] text-xs leading-tight sm:text-sm ${actual ? "font-bold text-primary-strong" : hecho ? "font-semibold text-text" : "text-muted"}`}>{p.corto}</span>
+                    </button>
+                    {i < PASOS.length - 1 && <span aria-hidden="true" className={`mx-1 mt-[1.1rem] h-0.5 flex-1 rounded-full ${i < indice ? "bg-primary" : "bg-border"}`} />}
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
 
-        <form noValidate onSubmit={(e) => e.preventDefault()} className="pb-6">
-          {indice === 0 && <PasoSolicitante borradorId={inicial.id} documentoFijo={!!documento} />}
-          {indice === 1 && <PasoHogar />}
-          {indice === 2 && <PasoSubsidio creacion={!edicion} />}
-        </form>
+          <Ficha documento={documento} />
+
+          <header className="mb-8 border-l-4 border-accent pl-4">
+            {edicion && <p className="mb-1 text-sm font-semibold text-muted">Editando la postulación {edicion.radicado}</p>}
+            <p className="text-sm font-semibold text-primary">Paso {indice + 1} de {PASOS.length}, unos {paso.minutos} minutos</p>
+            <h2 className="mt-1 text-2xl font-bold text-primary-strong sm:text-3xl">{paso.titulo}</h2>
+            <p className="mt-2 max-w-prose text-muted">{paso.descripcion}</p>
+          </header>
+
+          <form noValidate onSubmit={(e) => e.preventDefault()} className="pb-10">
+            {indice === 0 && <PasoSolicitante borradorId={inicial.id} documentoFijo={!!documento} />}
+            {indice === 1 && <PasoHogar />}
+            {indice === 2 && <PasoSubsidio creacion={!edicion} />}
+          </form>
+        </div>
+        <div className="hidden lg:block">
+          <FichaEscritorio documento={documento} />
+        </div>
       </div>
 
-      <div className="sticky bottom-0 -mx-4 border-t border-border bg-bg px-4 py-3 md:-mx-6 md:px-6">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
+      <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-bg/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
+        <div className="flex flex-wrap items-center gap-3">
           <Button variant="secondary" disabled={indice === 0 || enviando} onClick={() => irA(indice - 1)}>
             Atrás
           </Button>
           {indice < PASOS.length - 1 ? (
-            <Button onClick={siguiente}>Siguiente</Button>
+            <Button onClick={siguiente} className="px-6">Siguiente</Button>
           ) : (
-            <Button onClick={enviar} disabled={enviando}>
+            <Button onClick={enviar} disabled={enviando} className="px-6">
               {enviando ? "Enviando…" : edicion ? "Guardar cambios" : "Enviar postulación"}
             </Button>
           )}
@@ -205,8 +235,8 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
               Cancelar
             </Link>
           )}
-          <p role="status" className="basis-full text-sm font-medium md:flex-1 md:basis-auto md:text-right">
-            {aviso}
+          <p role="status" className="basis-full text-sm md:flex-1 md:basis-auto md:text-right">
+            {aviso ? <span className="font-semibold text-danger">{aviso}</span> : !edicion && hora ? <span className="text-muted">Guardado en este equipo a las {hora}</span> : null}
           </p>
         </div>
       </div>
@@ -221,26 +251,38 @@ function Confirmacion({ r, publico }: { r: Resultado; publico: boolean }) {
     window.scrollTo({ top: 0 });
   }, []);
   return (
-    <section aria-labelledby="conf-titulo" className="mx-auto flex max-w-xl flex-col gap-6 py-4">
+    <section aria-labelledby="conf-titulo" className="mx-auto flex max-w-lg flex-col gap-6 py-4">
+      <div className="overflow-hidden rounded-xl border border-border bg-bg shadow-[0_18px_40px_-24px_rgb(0_54_95/0.55)]">
+        <div className="relative bg-[#00365f] px-6 pb-6 pt-5 text-white">
+          <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-accent" />
+          <h2 id="conf-titulo" ref={titulo} tabIndex={-1} className="text-xl font-bold outline-none">
+            Postulación registrada
+          </h2>
+          <p className="mt-1 text-white/85">Constancia de radicación del Subsidio Distrital de Vivienda</p>
+        </div>
+        <div className="flex flex-col gap-5 p-6">
+          <div>
+            <p className="text-sm text-muted">Número de registro</p>
+            <p data-testid="radicado" className="text-5xl font-bold tabular-nums tracking-tight text-primary-strong">{r.radicado}</p>
+          </div>
+          <dl className="grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
+            <dt className="text-muted">Postulante</dt>
+            <dd className="font-semibold">{r.nombre}</dd>
+            <dt className="text-muted">Fecha y hora</dt>
+            <dd className="font-semibold">{fechaHoraBogota(r.en)}</dd>
+            <dt className="text-muted">Estado</dt>
+            <dd className="font-semibold">{ESTADOS_POSTULACION.sin_validar}</dd>
+          </dl>
+        </div>
+      </div>
       <div>
-        <h2 id="conf-titulo" ref={titulo} tabIndex={-1} className="text-2xl font-bold text-primary-strong outline-none">
-          Postulación registrada
-        </h2>
-        <p className="mt-1 text-muted">Guarde este número: con él puede consultar el estado de su postulación.</p>
+        <h3 className="font-bold text-primary-strong">Qué sigue</h3>
+        <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-muted">
+          <li>Tome una foto de esta pantalla o anote el número de registro.</li>
+          <li>Un funcionario de la Secretaría revisará sus datos y sus documentos.</li>
+          <li>Cuando la postulación quede validada, su estado cambiará a «Válido».</li>
+        </ol>
       </div>
-      <div className="border-l-4 border-accent pl-4">
-        <p className="text-sm font-semibold text-muted">Número de registro</p>
-        <p data-testid="radicado" className="text-5xl font-bold tabular-nums text-primary-strong">{r.radicado}</p>
-      </div>
-      <dl className="grid gap-1 sm:grid-cols-[10rem_1fr]">
-        <dt className="text-sm text-muted">Postulante</dt>
-        <dd className="font-medium">{r.nombre}</dd>
-        <dt className="text-sm text-muted">Fecha y hora</dt>
-        <dd className="font-medium">{fechaHoraBogota(r.en)}</dd>
-        <dt className="text-sm text-muted">Estado</dt>
-        <dd className="font-medium">{ESTADOS_POSTULACION.sin_validar}</dd>
-      </dl>
-      <p className="text-sm text-muted">Un funcionario de la Secretaría revisará sus datos y documentos para validar la postulación.</p>
       {!publico && (
         <Link href={`/postulaciones/${r.id}`} className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2">
           Ver la postulación

@@ -52,17 +52,22 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
 
   return (
     <>
-      <p className="text-muted">Para empezar, indique su documento de identidad.</p>
+
       {/* Escape must not leave the page without a document: the dialog is the entry point. */}
       <dialog
         ref={dialogo}
         aria-labelledby="entrada-titulo"
         onCancel={(e) => e.preventDefault()}
-        className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-xl border border-border bg-bg p-6 text-text backdrop:bg-black/50"
+        className="m-auto w-[min(34rem,calc(100%-2rem))] overflow-hidden rounded-xl border border-border bg-bg p-0 text-text shadow-[0_24px_60px_-20px_rgb(0_54_95/0.6)] backdrop:bg-primary-strong/60 backdrop:backdrop-blur-sm"
       >
-        <h2 id="entrada-titulo" className="text-xl font-bold text-primary-strong">
-          {existente ? "Ya existe una postulación" : "Nueva postulación"}
-        </h2>
+        <div className="relative bg-[#00365f] px-6 pb-5 pt-5 text-white">
+          <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-accent" />
+          <p className="text-sm text-white/80">Subsidio Distrital de Vivienda</p>
+          <h2 id="entrada-titulo" className="mt-1 text-2xl font-bold">
+            {existente ? "Ya existe una postulación" : "Nueva postulación"}
+          </h2>
+        </div>
+        <div className="p-6">
         {existente ? (
           <div className="mt-4 flex flex-col gap-4">
             <p>Este documento ya tiene una postulación registrada. No se puede crear otra.</p>
@@ -89,7 +94,16 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
           </div>
         ) : (
           <form onSubmit={consultar} noValidate className="mt-4 flex flex-col gap-4">
-            <p className="text-sm text-muted">Primero revisamos si ya existe una postulación con este documento.</p>
+            <p>Empiece con el documento de quien se postula como jefe del hogar. Revisamos que no tenga ya una postulación.</p>
+            <div className="rounded-lg bg-surface p-4 text-sm">
+              <p className="font-semibold">Tenga a mano</p>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                <li className="flex gap-2"><span aria-hidden="true" className="text-primary">✓</span>Su documento de identidad: le pediremos foto del frente y del reverso.</li>
+                <li className="flex gap-2"><span aria-hidden="true" className="text-primary">✓</span>Nombres, documentos e ingresos de las personas de su hogar.</li>
+                <li className="flex gap-2"><span aria-hidden="true" className="text-primary">✓</span>Los valores de ahorros, cesantías o créditos con que cuente.</li>
+              </ul>
+              <p className="mt-3 text-muted">Toma unos 12 minutos. Lo que escriba se guarda en este equipo, así que puede retomarlo.</p>
+            </div>
             <Field label="Tipo de documento del solicitante">
               {(a11y) => <Select {...a11y} value={tipo} onChange={(e) => setTipo(e.target.value)} options={opciones(TIPOS_DOCUMENTO_SOLICITANTE)} placeholder="Seleccione…" />}
             </Field>
@@ -98,11 +112,12 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
             </Field>
             <div>
               <Button type="submit" disabled={consultando || !tipo}>
-                {consultando ? "Consultando…" : "Continuar"}
+                {consultando ? "Revisando…" : "Continuar"}
               </Button>
             </div>
           </form>
         )}
+        </div>
       </dialog>
     </>
   );

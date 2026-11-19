@@ -159,3 +159,16 @@ export function CampoMultiple({ name, label, options, exclusiva, hint }: { name:
     />
   );
 }
+
+/** A block of questions: title, one line saying why it is asked, and the fields. Blocks are separated by a hairline. */
+export function Grupo({ titulo, descripcion, children, columnas = true }: { titulo: string; descripcion?: string; children: React.ReactNode; columnas?: boolean }) {
+  return (
+    <section className="flex flex-col gap-5 border-t border-border pt-8 first:border-t-0 first:pt-0">
+      <div>
+        <h3 className="text-lg font-bold text-primary-strong">{titulo}</h3>
+        {descripcion && <p className="mt-1 max-w-prose text-sm text-muted">{descripcion}</p>}
+      </div>
+      {columnas ? <div className="grid gap-5 sm:grid-cols-2">{children}</div> : children}
+    </section>
+  );
+}
