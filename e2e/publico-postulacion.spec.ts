@@ -146,15 +146,19 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await expect(page.getByRole("heading", { level: 2, name: "Subsidio y cierre financiero" })).toBeVisible();
   await page.getByRole("radio", { name: "Adquisición de vivienda nueva" }).check();
   await expect(page.getByRole("heading", { name: "Datos del proyecto de vivienda" })).toBeVisible();
-  // First the project type; only its value is enabled and the other one is 0.
+  // First the project type; only the value of the chosen type is shown (the other one is stored as 0).
   const vis = page.getByLabel("Valor de la solución de vivienda VIS", exacto);
   const vip = page.getByLabel("Valor de la solución de vivienda VIP", exacto);
-  await expect(vis).toBeDisabled();
-  await expect(vip).toBeDisabled();
-  await page.getByRole("radio", { name: "VIP (vivienda de interés prioritario)" }).check();
-  await expect(vip).toBeEnabled();
-  await expect(vis).toBeDisabled();
-  await expect(vis).toHaveValue("0");
+  await expect(vis).toHaveCount(0);
+  await expect(vip).toHaveCount(0);
+  await page.getByText("VIP (vivienda de interés prioritario)", exacto).click();
+  await expect(vip).toBeVisible();
+  await expect(vis).toHaveCount(0);
+  // Switching type does not leave the 0 of the other choice in the field.
+  await page.getByText("VIS (vivienda de interés social)", exacto).click();
+  await expect(vis).toHaveValue("");
+  await expect(vip).toHaveCount(0);
+  await page.getByText("VIP (vivienda de interés prioritario)", exacto).click();
   await vip.fill("95.000.000");
   await expect(page.getByRole("heading", { name: "Datos de la obligación" })).toHaveCount(0);
   await page.getByRole("checkbox", { name: "Ahorro programado" }).check();

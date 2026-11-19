@@ -9,6 +9,7 @@ import { parsearIngresoCop } from "@/shared/normalizacion/texto";
 import { useAyuda } from "@/shared/ui/Ayuda";
 import { Field, TextArea } from "@/shared/ui/Field";
 import { RadioGroup } from "@/shared/ui/Radio";
+import { SegmentedControl } from "@/shared/ui/SegmentedControl";
 import {
   CODIGOS_FUENTES, ENTIDADES_ACREEDORAS, ESTADOS_OBLIGACION, FUENTES_RECURSOS, MODALIDAD_DEUDORES, MODALIDADES, MODALIDADES_CON_PROYECTO,
   TIPOS_VIVIENDA, opciones, type Modalidad,
@@ -20,7 +21,7 @@ const P = "postulacion.";
 
 /** Step 3: sections 3, 4, 4.1, 5 and 5.1 of the format; on creation also consent, sworn declaration (6) and signature. */
 export function PasoSubsidio({ creacion }: { creacion: boolean }) {
-  const { register, setValue } = useFormContext<FieldValues>();
+  const { register, setValue, getValues } = useFormContext<FieldValues>();
   const error = useError();
   const modalidad = useWatch({ name: P + "modalidad" }) as Modalidad | "";
   const fuentes = (useWatch({ name: P + "fuentes" }) as string[] | undefined) ?? [];
@@ -33,7 +34,10 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
   const tipoVivienda = {
     ...registroTipo,
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      const elegido = P + (e.target.value === "vis" ? "valor_vis" : "valor_vip");
       setValue(P + (e.target.value === "vis" ? "valor_vip" : "valor_vis"), "0", { shouldDirty: true });
+      // The 0 left by the other choice is not a value the person typed.
+      if (getValues(elegido) === "0") setValue(elegido, "", { shouldDirty: true });
       return registroTipo.onChange(e);
     },
   };
@@ -70,10 +74,11 @@ export function PasoSubsidio({ creacion }: { creacion: boolean }) {
           <CampoTexto name={P + "proyecto_nombre"} label="Nombre del proyecto habitacional" />
           <CampoTexto name={P + "constructora"} label="Nombre de la constructora" />
           <div className="sm:col-span-2">
-            <RadioGroup legend="¿A qué tipo de proyecto aplicará?" name={P + "tipo_vivienda"} options={opciones(TIPOS_VIVIENDA)} error={error(P + "tipo_vivienda")} inputProps={tipoVivienda} />
+            <SegmentedControl legend="¿A qué tipo de proyecto aplicará?" name={P + "tipo_vivienda"} options={opciones(TIPOS_VIVIENDA)} error={error(P + "tipo_vivienda")} inputProps={tipoVivienda} />
           </div>
-          <CampoMoneda name={P + "valor_vis"} label="Valor de la solución de vivienda VIS" disabled={tipo !== "vis"} hint={tipo === "vip" ? "No aplica: el proyecto es VIP (queda en 0)" : tipo ? undefined : "Primero elija el tipo de proyecto"} />
-          <CampoMoneda name={P + "valor_vip"} label="Valor de la solución de vivienda VIP" disabled={tipo !== "vip"} hint={tipo === "vis" ? "No aplica: el proyecto es VIS (queda en 0)" : tipo ? undefined : "Primero elija el tipo de proyecto"} />
+          {/* Only the value of the chosen type is asked; the other one is stored as 0. */}
+          {tipo === "vis" && <CampoMoneda name={P + "valor_vis"} label="Valor de la solución de vivienda VIS" />}
+          {tipo === "vip" && <CampoMoneda name={P + "valor_vip"} label="Valor de la solución de vivienda VIP" />}
         </Grupo>
       )}
 
