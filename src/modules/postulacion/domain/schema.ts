@@ -43,6 +43,18 @@ const opcional = <T extends z.ZodType>(s: T) => z.unknown().optional().transform
   return z.NEVER;
 });
 
+/** Required: empty -> `msg`; anything else must pass `s` (same parsing as `opcional`). */
+const obligatorio = <T extends z.ZodType>(s: T, msg: string) => z.unknown().optional().transform((v, ctx): z.output<T> => {
+  if (vacio(v)) {
+    ctx.addIssue({ code: "custom", message: msg });
+    return z.NEVER;
+  }
+  const r = s.safeParse(typeof v === "string" ? v.trim() : v);
+  if (r.success) return r.data;
+  for (const i of r.error.issues) ctx.addIssue({ code: "custom", message: i.message });
+  return z.NEVER;
+});
+
 const texto = (max = 120) => z.string().max(max, `Máximo ${max} caracteres`);
 const nombre = (msg: string) => z.string({ error: msg }).trim().min(1, msg).max(120, "Máximo 120 caracteres").transform(normalizarNombre);
 const fecha = z.string().refine(esFechaIso, "Fecha inválida (DD/MM/AAAA)");
@@ -68,6 +80,7 @@ const entero = (min: number, max: number, msg: string) =>
 const condiciones = z
   .array(enumDe(CONDICIONES_ESPECIALES))
   .default([])
+  .refine((l) => l.length > 0, "Elija al menos una opción (o «Ninguna»)")
   .refine((l) => !l.includes("ninguna") || l.length === 1, "«Ninguna» no se puede combinar con otras opciones");
 
 const documento = z.string().transform(normalizarDocumento).refine((d) => /^[A-Z0-9]{4,20}$/.test(d), "Número de documento inválido");
@@ -80,32 +93,32 @@ export const solicitanteSchema = z
     apellidos: nombre("Ingrese los apellidos"),
     tipo_documento: enumDe(TIPOS_DOCUMENTO_SOLICITANTE),
     numero_documento: documento,
-    lugar_expedicion: opcional(municipio("Elija el municipio de la lista")),
-    fecha_expedicion: opcional(fecha),
+    lugar_expedicion: obligatorio(municipio("Elija el municipio de la lista"), "Elija el lugar de expedición"),
+    fecha_expedicion: obligatorio(fecha, "Ingrese la fecha de expedición"),
     fecha_nacimiento: fecha,
-    lugar_nacimiento: opcional(z.string().refine((c) => c === EXTERIOR || MUNICIPIO.has(c), "Elija el municipio de la lista o «Fuera de Colombia»")),
+    lugar_nacimiento: obligatorio(z.string().refine((c) => c === EXTERIOR || MUNICIPIO.has(c), "Elija el municipio de la lista o «Fuera de Colombia»"), "Elija el lugar de nacimiento"),
     lugar_nacimiento_otro: opcional(texto(120).transform(normalizarNombre)),
-    ingreso_mensual: opcional(moneda),
-    genero: opcional(enumDe(GENEROS_SOLICITANTE)),
+    ingreso_mensual: obligatorio(moneda, "Ingrese su ingreso mensual (0 si no tiene)"),
+    genero: obligatorio(enumDe(GENEROS_SOLICITANTE), "Seleccione el género"),
     genero_otro: opcional(texto(60)),
-    ocupacion: opcional(enumDe(OCUPACIONES_SOLICITANTE)),
-    direccion: opcional(texto(200)),
+    ocupacion: obligatorio(enumDe(OCUPACIONES_SOLICITANTE), "Seleccione la ocupación"),
+    direccion: obligatorio(texto(200), "Ingrese la dirección de su domicilio"),
     /** Cadastral address as returned by the geocoder of the Alcaldía (empty when it could not standardize it). */
     direccion_catastral: opcional(texto(200)),
-    codigo_division: opcional(z.string()),
-    id_barrio_vereda: opcional(z.string()),
-    estrato: opcional(entero(1, 6, "Seleccione un estrato del 1 al 6")),
+    codigo_division: obligatorio(z.string(), "Seleccione la comuna o el corregimiento"),
+    id_barrio_vereda: obligatorio(z.string(), "Seleccione el barrio o la vereda"),
+    estrato: obligatorio(entero(1, 6, "Seleccione un estrato del 1 al 6"), "Seleccione el estrato"),
     latitud: opcional(z.coerce.number().min(CALI.latMin).max(CALI.latMax)),
     longitud: opcional(z.coerce.number().min(CALI.lonMin).max(CALI.lonMax)),
-    anios_residencia: opcional(entero(0, 120, "Escriba los años completos (0 a 120)")),
+    anios_residencia: obligatorio(entero(0, 120, "Escriba los años completos (0 a 120)"), "Ingrese los años de residencia en Cali"),
     telefono,
-    correo: opcional(z.string().toLowerCase().pipe(z.email("Correo inválido"))),
+    correo: obligatorio(z.string().toLowerCase().pipe(z.email("Correo inválido")), "Ingrese su correo electrónico"),
     empresa: opcional(texto()),
     telefono_empresa: telefonoOpcional,
-    notificacion_electronica: opcional(siNo),
-    caja_compensacion: opcional(siNo),
+    notificacion_electronica: obligatorio(siNo, "Responda Sí o No"),
+    caja_compensacion: obligatorio(siNo, "Responda Sí o No"),
     caja_cual: opcional(texto(80)),
-    sisben: opcional(siNo),
+    sisben: obligatorio(siNo, "Responda Sí o No"),
     sisben_grupo: opcional(enumDe(GRUPOS_SISBEN)),
     sisben_subgrupo: opcional(entero(1, SUBGRUPO_MAX, `El subgrupo va de 1 a ${SUBGRUPO_MAX}`)),
     condiciones_especiales: condiciones,
@@ -117,6 +130,12 @@ export const solicitanteSchema = z
     else if (calcularEdad(v.fecha_nacimiento, hoy) < EDAD_MINIMA) err("fecha_nacimiento", `Solo pueden postularse personas de ${EDAD_MINIMA} años o más`);
     if (v.fecha_expedicion && v.fecha_expedicion > hoy) err("fecha_expedicion", "La fecha de expedición no puede ser futura");
     else if (v.fecha_expedicion && v.fecha_expedicion < v.fecha_nacimiento) err("fecha_expedicion", "La expedición no puede ser anterior al nacimiento");
+    if (v.genero === "otro" && !v.genero_otro) err("genero_otro", "Escriba cuál");
+    if (v.lugar_nacimiento === EXTERIOR && !v.lugar_nacimiento_otro) err("lugar_nacimiento_otro", "Escriba el país y la ciudad de nacimiento");
+    if (v.ocupacion === "empleado" && !v.empresa) err("empresa", "Escriba la empresa donde labora");
+    if (v.caja_compensacion === true && !v.caja_cual) err("caja_cual", "Escriba cuál caja de compensación");
+    if (v.sisben === true && !v.sisben_grupo) err("sisben_grupo", "Seleccione el grupo");
+    if (v.sisben === true && !v.sisben_subgrupo) err("sisben_subgrupo", "Seleccione el subgrupo");
     if (v.codigo_division && !DIVISION.has(v.codigo_division)) err("codigo_division", "Seleccione comuna o corregimiento de la lista");
     if (v.id_barrio_vereda) {
       const b = BARRIO.get(v.id_barrio_vereda);
@@ -162,15 +181,15 @@ export type Solicitante = z.output<typeof solicitanteSchema>;
 export const integranteSchema = z
   .object({
     nombres_apellidos: nombre("Ingrese el nombre completo del integrante"),
-    fecha_nacimiento: opcional(fecha),
-    tipo_documento: opcional(enumDe(TIPOS_DOCUMENTO_INTEGRANTE)),
-    numero_documento: opcional(documento),
+    fecha_nacimiento: obligatorio(fecha, "Ingrese la fecha de nacimiento"),
+    tipo_documento: obligatorio(enumDe(TIPOS_DOCUMENTO_INTEGRANTE), "Seleccione el tipo de documento"),
+    numero_documento: obligatorio(documento, "Ingrese el número de documento"),
     condiciones_especiales: condiciones,
-    parentesco: opcional(enumDe(PARENTESCOS)),
-    estado_civil: opcional(enumDe(ESTADOS_CIVILES)),
-    ocupacion: opcional(enumDe(OCUPACIONES_INTEGRANTE)),
-    identidad_genero: opcional(enumDe(IDENTIDADES_GENERO)),
-    ingresos: opcional(moneda),
+    parentesco: obligatorio(enumDe(PARENTESCOS), "Seleccione el parentesco"),
+    estado_civil: obligatorio(enumDe(ESTADOS_CIVILES), "Seleccione el estado civil"),
+    ocupacion: obligatorio(enumDe(OCUPACIONES_INTEGRANTE), "Seleccione la ocupación"),
+    identidad_genero: obligatorio(enumDe(IDENTIDADES_GENERO), "Seleccione la identidad de género"),
+    ingresos: obligatorio(moneda, "Ingrese los ingresos mensuales (0 si no tiene)"),
   })
   .superRefine((v, ctx) => {
     const err = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });

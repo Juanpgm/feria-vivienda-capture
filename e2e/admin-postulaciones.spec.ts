@@ -3,9 +3,8 @@
 // deleted afterwards with context/limpiar-postulaciones.mjs. Needs .auth/state.json of an approved admin.
 import { expect, test, type Page } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
-import { entradaFoto } from "./ayudas";
 import { dibujarFirma } from "./ayudas-envio";
-import { imagenGrande, imagenPequena } from "./imagenes";
+import { autorizar, fotos, llenarTitular } from "./ayudas-postulacion";
 
 const ex = { exact: true } as const;
 const DOC = `99900001${String(Date.now() % 100).padStart(2, "0")}`;
@@ -15,15 +14,6 @@ test.describe.configure({ mode: "serial" });
 test.beforeAll(() => {
   if (!hayEstadoAuth()) throw new Error(MENSAJE_SIN_SESION);
 });
-
-async function combo(page: Page, nombre: string, texto: string) {
-  const c = page.getByRole("combobox", { name: nombre, ...ex });
-  await page.mouse.move(0, 0);
-  await c.fill(texto);
-  await expect(page.getByRole("listbox").getByRole("option").first()).toBeVisible();
-  await c.press("Enter");
-  await c.press("Tab");
-}
 
 async function firmar(page: Page) {
   await dibujarFirma(page);
@@ -45,19 +35,15 @@ test("a staff member creates an incomplete postulación: it cannot be validated 
   const modal = page.getByRole("dialog", { name: "Nueva postulación" });
   await modal.getByLabel("Número de documento", ex).fill(DOC);
   await modal.getByRole("button", { name: "Continuar" }).click();
-  await page.getByRole("checkbox", { name: "El titular autoriza el tratamiento de sus datos personales", ...ex }).check();
-  await page.getByRole("checkbox", { name: "Autoriza el tratamiento de datos sensibles", ...ex }).check();
-  await page.getByLabel("Nombres", ex).fill("PRUEBA E2E");
-  await page.getByLabel("Apellidos", ex).fill("Postulación Uno");
-  await page.getByLabel("Fecha de nacimiento", ex).fill("15031985");
-  await page.getByLabel("Teléfono o celular", ex).fill("3001234567");
-  await entradaFoto(page, "frente").setInputFiles(await imagenPequena(page, "frente.jpg"));
-  await expect(page.getByRole("img", { name: /Vista previa: frente/ })).toBeVisible();
-  await entradaFoto(page, "reverso").setInputFiles(await imagenGrande(page, "reverso.jpg"));
-  await expect(page.getByRole("img", { name: /Vista previa: reverso/ })).toBeVisible();
+  await autorizar(page);
+  // All titular data is required; the REAL geocoder of the Alcaldía locates the address (barrio, estrato, coordinates).
+  await llenarTitular(page, { nombres: "PRUEBA E2E", apellidos: "Postulación Uno" });
+  await expect(page.getByText("Ubicamos la dirección en el barrio Santa Isabel (geocodificador de la Alcaldía)", { exact: false })).toBeVisible();
+  await fotos(page);
   await page.getByRole("button", { name: "Siguiente", ...ex }).click();
-  await page.getByRole("button", { name: "Siguiente", ...ex }).click();
-  await page.getByRole("radio", { name: "Arrendamiento" }).check();
+  await page.getByRole("button", { name: "Siguiente", ...ex }).click(); // lives alone: no members
+  // Modality 1 without its project and resources: the record is created but cannot be validated yet.
+  await page.getByRole("radio", { name: "Adquisición de vivienda nueva" }).check();
   await page.getByRole("checkbox", { name: /Declaro bajo la gravedad de juramento/ }).check();
   // Signed on screen (the other way is uploading an image of a valid signature; no manual verification).
   await expect(page.getByRole("radio", { name: "Subir imagen de la firma" })).toBeVisible();
@@ -82,46 +68,35 @@ test("the same document cannot start a second postulación", async ({ page }) =>
   const modal = page.getByRole("dialog", { name: "Nueva postulación" });
   await modal.getByLabel("Número de documento", ex).fill(DOC);
   await modal.getByRole("button", { name: "Continuar" }).click();
-  await expect(page.getByRole("dialog", { name: "Ya existe una postulación" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Ya existe una postulación" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("link", { name: "Ver la postulación" })).toHaveAttribute("href", detalle);
 });
 
-test("Completar opens the edit on the missing field; the panel jumps between steps", async ({ page }) => {
+test("Completar opens the edit on the missing field; the panel jumps between fields", async ({ page }) => {
   await page.goto(detalle);
-  await page.getByRole("link", { name: "Completar: Lugar de expedición del documento" }).click();
-  await page.waitForURL((u) => u.pathname.endsWith("/editar") && u.searchParams.get("campo") === "solicitante.lugar_expedicion");
-  await expect(page.getByRole("combobox", { name: "Lugar de expedición", exact: true })).toBeFocused({ timeout: 10_000 });
+  await page.getByRole("link", { name: "Completar: Nombre del proyecto de vivienda" }).click();
+  await page.waitForURL((u) => u.pathname.endsWith("/editar") && u.searchParams.get("campo") === "postulacion.proyecto_nombre");
+  await expect(page.getByLabel("Nombre del proyecto habitacional", ex)).toBeFocused({ timeout: 10_000 });
   const panel = page.getByRole("region", { name: /Por completar/ });
   await expect(panel).toBeVisible();
-  // A missing field of another step: the panel opens that step and focuses it.
-  await page.getByRole("button", { name: "Siguiente", exact: true }).click();
-  await panel.getByRole("button", { name: "Tiempo de residencia en Cali" }).click();
-  await expect(page.getByLabel("Tiempo de residencia en Cali (años)", { exact: true })).toBeFocused({ timeout: 10_000 });
+  // From another step, the panel opens the step of the field and focuses it.
+  await page.getByRole("button", { name: "Atrás", ...ex }).click();
+  await panel.getByRole("button", { name: "Nombre de la constructora" }).click();
+  await expect(page.getByLabel("Nombre de la constructora", ex)).toBeFocused({ timeout: 10_000 });
 });
 
-test("editing fills the missing data and the record becomes complete", async ({ page }) => {
-  await page.goto(`${detalle}/editar`);
+test("Subsanar fills the missing data; saving updates the same record (no duplicate)", async ({ page }) => {
+  await page.goto(detalle);
+  await page.getByRole("link", { name: "Subsanar datos faltantes" }).click();
+  await page.waitForURL((u) => u.pathname.endsWith("/editar"));
   await page.waitForLoadState("networkidle"); // typing before hydration would be overwritten
-  await combo(page, "Lugar de expedición", "cali");
-  await page.getByLabel("Fecha de expedición", ex).fill("01042003");
-  await combo(page, "Lugar de nacimiento", "cali");
-  await page.getByLabel("Género", ex).selectOption("cis_femenino");
-  await page.getByRole("group", { name: /artículo 56 de la Ley 1437/ }).getByText("Sí", ex).click();
-  // REAL geocoder of the Alcaldía: comuna, barrio, estrato and coordinates come from the address.
-  const dir = page.getByLabel("Dirección de domicilio actual", ex);
-  await dir.fill("Calle 5 # 38-20");
-  await dir.press("Tab");
-  await expect(page.getByText("Ubicamos la dirección en el barrio Santa Isabel (geocodificador de la Alcaldía)", { exact: false })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("estrato-automatico")).toContainText("Estrato 4");
-  await page.getByLabel("Tiempo de residencia en Cali (años)", ex).fill("20");
-  await page.getByLabel("Ocupación", ex).selectOption("independiente");
-  await page.getByLabel("Ingreso mensual del solicitante", ex).fill("1.000.000");
-  await page.getByRole("group", { name: "¿Está afiliado a una caja de compensación?" }).getByText("No", ex).click();
-  await page.getByRole("group", { name: "¿Está afiliado al Sisbén?" }).getByText("Sí", ex).click();
-  await page.getByLabel("Grupo Sisbén IV", ex).selectOption("A");
-  await page.getByLabel("Subgrupo Sisbén IV", ex).selectOption("3");
-  await page.getByRole("button", { name: "Siguiente", ...ex }).click();
-  await page.getByRole("button", { name: "Siguiente", ...ex }).click();
+  await page.getByLabel("Nombre del proyecto habitacional", ex).fill("Altos de Prueba");
+  await page.getByLabel("Nombre de la constructora", ex).fill("Constructora E2E");
+  await page.getByText("VIS (vivienda de interés social)", ex).click();
+  await page.getByLabel("Valor de la solución de vivienda VIS", ex).fill("150000000");
+  await page.getByRole("checkbox", { name: "Ahorro programado" }).check();
+  await page.getByLabel("Valor de ahorro programado", ex).fill("5000000");
+  await expect(page.getByText("Ya no falta ningún dato obligatorio. Guarde los cambios para poder validar la postulación.")).toBeVisible();
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await page.waitForURL((u) => u.pathname === detalle);
   await expect(page.getByText("Todos los datos obligatorios están completos.")).toBeVisible();
@@ -129,6 +104,7 @@ test("editing fills the missing data and the record becomes complete", async ({ 
   await expect(page.getByText("Santa Isabel", { exact: true })).toBeVisible();
   await expect(page.getByText(/^3\.42\d+, -76\.54\d+$/)).toBeVisible();
   await expect(page.getByText("Santiago de Cali (Valle del Cauca)").first()).toBeVisible();
+  await expect(page.getByText("Datos editados")).toBeVisible(); // history timeline
 });
 
 test("an official validates it with signature and confirmation of the document package", async ({ page }) => {

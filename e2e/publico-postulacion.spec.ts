@@ -4,6 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { dibujarFirma } from "./ayudas-envio";
 import { entradaFoto } from "./ayudas";
 import { imagenGrande, imagenPequena } from "./imagenes";
+import { combo, responder, varias } from "./ayudas-postulacion";
 
 const exacto = { exact: true } as const;
 const DOC = "1144555666";
@@ -97,7 +98,8 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   // Searched as soon as the person stops typing (no need to leave the field), with a visible notice meanwhile.
   await dir.fill("Av 5 Norte # 5N-02, Barrio Centenario");
   await expect(page.getByTestId("aviso-ubicacion")).toHaveText(/Buscando la comuna y el barrio de esta dirección/);
-  await expect(comuna).toHaveCount(0); // nothing to choose until the search answers
+  // Flagged by the earlier empty "Siguiente", they stay visible but locked while the search runs.
+  await expect(comuna).toBeDisabled();
   await expect(page.getByTestId("aviso-ubicacion")).toHaveText("Ubicamos la dirección en el barrio Centenario (barrio escrito en la dirección) y lo seleccionamos abajo. Cámbielo si no es correcto.");
   await expect(dir).toBeFocused();
   await expect(page.getByRole("combobox", { name: "Barrio o vereda", ...exacto })).toHaveValue("Centenario");
@@ -140,6 +142,20 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   // A different scene: two framed pictures of the same layout count as "the same photo" (front = back check).
   await entradaFoto(page, "reverso").setInputFiles(await imagenGrande(page, "reverso.jpg"));
   await expect(page.getByRole("img", { name: /Vista previa: reverso/ })).toBeVisible();
+
+  // Every titular field is required (decision 2026-11-19).
+  await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
+  await expect(page.getByText("Ingrese su correo electrónico")).toBeVisible();
+  await page.getByLabel("Fecha de expedición", exacto).fill("01042003");
+  await combo(page, "Lugar de nacimiento", "cali");
+  await page.getByLabel("Género", exacto).selectOption("cis_femenino");
+  await page.getByLabel("Correo electrónico", exacto).fill("ana.perez@correo.com");
+  await responder(page, /artículo 56 de la Ley 1437/, "Sí");
+  await page.getByLabel("Tiempo de residencia en Cali (años)", exacto).fill("20");
+  await page.getByLabel("Ocupación", exacto).selectOption("independiente");
+  await responder(page, "¿Está afiliado a una caja de compensación?", "No");
+  await responder(page, "¿Está afiliado al Sisbén?", "No");
+  await varias(page, "Condición especial del solicitante", ["Ninguna"]);
   await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
 
   // Step 2: two household members; a minor with C.C. is rejected; the total adds everyone.
@@ -156,7 +172,15 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await page.getByLabel("Parentesco con el jefe del hogar", exacto).selectOption("hijo");
   await expect(page.getByLabel("Estado civil", exacto)).toBeEnabled();
   await expect(page.getByLabel("Identidad de género", exacto).locator("option", { hasText: "Heterosexual" })).toHaveCount(0);
-  await expect(page.getByRole("combobox", { name: "Condición especial del integrante", ...exacto })).toBeVisible();
+  // Every member field is required too (no phone or email for members).
+  await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
+  await expect(page.getByText("Ingrese el número de documento")).toBeVisible();
+  await expect(page.getByLabel("Teléfono o celular", exacto)).toHaveCount(0);
+  await page.getByLabel("Número de documento del integrante", exacto).fill("1100000001");
+  await page.getByLabel("Estado civil", exacto).selectOption("soltero");
+  await page.getByLabel("Ocupación del integrante", exacto).selectOption("estudiante");
+  await page.getByLabel("Identidad de género", exacto).selectOption("cis_masculino");
+  await varias(page, "Condición especial del integrante", ["Persona con discapacidad", "Población joven"]);
   await page.getByRole("button", { name: "Siguiente", ...exacto }).click();
   await expect(page.getByText("Un menor de 18 años se identifica con R.C., T.I. o NUIP (M.E.)")).toBeVisible();
   await page.getByLabel("Tipo de documento (TD)", exacto).selectOption("ti");

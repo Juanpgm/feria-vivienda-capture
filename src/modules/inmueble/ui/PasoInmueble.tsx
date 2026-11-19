@@ -129,7 +129,9 @@ export function PasoInmueble({
   // Postulación: comuna and barrio appear only once the address was located (pre-filled, editable) or could not be
   // located (to be chosen by hand); never without an address. The estrato appears with the barrio.
   const hayDireccion = direccion.trim().length >= 5;
-  const mostrarUbicacion = !ubicar || (hayDireccion && (!!division || !!barrio || estado?.tipo === "no_hallado" || estado?.tipo === "sugerencia"));
+  // With an address, also when they were left empty and the step flagged them: they must be reachable to be filled in.
+  const sinUbicar = !!error(P + "codigo_division") || !!error(P + "id_barrio_vereda");
+  const mostrarUbicacion = !ubicar || (hayDireccion && (sinUbicar || !!division || !!barrio || estado?.tipo === "no_hallado" || estado?.tipo === "sugerencia"));
   const mostrarEstrato = !ubicar || (mostrarUbicacion && !!barrio);
 
   // Address erased: what was found for it no longer applies.
