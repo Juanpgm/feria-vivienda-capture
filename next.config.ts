@@ -23,6 +23,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Generic framework guidance only; stop `next dev` from regenerating AGENTS.md.
   agentRules: false,
+  // Set by `next upgrade --agent=security` (16.4.3 -> 16.4.6, security advisory).
+  experimental: { agentUpgrade: "security" },
   async headers() {
     return [
       {
