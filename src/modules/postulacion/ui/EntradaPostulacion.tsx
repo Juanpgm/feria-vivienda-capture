@@ -56,14 +56,16 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
   return (
     <>
 
-      {/* Escape must not leave the page without a document: the dialog is the entry point. */}
+      {/* Escape must not leave the page without a document: the dialog is the entry point.
+          The dialog itself scrolls, with the title and the action sticky: a flex column with an inner scroll area
+          collapsed to a few pixels in iPhone Safari (WebKit sized that area as zero). */}
       <dialog
         ref={dialogo}
         aria-labelledby="entrada-titulo"
         onCancel={(e) => e.preventDefault()}
-        className="m-auto max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100%-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-bg p-0 text-text shadow-[0_24px_60px_-20px_rgb(0_54_95/0.6)] backdrop:bg-primary-strong/60 backdrop:backdrop-blur-sm open:flex"
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[min(34rem,calc(100%-2rem))] overflow-y-auto overscroll-contain rounded-xl border border-border bg-bg p-0 text-text shadow-[0_24px_60px_-20px_rgb(0_54_95/0.6)] backdrop:bg-primary-strong/60 backdrop:backdrop-blur-sm"
       >
-        <div className="relative shrink-0 bg-[#00365f] px-6 pb-5 pt-5 text-white">
+        <div className="sticky top-0 z-10 bg-[#00365f] px-6 pb-5 pt-5 text-white">
           <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-accent" />
           <p className="text-sm text-white/80">Subsidio Distrital de Vivienda</p>
           <h2 id="entrada-titulo" className="mt-1 text-2xl font-bold">
@@ -71,7 +73,7 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
           </h2>
         </div>
         {integrante ? (
-          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6">
+          <div className="flex flex-col gap-4 p-6">
             <p>Este documento ya está registrado como integrante del grupo familiar de otra postulación. Una persona solo puede hacer parte de una postulación, así que no puede registrar una propia.</p>
             {publico ? (
               <p className="text-sm text-muted">Si hay un error, acérquese a la Secretaría de Vivienda Social y Hábitat con su documento.</p>
@@ -89,7 +91,7 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
             </div>
           </div>
         ) : existente ? (
-          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6">
+          <div className="flex flex-col gap-4 p-6">
             <p>Este documento ya tiene una postulación registrada. No se puede crear otra.</p>
             <dl className="grid grid-cols-[8rem_1fr] gap-1">
               <dt className="text-sm text-muted">Radicado</dt>
@@ -113,8 +115,8 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
             </div>
           </div>
         ) : (
-          <form onSubmit={consultar} noValidate className="flex min-h-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6">
+          <form onSubmit={consultar} noValidate>
+            <div className="flex flex-col gap-4 p-6">
             <p>Empiece con el documento de quien se postula como jefe del hogar. Revisamos que no tenga ya una postulación.</p>
             <div className="rounded-lg bg-surface p-4 text-sm">
               <p className="font-semibold">{DOCUMENTACION_TITULO}</p>
@@ -133,7 +135,7 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
               {(a11y) => <TextInput {...a11y} autoFocus inputMode="numeric" autoComplete="off" value={numero} onChange={(e) => setNumero(e.target.value)} />}
             </Field>
             </div>
-            <div className="shrink-0 border-t border-border bg-bg px-6 py-4">
+            <div className="sticky bottom-0 border-t border-border bg-bg px-6 py-4">
               <Button type="submit" disabled={consultando || !tipo} className="w-full sm:w-auto sm:px-8">
                 {consultando ? "Revisando…" : "Continuar"}
               </Button>
