@@ -1,7 +1,9 @@
 "use client";
 
 // Small form-bound fields of the postulación, built on the shared Field/Select/SegmentedControl.
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useFormContext, useWatch, type FieldValues } from "react-hook-form";
+import { Combobox } from "@/shared/ui/Combobox";
 import { formatoCop } from "@/modules/cierre-financiero/domain/smlmv";
 import { CampoTexto, useError } from "@/modules/registro/ui/campos";
 import { parsearIngresoCop } from "@/shared/normalizacion/texto";
@@ -49,6 +51,46 @@ export function CampoSiNo({ name, legend, options = SI_NO }: { name: string; leg
   const { register } = useFormContext<FieldValues>();
   const error = useError()(name);
   return <SegmentedControl legend={legend} name={name} options={options} error={error} inputProps={register(name)} />;
+}
+
+type Municipio = { codigo: string; nombre: string; departamento: string };
+const CALI = "76001";
+let municipios: Promise<Municipio[]> | null = null;
+/** The 1,122 municipios (DIVIPOLA) load once, on first use, outside the main bundle. */
+function useMunicipios() {
+  const [lista, setLista] = useState<Municipio[]>([]);
+  useEffect(() => {
+    (municipios ??= import("@/shared/catalogo/municipios.json").then((m) => m.default)).then(setLista);
+  }, []);
+  return lista;
+}
+
+/** Searchable municipio of Colombia; stores the DIVIPOLA code. `exterior` adds "Fuera de Colombia" (value "exterior"). */
+export function CampoMunicipio({ name, label, exterior = false }: { name: string; label: string; exterior?: boolean }) {
+  const { control } = useFormContext<FieldValues>();
+  const error = useError()(name);
+  const lista = useMunicipios();
+  const opciones = useMemo(
+    () => [
+      ...(exterior ? [{ value: "exterior", label: "Fuera de Colombia", keywords: "exterior extranjero otro pais" }] : []),
+      // Cali first and labelled as people say it, so "cali" does not land on California (Santander).
+      ...lista
+        .map((m) => (m.codigo === CALI ? { value: m.codigo, label: "Cali (Valle del Cauca)", keywords: m.nombre } : { value: m.codigo, label: `${m.nombre} (${m.departamento})`, keywords: `${m.nombre} ${m.departamento}` }))
+        .sort((a, b) => Number(b.value === CALI) - Number(a.value === CALI)),
+    ],
+    [lista, exterior],
+  );
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <Field label={label} hint="Escriba el municipio y elíjalo de la lista" error={error}>
+          {(a11y) => <Combobox {...a11y} options={opciones} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} />}
+        </Field>
+      )}
+    />
+  );
 }
 
 export function CampoMultiple({ name, label, options, exclusiva, hint }: { name: string; label: string; options: Option[]; exclusiva?: string; hint?: string }) {

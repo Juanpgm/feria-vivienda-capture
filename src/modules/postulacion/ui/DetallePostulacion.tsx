@@ -104,12 +104,13 @@ export function DetallePostulacion({ p }: { p: PostulacionVista }) {
         id="sec-solicitante"
         titulo="1. Datos del solicitante (jefe del hogar)"
         filas={[
-          ["Nombres", s.nombres], ["Apellidos", s.apellidos], ["Lugar de expedición", s.lugar_expedicion], ["Fecha de expedición", s.fecha_expedicion],
-          ["Fecha de nacimiento", s.fecha_nacimiento], ["Lugar de nacimiento", s.lugar_nacimiento], ["Género", s.genero === "otro" ? `Otro: ${texto(s.genero_otro)}` : de(GENEROS_SOLICITANTE, s.genero)],
+          ["Nombres", s.nombres], ["Apellidos", s.apellidos], ["Lugar de expedición", s.lugar_expedicion_nombre], ["Fecha de expedición", s.fecha_expedicion],
+          ["Fecha de nacimiento", s.fecha_nacimiento], ["Lugar de nacimiento", s.lugar_nacimiento_nombre], ["Género", s.genero === "otro" ? `Otro: ${texto(s.genero_otro)}` : de(GENEROS_SOLICITANTE, s.genero)],
           ["Ocupación", de(OCUPACIONES_SOLICITANTE, s.ocupacion)], ["Ingreso mensual", dinero(s.ingreso_mensual)],
           ...(s.ocupacion === "empleado" ? ([["Empresa", s.empresa], ["Teléfono empresa", s.telefono_empresa]] as Fila[]) : []),
-          ["Dirección", s.direccion], ["Dirección catastral", s.direccion_norm], ["Comuna / corregimiento", s.nombre_division], ["Barrio / vereda", s.nombre_barrio_vereda],
-          ["Estrato", s.estrato], ["Residencia en Cali (años)", s.anios_residencia], ["Teléfono", s.telefono], ["Correo", s.correo],
+          ["Dirección", s.direccion], ["Dirección catastral", s.direccion_catastral ?? s.direccion_norm], ["Comuna / corregimiento", s.nombre_division], ["Barrio / vereda", s.nombre_barrio_vereda],
+          ["Estrato", s.estrato],
+          ["Coordenadas", s.latitud !== null && s.longitud !== null ? `${s.latitud}, ${s.longitud}` : null], ["Residencia en Cali (años)", s.anios_residencia], ["Teléfono", s.telefono], ["Correo", s.correo],
           ["Notificación electrónica (Ley 1437)", s.notificacion_electronica], ["Caja de compensación", s.caja_compensacion === true ? `Sí: ${texto(s.caja_cual)}` : s.caja_compensacion],
           ["Sisbén", s.sisben === true ? `Sí: ${texto(s.sisben_grupo)}${texto(s.sisben_subgrupo)}` : s.sisben], ["Condición especial", condiciones],
         ]}

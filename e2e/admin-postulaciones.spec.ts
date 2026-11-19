@@ -87,15 +87,17 @@ test("the same document cannot start a second postulación", async ({ page }) =>
 test("editing fills the missing data and the record becomes complete", async ({ page }) => {
   await page.goto(`${detalle}/editar`);
   await page.waitForLoadState("networkidle"); // typing before hydration would be overwritten
-  await page.getByLabel("Lugar de expedición", ex).fill("cali");
+  await combo(page, "Lugar de expedición", "cali");
   await page.getByLabel("Fecha de expedición", ex).fill("01042003");
-  await page.getByLabel("Lugar de nacimiento", ex).fill("cali");
+  await combo(page, "Lugar de nacimiento", "cali");
   await page.getByLabel("Género", ex).selectOption("cis_femenino");
   await page.getByRole("group", { name: /artículo 56 de la Ley 1437/ }).getByText("Sí", ex).click();
-  await page.getByLabel("Dirección de domicilio actual", ex).fill("calle 12 # 5-20");
-  await combo(page, "Comuna o corregimiento", "Comuna 19");
-  await combo(page, "Barrio o vereda", "3 de Julio");
-  await page.getByRole("group", { name: "Estrato socioeconómico" }).getByRole("radio", { name: "2", ...ex }).check();
+  // REAL geocoder of the Alcaldía: comuna, barrio, estrato and coordinates come from the address.
+  const dir = page.getByLabel("Dirección de domicilio actual", ex);
+  await dir.fill("Calle 5 # 38-20");
+  await dir.press("Tab");
+  await expect(page.getByText("Ubicamos la dirección en el barrio Santa Isabel (geocodificador de la Alcaldía)", { exact: false })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("estrato-automatico")).toContainText("Estrato 4");
   await page.getByLabel("Tiempo de residencia en Cali (años)", ex).fill("20");
   await page.getByLabel("Ocupación", ex).selectOption("independiente");
   await page.getByLabel("Ingreso mensual del solicitante", ex).fill("1.000.000");
@@ -108,7 +110,10 @@ test("editing fills the missing data and the record becomes complete", async ({ 
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   await page.waitForURL((u) => u.pathname === detalle);
   await expect(page.getByText("Todos los datos obligatorios están completos.")).toBeVisible();
-  await expect(page.getByText("CL 12 # 5-20")).toBeVisible();
+  await expect(page.getByText("CL 5 # 38 - 20")).toBeVisible();
+  await expect(page.getByText("Santa Isabel", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^3\.42\d+, -76\.54\d+$/)).toBeVisible();
+  await expect(page.getByText("Santiago de Cali (Valle del Cauca)").first()).toBeVisible();
 });
 
 test("an official validates it with signature and confirmation of the document package", async ({ page }) => {

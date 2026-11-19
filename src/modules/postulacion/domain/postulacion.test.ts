@@ -50,7 +50,8 @@ describe("solicitante", () => {
     const ok = armarDatos(base({ solicitante: { ...solicitante, direccion: "calle 12 # 5-20", codigo_division: "19", id_barrio_vereda: "1912", estrato: "3" } }));
     expect(ok.ok && ok.datos.solicitante.direccion_norm).toBe("CL 12 # 5-20");
     expect(ok.ok && ok.datos.solicitante.nombre_barrio_vereda).toBe("3 de Julio");
-    expect(ok.ok && ok.datos.solicitante.estrato).toBe(3);
+    // The estrato comes from the barrio (estrato moda of 3 de Julio), not from what was typed.
+    expect(ok.ok && ok.datos.solicitante.estrato).toBe(4);
     const mal = validarSecciones(base({ solicitante: { ...solicitante, codigo_division: "11", id_barrio_vereda: "1912" } }), ["solicitante"]);
     expect(mal["solicitante.id_barrio_vereda"]).toMatch(/no pertenece/);
   });
@@ -133,7 +134,7 @@ describe("faltantes", () => {
   it("is empty for a complete record", () => {
     const r = armarDatos({
       solicitante: {
-        ...solicitante, lugar_expedicion: "cali", fecha_expedicion: "2003-04-01", lugar_nacimiento: "cali", ingreso_mensual: "1000000",
+        ...solicitante, lugar_expedicion: "76001", fecha_expedicion: "2003-04-01", lugar_nacimiento: "76001", ingreso_mensual: "1000000",
         genero: "cis_femenino", ocupacion: "independiente", direccion: "calle 12 # 5-20", codigo_division: "19", id_barrio_vereda: "1912",
         estrato: "2", anios_residencia: "20", notificacion_electronica: "si", caja_compensacion: "no", sisben: "si", sisben_grupo: "A", sisben_subgrupo: "3",
       },

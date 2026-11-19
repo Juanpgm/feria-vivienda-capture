@@ -14,8 +14,8 @@ export function valoresIniciales(documento: string, tipo = "cc"): Valores {
   return {
     solicitante: {
       nombres: "", apellidos: "", tipo_documento: tipo, numero_documento: documento, lugar_expedicion: "", fecha_expedicion: "",
-      fecha_nacimiento: "", lugar_nacimiento: "", ingreso_mensual: "", genero: "", genero_otro: "", ocupacion: "",
-      direccion: "", codigo_division: "", id_barrio_vereda: "", estrato: "", anios_residencia: "",
+      fecha_nacimiento: "", lugar_nacimiento: "", lugar_nacimiento_otro: "", ingreso_mensual: "", genero: "", genero_otro: "", ocupacion: "",
+      direccion: "", direccion_catastral: "", codigo_division: "", id_barrio_vereda: "", estrato: "", latitud: "", longitud: "", anios_residencia: "",
       telefono: "", telefono_pais: "CO", correo: "", empresa: "", telefono_empresa: "", telefono_empresa_pais: "CO",
       notificacion_electronica: "", caja_compensacion: "", caja_cual: "", sisben: "", sisben_grupo: "", sisben_subgrupo: "",
       condiciones_especiales: [],

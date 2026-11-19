@@ -54,6 +54,7 @@ export function calcularFaltantes(r: Registro): Faltante[] {
   const out: Faltante[] = [];
   const s = r.solicitante;
   for (const [k, etiqueta] of Object.entries(SOLICITANTE)) if (falta(s[k])) out.push({ ruta: `solicitante.${k}`, etiqueta });
+  if (s.lugar_nacimiento === "exterior" && falta(s.lugar_nacimiento_otro)) out.push({ ruta: "solicitante.lugar_nacimiento_otro", etiqueta: "País o ciudad de nacimiento" });
   if (s.genero === "otro" && falta(s.genero_otro)) out.push({ ruta: "solicitante.genero_otro", etiqueta: "Cuál género" });
   if (s.caja_compensacion === true && falta(s.caja_cual)) out.push({ ruta: "solicitante.caja_cual", etiqueta: "Cuál caja de compensación" });
   if (s.sisben === true && (falta(s.sisben_grupo) || falta(s.sisben_subgrupo))) out.push({ ruta: "solicitante.sisben_grupo", etiqueta: "Grupo y subgrupo del Sisbén" });

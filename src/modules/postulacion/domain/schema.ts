@@ -8,6 +8,8 @@ import { documentosSchema } from "@/modules/documentos/domain/schema";
 import { firmaFormSchema } from "@/modules/firma/domain/schema";
 import barrios from "@/modules/inmueble/catalogo/barrios.json";
 import divisiones from "@/modules/inmueble/catalogo/divisiones.json";
+import { estratoDeBarrio } from "@/modules/inmueble/domain/ubicacion";
+import municipios from "@/shared/catalogo/municipios.json";
 import { EDAD_MINIMA } from "@/shared/constantes";
 import { normalizarDireccion } from "@/shared/normalizacion/direccion";
 import { normalizarDocumento, normalizarNombre, parsearIngresoCop } from "@/shared/normalizacion/texto";
@@ -23,6 +25,13 @@ import { DECLARACION_VERSION } from "./texto";
 
 const DIVISION = new Map(divisiones.map((d) => [d.codigo, d]));
 const BARRIO = new Map(barrios.map((b) => [b.id, b]));
+// ponytail: the municipios catalog (75 KB) is imported statically, like the barrios; lazy-load the schema if the bundle matters.
+const MUNICIPIO = new Map(municipios.map((m) => [m.codigo, `${m.nombre} (${m.departamento})`]));
+/** Birth place outside Colombia (then `lugar_nacimiento_otro` says where). */
+export const EXTERIOR = "exterior";
+const municipio = (msg: string) => z.string().refine((c) => MUNICIPIO.has(c), msg);
+/** Cali, generous: a point outside means a wrong geocoding, not an address elsewhere. */
+const CALI = { latMin: 2.9, latMax: 4.1, lonMin: -77.0, lonMax: -76.0 };
 
 const vacio = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
 /** Empty -> null; anything else must pass `s`. */
@@ -65,18 +74,23 @@ export const solicitanteSchema = z
     apellidos: nombre("Ingrese los apellidos"),
     tipo_documento: enumDe(TIPOS_DOCUMENTO_SOLICITANTE),
     numero_documento: documento,
-    lugar_expedicion: opcional(texto().transform(normalizarNombre)),
+    lugar_expedicion: opcional(municipio("Elija el municipio de la lista")),
     fecha_expedicion: opcional(fecha),
     fecha_nacimiento: fecha,
-    lugar_nacimiento: opcional(texto().transform(normalizarNombre)),
+    lugar_nacimiento: opcional(z.string().refine((c) => c === EXTERIOR || MUNICIPIO.has(c), "Elija el municipio de la lista o «Fuera de Colombia»")),
+    lugar_nacimiento_otro: opcional(texto(120).transform(normalizarNombre)),
     ingreso_mensual: opcional(moneda),
     genero: opcional(enumDe(GENEROS_SOLICITANTE)),
     genero_otro: opcional(texto(60)),
     ocupacion: opcional(enumDe(OCUPACIONES_SOLICITANTE)),
     direccion: opcional(texto(200)),
+    /** Cadastral address as returned by the geocoder of the Alcaldía (empty when it could not standardize it). */
+    direccion_catastral: opcional(texto(200)),
     codigo_division: opcional(z.string()),
     id_barrio_vereda: opcional(z.string()),
     estrato: opcional(entero(1, 6, "Seleccione un estrato del 1 al 6")),
+    latitud: opcional(z.coerce.number().min(CALI.latMin).max(CALI.latMax)),
+    longitud: opcional(z.coerce.number().min(CALI.lonMin).max(CALI.lonMax)),
     anios_residencia: opcional(entero(0, 120, "Escriba los años completos (0 a 120)")),
     telefono,
     correo: opcional(z.string().toLowerCase().pipe(z.email("Correo inválido"))),
@@ -116,6 +130,14 @@ export const solicitanteSchema = z
       ...v,
       nombre_completo: `${v.nombres} ${v.apellidos}`,
       genero_otro: v.genero === "otro" ? v.genero_otro : null,
+      lugar_expedicion_nombre: v.lugar_expedicion ? MUNICIPIO.get(v.lugar_expedicion)! : null,
+      lugar_nacimiento_nombre: v.lugar_nacimiento === EXTERIOR ? (v.lugar_nacimiento_otro ? `${v.lugar_nacimiento_otro} (fuera de Colombia)` : "Fuera de Colombia") : v.lugar_nacimiento ? MUNICIPIO.get(v.lugar_nacimiento)! : null,
+      lugar_nacimiento_otro: v.lugar_nacimiento === EXTERIOR ? v.lugar_nacimiento_otro : null,
+      // The estrato is the barrio's estrato moda when it is known (it is not asked then); typed only for veredas.
+      estrato: estratoDeBarrio(v.id_barrio_vereda) ?? v.estrato,
+      // Coordinates only make sense together and with a barrio.
+      latitud: v.latitud !== null && v.longitud !== null && v.id_barrio_vereda ? v.latitud : null,
+      longitud: v.latitud !== null && v.longitud !== null && v.id_barrio_vereda ? v.longitud : null,
       // Derived from the typed address and the catalogs; never sent by the client.
       direccion_norm: dir?.norm ?? null,
       es_direccion_norm_completa: dir?.es_completa ?? false,

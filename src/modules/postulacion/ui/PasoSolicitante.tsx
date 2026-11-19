@@ -4,7 +4,7 @@ import { useWatch } from "react-hook-form";
 import { TIPOS_FOTO } from "@/modules/documentos/domain/imagen";
 import { FOTO_CAPTURADA } from "@/modules/documentos/domain/schema";
 import { FotoCaptura } from "@/modules/documentos/ui/FotoCaptura";
-import { PasoInmueble } from "@/modules/inmueble/ui/PasoInmueble";
+import { PasoInmueble, type UbicacionGeocodificada } from "@/modules/inmueble/ui/PasoInmueble";
 import { CampoFecha } from "@/modules/registro/ui/CampoFecha";
 import { CampoTelefono } from "@/modules/registro/ui/CampoTelefono";
 import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
@@ -14,16 +14,21 @@ import {
   CONDICIONES_ESPECIALES, GENEROS_SOLICITANTE, GRUPOS_SISBEN, OCUPACIONES_SOLICITANTE, SUBGRUPO_MAX, TIPOS_DOCUMENTO_SOLICITANTE, opciones,
 } from "../domain/catalogos";
 import { NOTIFICACION_ELECTRONICA } from "../domain/texto";
-import { CampoMoneda, CampoMultiple, CampoSelect, CampoSiNo } from "./campos";
+import { CampoMoneda, CampoMultiple, CampoMunicipio, CampoSelect, CampoSiNo } from "./campos";
 
 const P = "solicitante.";
 const nombre = (v: string) => (v.trim() ? normalizarNombre(v) : null);
+/** Geocoder of the Alcaldía through our API (null when it cannot locate the address or is unavailable). */
+async function ubicar(direccion: string): Promise<UbicacionGeocodificada | null> {
+  const r = await fetch("/api/postulaciones/ubicar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ direccion }) });
+  return r.ok ? ((await r.json()).ubicacion ?? null) : null;
+}
 const SUBGRUPOS = Array.from({ length: SUBGRUPO_MAX }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
 
 /** Step 1: section 1 of the format (jefe del hogar) + photos of the identity document (S16). */
 export function PasoSolicitante({ borradorId, documentoFijo }: { borradorId: string; documentoFijo: boolean }) {
   const error = useError();
-  const [genero, ocupacion, caja, sisben] = useWatch({ name: [P + "genero", P + "ocupacion", P + "caja_compensacion", P + "sisben"] }) as string[];
+  const [genero, ocupacion, caja, sisben, nacimiento] = useWatch({ name: [P + "genero", P + "ocupacion", P + "caja_compensacion", P + "sisben", P + "lugar_nacimiento"] }) as string[];
   const frente = useWatch({ name: "documentos.documento_frente" }) === FOTO_CAPTURADA;
 
   return (
@@ -33,10 +38,11 @@ export function PasoSolicitante({ borradorId, documentoFijo }: { borradorId: str
         <CampoTexto name={P + "apellidos"} label="Apellidos" autoComplete="family-name" normalizar={nombre} />
         <CampoSelect name={P + "tipo_documento"} label="Tipo de documento del solicitante" options={opciones(TIPOS_DOCUMENTO_SOLICITANTE)} />
         <CampoTexto name={P + "numero_documento"} label="Número de documento" readOnly={documentoFijo} hint={documentoFijo ? "Es el documento con el que inició la postulación." : undefined} />
-        <CampoTexto name={P + "lugar_expedicion"} label="Lugar de expedición" normalizar={nombre} />
+        <CampoMunicipio name={P + "lugar_expedicion"} label="Lugar de expedición" />
         <CampoFecha name={P + "fecha_expedicion"} label="Fecha de expedición" max={fechaBogota()} mensajeMax="La fecha de expedición no puede ser futura" />
         <CampoFecha name={P + "fecha_nacimiento"} label="Fecha de nacimiento" max={fechaBogota()} mensajeMax="La fecha de nacimiento debe ser anterior a hoy" />
-        <CampoTexto name={P + "lugar_nacimiento"} label="Lugar de nacimiento" normalizar={nombre} />
+        <CampoMunicipio name={P + "lugar_nacimiento"} label="Lugar de nacimiento" exterior />
+        {nacimiento === "exterior" && <CampoTexto name={P + "lugar_nacimiento_otro"} label="País y ciudad de nacimiento" normalizar={nombre} />}
         <CampoSelect name={P + "genero"} label="Género" options={opciones(GENEROS_SOLICITANTE)} />
         {genero === "otro" && <CampoTexto name={P + "genero_otro"} label="¿Cuál género?" />}
       </Seccion>
@@ -52,9 +58,9 @@ export function PasoSolicitante({ borradorId, documentoFijo }: { borradorId: str
       <section className="flex flex-col gap-4">
         <h3 className="text-lg font-bold text-primary-strong">Domicilio actual</h3>
         <p className="text-sm text-muted">
-          Escriba la dirección como la conoce: la convertimos al formato catastral. Luego elija la comuna, el barrio y el estrato de la lista.
+          Escriba la dirección como la conoce: la convertimos al formato catastral y con ella buscamos la comuna y el barrio (puede cambiarlos). El estrato sale del barrio.
         </p>
-        <PasoInmueble prefijo={P} etiquetaDireccion="Dirección de domicilio actual" />
+        <PasoInmueble prefijo={P} etiquetaDireccion="Dirección de domicilio actual" ubicar={ubicar} />
         <div className="grid gap-4 sm:grid-cols-2">
           <CampoTexto name={P + "anios_residencia"} label="Tiempo de residencia en Cali (años)" inputMode="numeric" />
         </div>

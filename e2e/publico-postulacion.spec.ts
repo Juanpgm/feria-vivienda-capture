@@ -13,6 +13,18 @@ async function servidor(page: Page, { existe = false } = {}) {
   await page.route("**/api/postulaciones/consulta", (r) =>
     r.fulfill({ json: existe ? { existe: true, documento: DOC, radicado: "PSE-000007", estado: "sin_validar" } : { existe: false, documento: DOC } }),
   );
+  // Geocoder of the Alcaldía (shape captured from the real service): it locates street addresses, not "Avenida Norte" ones.
+  await page.route("**/api/postulaciones/ubicar", async (r) => {
+    const { direccion } = r.request().postDataJSON() as { direccion: string };
+    const ubicada = /^calle 5 /i.test(direccion);
+    await r.fulfill({
+      json: {
+        ubicacion: ubicada
+          ? { direccion_catastral: "CL 5 # 38 - 20", id_barrio_vereda: "1908", nombre_barrio_vereda: "Santa Isabel", codigo_division: "19", estrato: 4, latitud: 3.427998, longitud: -76.545395 }
+          : { direccion_catastral: "AV 5 NORTE # 5N - 02 BO CENTENARIO", id_barrio_vereda: null, nombre_barrio_vereda: null, codigo_division: null, estrato: null, latitud: null, longitud: null },
+      },
+    });
+  });
   await page.route("**/api/postulaciones", async (r) => {
     envios.push(r.request().postDataJSON());
     await r.fulfill({ status: 201, json: { id: "00000000-0000-4000-8000-000000000001", radicado: "PSE-000008" } });
@@ -54,8 +66,28 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await expect(page.getByLabel("Nombres", exacto)).toHaveValue("Ana María");
   await page.getByLabel("Fecha de nacimiento", exacto).fill("15031985");
   await page.getByLabel("Teléfono o celular", exacto).fill("3001234567");
-  await page.getByLabel("Dirección de domicilio actual", exacto).fill("calle 12 # 5-20");
-  await expect(page.getByText("Se guardará como: CL 12 # 5-20")).toBeVisible();
+  // A barrio named in the address is used when the geocoder cannot locate it; the estrato then comes from the barrio.
+  const dir = page.getByLabel("Dirección de domicilio actual", exacto);
+  await dir.fill("Av 5 Norte # 5N-02, Barrio Centenario");
+  await dir.press("Tab");
+  await expect(page.getByText("Ubicamos la dirección en el barrio Centenario y lo seleccionamos abajo. Cámbielo si no es correcto.")).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Barrio o vereda", ...exacto })).toHaveValue("Centenario");
+  await expect(page.getByTestId("estrato-automatico")).toContainText("Estrato 5");
+  await expect(page.getByText("Dirección catastral: AV 5 NORTE # 5N - 02 BO CENTENARIO")).toBeVisible();
+  // A street address is located by the geocoder of the Alcaldía (comuna, barrio, estrato), replacing the automatic barrio.
+  await dir.fill("Calle 5 # 38-20");
+  await dir.press("Tab");
+  await expect(page.getByText("Ubicamos la dirección en el barrio Santa Isabel (geocodificador de la Alcaldía)", { exact: false })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Comuna o corregimiento", ...exacto })).toHaveValue("Comuna 19");
+  await expect(page.getByTestId("estrato-automatico")).toContainText("Estrato 4");
+  await expect(page.getByRole("group", { name: "Estrato socioeconómico" })).toHaveCount(0);
+  // Places are picked from the 1,122 municipios of Colombia.
+  const exp = page.getByRole("combobox", { name: "Lugar de expedición", ...exacto });
+  await exp.fill("cali");
+  await expect(page.getByRole("listbox").getByRole("option").first()).toHaveText("Cali (Valle del Cauca)");
+  await expect(page.getByRole("listbox").getByRole("option", { name: "California (Santander)" })).toBeVisible();
+  await exp.press("Enter");
+  await expect(exp).toHaveValue("Cali (Valle del Cauca)");
   await page.getByLabel("Ingreso mensual del solicitante", exacto).fill("$1.200.000");
   await page.getByLabel("Ingreso mensual del solicitante", exacto).press("Tab");
   await expect(page.getByLabel("Ingreso mensual del solicitante", exacto)).toHaveValue("1200000");
@@ -111,7 +143,10 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   expect(envios).toHaveLength(1);
   const cuerpo = envios[0] as { valores: Record<string, Record<string, unknown>>; adjuntos: Record<string, string> };
   expect(Object.keys(cuerpo.adjuntos).sort()).toEqual(["documento_frente", "documento_reverso", "firma"]);
-  expect(cuerpo.valores.solicitante).toMatchObject({ nombres: "Ana María", numero_documento: DOC, ingreso_mensual: "1200000" });
+  expect(cuerpo.valores.solicitante).toMatchObject({
+    nombres: "Ana María", numero_documento: DOC, ingreso_mensual: "1200000", lugar_expedicion: "76001",
+    codigo_division: "19", id_barrio_vereda: "1908", estrato: "4", latitud: 3.427998, longitud: -76.545395, direccion_catastral: "CL 5 # 38 - 20",
+  });
   expect(cuerpo.valores.postulacion).toMatchObject({ modalidad: "1", fuentes: ["ahorro_programado", "cesantias"] });
   expect((cuerpo.valores.postulacion.recursos as Record<string, { valor: string }>).cesantias.valor).toBe("1000000");
   expect(cuerpo.valores.firma).toEqual({ metodo_firma: "dibujada" });
