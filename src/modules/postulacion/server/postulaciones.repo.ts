@@ -8,6 +8,7 @@ import { FieldValue, type Timestamp } from "firebase-admin/firestore";
 import { obtenerUsuario } from "@/modules/auth/server/usuarios.repo";
 import { hashConsentimiento } from "@/modules/consentimiento/server/hash";
 import { derivar } from "@/modules/ciudadano/server/ciudadanos.repo";
+import { firmarAcceso, vencimiento, verificarAcceso, type Verificacion, type VigenciaDias } from "./accesoQr";
 import type { AdjuntoValidado } from "@/modules/documentos/server/adjuntos.repo";
 import { formatearRadicado } from "@/modules/registro/domain/radicado";
 import { adminDb } from "@/shared/firebase/admin";
@@ -62,13 +63,53 @@ export async function fijarFormulario(habilitado: boolean, actor: Actor) {
   await db().collection("auditoria_enlace_postulaciones").add({ habilitado, por_uid: actor.uid, por_correo: actor.correo, en: FieldValue.serverTimestamp() });
 }
 
+// ---- access codes of the public QR (see accesoQr.ts) ----
+const secretoQr = () => derivar("acceso-qr-postulacion-v1");
+const versionQr = async () => Number((await refConfig().get()).data()?.qr_version ?? 1);
+
+/** A new access code for the poster, valid `dias` days. */
+export async function emitirAccesoQr(dias: VigenciaDias) {
+  const exp = vencimiento(dias);
+  return { token: firmarAcceso(secretoQr(), await versionQr(), exp), exp };
+}
+
+/** Voids every QR code already issued (a new series starts). */
+export async function anularAccesosQr(actor: Actor) {
+  await db().runTransaction(async (tx) => {
+    const v = Number((await tx.get(refConfig())).data()?.qr_version ?? 1);
+    tx.set(refConfig(), { qr_version: v + 1, qr_anulado_en: FieldValue.serverTimestamp(), qr_anulado_por: actor.correo }, { merge: true });
+  });
+  await db().collection("auditoria_enlace_postulaciones").add({ accion: "anular_qr", por_uid: actor.uid, por_correo: actor.correo, en: FieldValue.serverTimestamp() });
+}
+
+/** The code of a scanned QR, always checked (no dev shortcut): used where the QR lands. */
+export async function validarCodigoQr(token: string | undefined | null): Promise<Verificacion> {
+  return verificarAcceso(secretoQr(), token, await versionQr());
+}
+
+export async function verificarAccesoPublico(token: string | undefined | null): Promise<Verificacion> {
+  // e2e on the dev server only (never in a production build).
+  if (process.env.NODE_ENV !== "production" && process.env.E2E_POSTULACION_ABIERTA === "1") return { ok: true, exp: Math.floor(Date.now() / 1000) + 3600 };
+  return verificarAcceso(secretoQr(), token, await versionQr());
+}
+
 // ---- lookup (the first question of the form) ----
-export type Consulta = { existe: false } | { existe: true; id: string; radicado: string; estado: EstadoPostulacion };
+export type Consulta =
+  | { existe: false; integranteDe?: undefined }
+  | { existe: false; integranteDe: { id: string; radicado: string } }
+  | { existe: true; id: string; radicado: string; estado: EstadoPostulacion };
+
+/** Documents of the members of a postulación (normalized), indexed for the "already a member elsewhere" rule. */
+const documentosIntegrantes = (d: DatosPostulacion) => [...new Set(d.hogar.integrantes.map((m) => m.numero_documento).filter((x): x is string => !!x))];
+/** The postulación where `documento` is listed as a household member, if any. */
+const comoIntegrante = (documento: string) => col().where("documentos_integrantes", "array-contains", documento).limit(1);
 
 export async function consultarPorDocumento(documento: string): Promise<Consulta> {
   const id = postulacionIdDe(documento);
   const d = (await col().doc(id).get()).data();
-  return d ? { existe: true, id, radicado: String(d.radicado), estado: d.estado as EstadoPostulacion } : { existe: false };
+  if (d) return { existe: true, id, radicado: String(d.radicado), estado: d.estado as EstadoPostulacion };
+  const otra = (await comoIntegrante(documento).get()).docs[0];
+  return otra ? { existe: false, integranteDe: { id: otra.id, radicado: String(otra.data().radicado) } } : { existe: false };
 }
 
 /** What the public may see of a postulación (its QR page): radicado, status and dates. Never personal data. */
@@ -105,13 +146,16 @@ export async function crearPostulacion(e: Envio, actor: Actor | null) {
   const nombre = actor ? await nombreDe(actor) : null;
   const por = actor ? actor.correo : "ciudadano";
   return db().runTransaction(async (tx) => {
-    const [existente, contador] = await Promise.all([tx.get(ref), tx.get(refContador())]);
+    const [existente, contador, integrante] = await Promise.all([tx.get(ref), tx.get(refContador()), tx.get(comoIntegrante(e.datos.solicitante.numero_documento))]);
     if (existente.exists) throw new PostulacionError(409, "Ya existe una postulación con este documento", { radicado: existente.data()?.radicado });
+    // A person already counted in another household cannot apply on their own.
+    if (!integrante.empty) throw new PostulacionError(409, "Este documento ya hace parte del grupo familiar de otra postulación. No puede registrar una postulación propia.");
     const numero = ((contador.data()?.ultimo as number | undefined) ?? 0) + 1;
     const radicado = formatearRadicado(PREFIJO_RADICADO, numero);
     tx.set(refContador(), { ultimo: numero, actualizado_en: FieldValue.serverTimestamp() });
     tx.create(ref, {
       ...e.datos,
+      documentos_integrantes: documentosIntegrantes(e.datos),
       id,
       radicado,
       radicado_numero: numero,
@@ -146,6 +190,7 @@ export async function editarPostulacion(id: string, e: Omit<Envio, "consentimien
     if (d.solicitante?.numero_documento !== e.datos.solicitante.numero_documento) throw new PostulacionError(422, "El número de documento no se puede cambiar");
     tx.update(ref, {
       ...e.datos,
+      documentos_integrantes: documentosIntegrantes(e.datos),
       faltantes: e.faltantes,
       completa: e.faltantes.length === 0,
       ...(e.firma ? { firma: e.firma } : {}),

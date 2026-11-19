@@ -24,6 +24,7 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
   const [consultando, setConsultando] = useState(false);
   const [existente, setExistente] = useState<Existente | null>(null);
   const [nuevo, setNuevo] = useState<string | null>(null);
+  const [integrante, setIntegrante] = useState<{ id?: string; radicado?: string } | null>(null);
 
   useEffect(() => {
     if (!nuevo) dialogo.current?.showModal();
@@ -40,6 +41,7 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
       const j = await res.json().catch(() => ({}));
       if (!res.ok) return setError(j?.error ?? "No se pudo consultar. Intente de nuevo.");
       if (j.existe) return setExistente({ radicado: j.radicado, estado: j.estado, id: j.id });
+      if (j.integrante) return setIntegrante({ id: j.id, radicado: j.radicado });
       dialogo.current?.close();
       setNuevo(documento);
     } catch {
@@ -65,10 +67,28 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
           <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-accent" />
           <p className="text-sm text-white/80">Subsidio Distrital de Vivienda</p>
           <h2 id="entrada-titulo" className="mt-1 text-2xl font-bold">
-            {existente ? "Ya existe una postulación" : "Nueva postulación"}
+            {existente ? "Ya existe una postulación" : integrante ? "Ya hace parte de otra postulación" : "Nueva postulación"}
           </h2>
         </div>
-        {existente ? (
+        {integrante ? (
+          <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6">
+            <p>Este documento ya está registrado como integrante del grupo familiar de otra postulación. Una persona solo puede hacer parte de una postulación, así que no puede registrar una propia.</p>
+            {publico ? (
+              <p className="text-sm text-muted">Si hay un error, acérquese a la Secretaría de Vivienda Social y Hábitat con su documento.</p>
+            ) : (
+              integrante.id && (
+                <Link href={`/postulaciones/${integrante.id}`} className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2">
+                  Ver la postulación {integrante.radicado}
+                </Link>
+              )
+            )}
+            <div>
+              <Button variant="secondary" onClick={() => { setIntegrante(null); setNumero(""); }}>
+                Consultar otro documento
+              </Button>
+            </div>
+          </div>
+        ) : existente ? (
           <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-6">
             <p>Este documento ya tiene una postulación registrada. No se puede crear otra.</p>
             <dl className="grid grid-cols-[8rem_1fr] gap-1">

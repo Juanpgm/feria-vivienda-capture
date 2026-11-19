@@ -13,6 +13,7 @@ export const PASOS_CARTEL = [
   "Toque el aviso que aparece en la pantalla para abrir el formulario.",
   "Tenga a mano su documento de identidad: le pediremos una foto del frente y otra del reverso.",
   "Responda los tres pasos y envíe. Recibirá un número de registro.",
+  "Al terminar, permanezca en el sitio y espere el llamado para entregar su documentación. Si no se presenta, su registro no será validado ni contará dentro de la postulación.",
 ] as const;
 
 async function aDataUrl(ruta: string): Promise<string | null> {
@@ -29,8 +30,12 @@ async function aDataUrl(ruta: string): Promise<string | null> {
   }
 }
 
-/** Downloads `postulacion-subsidio-qr.pdf`. `destino` is the public form URL (encoded in the QR only). */
-export async function descargarCartel(destino: string) {
+/** "jueves 26 de noviembre de 2026" in Bogota. */
+export const fechaVence = (exp: number) =>
+  new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(exp * 1000));
+
+/** Downloads `postulacion-subsidio-qr.pdf`. `destino` (encoded in the QR only) carries an access code valid until `exp`. */
+export async function descargarCartel(destino: string, exp: number) {
   const [{ jsPDF }, qr, logo] = await Promise.all([
     import("jspdf"),
     QRCode.toDataURL(destino, { errorCorrectionLevel: "H", margin: 1, width: 1200 }),
@@ -67,16 +72,21 @@ export async function descargarCartel(destino: string) {
   doc.text("Escanee el código con la cámara de su celular para abrir el formulario.", ancho / 2, 76, { align: "center" });
 
   // QR, framed.
-  const lado = 72;
+  const lado = 68;
   const x = (ancho - lado) / 2;
   const y = 84;
   doc.setDrawColor(...AZUL);
   doc.setLineWidth(1.2);
   doc.roundedRect(x - 5, y - 5, lado + 10, lado + 10, 4, 4, "S");
   doc.addImage(qr, "PNG", x, y, lado, lado);
+  // Discreet validity under the QR: anyone looking at the sheet can tell whether it is still current.
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...GRIS);
+  doc.text(`Vigente hasta el ${fechaVence(exp)}`, ancho / 2, y + lado + 10, { align: "center" });
 
   // Two columns under the QR: the steps (a real sequence, numbered) and the documentation to have ready.
-  const arriba = y + lado + 16;
+  const arriba = y + lado + 21;
   const col = (ancho - 2 * m - 10) / 2;
   let yy = arriba;
   doc.setTextColor(...AZUL);
@@ -84,7 +94,7 @@ export async function descargarCartel(destino: string) {
   doc.setFontSize(13);
   doc.text("Cómo postularse", m, yy);
   yy += 7;
-  doc.setFontSize(10.5);
+  doc.setFontSize(10);
   PASOS_CARTEL.forEach((paso, i) => {
     doc.setFillColor(...AZUL);
     doc.circle(m + 3, yy - 1.2, 3, "F");
@@ -95,7 +105,7 @@ export async function descargarCartel(destino: string) {
     doc.setFont("helvetica", "normal");
     const lineas = doc.splitTextToSize(paso, col - 9);
     doc.text(lineas, m + 9, yy);
-    yy += lineas.length * 4.8 + 3;
+    yy += lineas.length * 4.4 + 2.6;
   });
 
   const x2 = m + col + 10;

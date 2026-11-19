@@ -4,27 +4,44 @@ import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/ui/Button";
 import { DOCUMENTACION, DOCUMENTACION_TITULO } from "../domain/texto";
-import { descargarCartel, PASOS_CARTEL } from "./pdfCartel";
+import { descargarCartel, fechaVence, PASOS_CARTEL } from "./pdfCartel";
 
 /**
  * QR poster of the public form (S14): a preview and a printable PDF with instructions. The QR opens only the
  * registration form; the link is not shown or offered anywhere, only the QR and the document.
  */
 export function CartelQr() {
+  const [dias, setDias] = useState<1 | 7 | 30>(7);
+  const [codigo, setCodigo] = useState<{ destino: string; exp: number } | null>(null);
   const [svg, setSvg] = useState("");
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState("");
-  const destino = () => `${window.location.origin}/postulacion`;
 
+  // A fresh access code for the chosen validity; the QR (and the PDF) carry it. A photo of the poster stops working when it expires.
   useEffect(() => {
-    QRCode.toString(destino(), { type: "svg", errorCorrectionLevel: "H", margin: 1 }).then(setSvg).catch(() => setSvg(""));
-  }, []);
+    let vivo = true;
+    fetch("/api/postulaciones/qr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dias }) })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then(async ({ token, exp }: { token: string; exp: number }) => {
+        const destino = `${window.location.origin}/postulacion/ingreso?t=${encodeURIComponent(token)}`;
+        const s = await QRCode.toString(destino, { type: "svg", errorCorrectionLevel: "H", margin: 1 });
+        if (!vivo) return;
+        setCodigo({ destino, exp });
+        setSvg(s);
+        setError("");
+      })
+      .catch(() => vivo && setError("No se pudo generar el código. Recargue la página."));
+    return () => {
+      vivo = false;
+    };
+  }, [dias]);
 
   async function descargar() {
+    if (!codigo) return;
     setGenerando(true);
     setError("");
     try {
-      await descargarCartel(destino());
+      await descargarCartel(codigo.destino, codigo.exp);
     } catch {
       setError("No se pudo generar el PDF. Intente de nuevo.");
     } finally {
@@ -38,12 +55,22 @@ export function CartelQr() {
         <div>
           <h1 className="text-2xl font-bold text-primary-strong">Código QR del formulario de postulación</h1>
           <p className="mt-1 max-w-prose text-muted">
-            Descargue el PDF para imprimirlo o compartirlo. Quien escanee el código llega solo al formulario de registro; no puede ver otras postulaciones.
+            Descargue el PDF para imprimirlo. Quien escanee el código llega solo al formulario de registro y no puede ver otras postulaciones. El código vence: una foto del cartel deja de funcionar al terminar su vigencia.
           </p>
         </div>
-        <Button onClick={descargar} disabled={generando || !svg}>
-          {generando ? "Generando PDF…" : "Descargar PDF para imprimir"}
-        </Button>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm font-semibold">
+            Vigencia del código
+            <select value={dias} onChange={(e) => setDias(Number(e.target.value) as 1 | 7 | 30)} className="min-h-11 rounded-lg border border-border bg-bg px-3 text-base">
+              <option value={1}>Solo hoy</option>
+              <option value={7}>7 días</option>
+              <option value={30}>30 días</option>
+            </select>
+          </label>
+          <Button onClick={descargar} disabled={generando || !svg}>
+            {generando ? "Generando PDF…" : "Descargar PDF para imprimir"}
+          </Button>
+        </div>
       </div>
       {error && <p role="alert" className="font-medium text-danger">{error}</p>}
 
@@ -62,6 +89,7 @@ export function CartelQr() {
           ) : (
             <p role="status">Generando código…</p>
           )}
+          {codigo && <p data-testid="vigencia-qr" className="-mt-2 text-xs text-[#4d4d4d]">Vigente hasta el {fechaVence(codigo.exp)}</p>}
           <ol className="mt-2 flex w-full max-w-md flex-col gap-2 text-left">
             {PASOS_CARTEL.map((p, i) => (
               <li key={p} className="flex gap-3">

@@ -38,3 +38,11 @@ export const DOCUMENTACION: readonly string[] = [
   "Los datos del proyecto de vivienda (nombre, constructora y valor) o, si es deudor, los de su obligación.",
 ];
 export const DOCUMENTACION_NOTA = "La Secretaría revisará esta documentación para validar su postulación.";
+
+/** After sending (receipt and printed QR poster): the registration only counts once an official validates it in person. */
+export const SIGUIENTES_PASOS_TITULO = "Siguientes pasos";
+export const SIGUIENTES_PASOS: readonly string[] = [
+  "Permanezca en el sitio y esté atento al llamado de un funcionario de la Secretaría.",
+  "Cuando lo llamen, entregue su documentación para la validación de la postulación.",
+  "Si no se presenta al llamado, su registro no será validado y no contará dentro de la postulación.",
+];

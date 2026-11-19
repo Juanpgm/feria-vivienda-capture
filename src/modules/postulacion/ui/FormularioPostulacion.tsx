@@ -17,6 +17,7 @@ import { fechaHoraBogota } from "@/shared/tiempo";
 import { Button } from "@/shared/ui/Button";
 import { validarSecciones, type Valores } from "../domain/armar";
 import { ESTADOS_POSTULACION } from "../domain/catalogos";
+import { SIGUIENTES_PASOS, SIGUIENTES_PASOS_TITULO } from "../domain/texto";
 import type { Seccion } from "../domain/schema";
 import { valoresIniciales } from "../domain/formulario";
 import { enfocarCampo, pasoDeCampo, PorCompletar } from "./PorCompletar";
@@ -294,11 +295,12 @@ function Confirmacion({ r, publico }: { r: Resultado; publico: boolean }) {
       </div>
       <QrPostulacion id={r.id} radicado={r.radicado} />
       <div>
-        <h3 className="font-bold text-primary-strong">Qué sigue</h3>
-        <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5 text-muted">
-          <li>Tome una foto de esta pantalla o guarde el código QR: con él consulta el estado cuando quiera.</li>
-          <li>Un funcionario de la Secretaría revisará sus datos y sus documentos.</li>
-          <li>Cuando la postulación quede validada, su estado cambiará a «Válido».</li>
+        <h3 className="text-lg font-bold text-primary-strong">{SIGUIENTES_PASOS_TITULO}</h3>
+        <ol className="mt-2 flex list-decimal flex-col gap-1.5 pl-5">
+          {SIGUIENTES_PASOS.map((p, i) => (
+            <li key={p} className={i === SIGUIENTES_PASOS.length - 1 ? "font-semibold text-warning-text" : ""}>{p}</li>
+          ))}
+          <li className="text-muted">Tome una foto de esta pantalla o guarde el código QR: con él consulta el estado cuando quiera.</li>
         </ol>
       </div>
       {!publico && (

@@ -51,6 +51,23 @@ test("an existing document only shows its radicado and status, never the form", 
   await expect(page.getByRole("heading", { name: "Datos del solicitante" })).toHaveCount(0);
 });
 
+test("a document already listed as a member of another household cannot apply", async ({ page }) => {
+  await page.route("**/api/postulaciones/consulta", (r) => r.fulfill({ json: { existe: false, documento: DOC, integrante: true } }));
+  await page.goto("/postulacion");
+  const modal = page.getByRole("dialog", { name: "Nueva postulación" });
+  await modal.getByLabel("Número de documento", exacto).fill(DOC);
+  await modal.getByRole("button", { name: "Continuar" }).click();
+  const aviso = page.getByRole("dialog", { name: "Ya hace parte de otra postulación" });
+  await expect(aviso.getByText(/ya está registrado como integrante del grupo familiar de otra postulación/)).toBeVisible();
+  await expect(aviso.getByRole("link")).toHaveCount(0); // the public does not learn which postulación
+  await expect(page.getByRole("heading", { name: "Datos del solicitante" })).toHaveCount(0);
+});
+
+test("a QR code that is not valid is refused where the QR lands", async ({ page }) => {
+  await page.goto("/postulacion/ingreso?t=1700000000.1.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+  await page.waitForURL((u) => u.pathname === "/postulacion" && u.searchParams.get("acceso") === "invalido");
+});
+
 test("a new postulación goes through the 3 steps and is sent with photos, signature and normalized values", async ({ page }) => {
   const envios = await servidor(page);
   await abrir(page);
@@ -250,6 +267,9 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   expect((cuerpo.valores.postulacion.recursos as Record<string, { entidad: string }>).cesantias.entidad).toBe("Fondo de empleados XYZ");
   expect((cuerpo.valores.postulacion.recursos as Record<string, { valor: string }>).cesantias.valor).toBe("1000000");
   expect(cuerpo.valores.firma).toEqual({ metodo_firma: "dibujada", origen: "pantalla" });
+  // Next steps: stay on site for the in-person validation, or the registration will not count.
+  await expect(page.getByRole("heading", { name: "Siguientes pasos" })).toBeVisible();
+  await expect(page.getByText("Si no se presenta al llamado, su registro no será validado y no contará dentro de la postulación.")).toBeVisible();
   // The receipt carries the QR of this postulación (no link shown).
   await expect(page.getByTestId("qr-postulacion")).toBeVisible();
   await expect(page.getByRole("link", { name: "Guardar código QR" })).toHaveAttribute("download", "postulacion-PSE-000008.png");

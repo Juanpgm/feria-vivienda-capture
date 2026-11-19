@@ -4,10 +4,11 @@
 import { expect, test, type Page } from "@playwright/test";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import { dibujarFirma } from "./ayudas-envio";
-import { autorizar, fotos, llenarTitular } from "./ayudas-postulacion";
+import { autorizar, fotos, llenarIntegrante, llenarTitular } from "./ayudas-postulacion";
 
 const ex = { exact: true } as const;
 const DOC = `99900001${String(Date.now() % 100).padStart(2, "0")}`;
+const MIEMBRO = `11000001${String(Date.now() % 100).padStart(2, "0")}`;
 let detalle = "";
 
 test.describe.configure({ mode: "serial" });
@@ -41,7 +42,10 @@ test("a staff member creates an incomplete postulación: it cannot be validated 
   await expect(page.getByText("Ubicamos la dirección en el barrio Santa Isabel (geocodificador de la Alcaldía)", { exact: false })).toBeVisible();
   await fotos(page);
   await page.getByRole("button", { name: "Siguiente", ...ex }).click();
-  await page.getByRole("button", { name: "Siguiente", ...ex }).click(); // lives alone: no members
+  // One member: every field is required (no phone or email).
+  await page.getByRole("button", { name: "+ Agregar integrante" }).click();
+  await llenarIntegrante(page, 0, { documento: MIEMBRO });
+  await page.getByRole("button", { name: "Siguiente", ...ex }).click();
   // Modality 1 without its project and resources: the record is created but cannot be validated yet.
   await page.getByRole("radio", { name: "Adquisición de vivienda nueva" }).check();
   await page.getByRole("checkbox", { name: /Declaro bajo la gravedad de juramento/ }).check();
@@ -70,6 +74,16 @@ test("the same document cannot start a second postulación", async ({ page }) =>
   await modal.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("dialog", { name: "Ya existe una postulación" })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("link", { name: "Ver la postulación" })).toHaveAttribute("href", detalle);
+});
+
+test("a member of this household cannot start a postulación of their own", async ({ page }) => {
+  await page.goto("/postulaciones/nueva");
+  const modal = page.getByRole("dialog", { name: "Nueva postulación" });
+  await modal.getByLabel("Número de documento", ex).fill(MIEMBRO);
+  await modal.getByRole("button", { name: "Continuar" }).click();
+  const aviso = page.getByRole("dialog", { name: "Ya hace parte de otra postulación" });
+  await expect(aviso).toBeVisible({ timeout: 20_000 });
+  await expect(aviso.getByRole("link", { name: /^Ver la postulación PSE-/ })).toHaveAttribute("href", detalle);
 });
 
 test("Completar opens the edit on the missing field; the panel jumps between fields", async ({ page }) => {
@@ -163,9 +177,20 @@ test("the QR of the postulación opens the record for staff and only its status 
   await anonimo.close();
 });
 
-test("the QR poster downloads as a PDF and does not show the link", async ({ page }) => {
+test("the QR poster downloads as a PDF and does not show the link", async ({ page, browser }) => {
   await page.goto("/postulaciones/qr");
   await expect(page.getByTestId("qr-formulario")).toBeVisible();
+  await expect(page.getByTestId("vigencia-qr")).toHaveText(/^Vigente hasta el /);
+  // The code in the QR opens the form for anyone, without leaving the code in the address bar; a tampered one is refused.
+  const { token } = await (await page.request.post("/api/postulaciones/qr", { data: { dias: 1 } })).json();
+  const anonimo = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const p2 = await anonimo.newPage();
+  await p2.goto(new URL(`/postulacion/ingreso?t=${token}`, page.url()).href, { waitUntil: "domcontentloaded" });
+  await p2.waitForURL((u) => u.pathname === "/postulacion" && !u.search);
+  expect((await anonimo.cookies()).some((c) => c.name === "acceso_postulacion" && c.httpOnly)).toBe(true);
+  await p2.goto(new URL(`/postulacion/ingreso?t=${token.slice(0, -2)}xx`, page.url()).href, { waitUntil: "domcontentloaded" });
+  await p2.waitForURL((u) => u.searchParams.get("acceso") === "invalido");
+  await anonimo.close();
   await expect(page.getByText(/https?:\/\//)).toHaveCount(0);
   const [descarga] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Descargar PDF para imprimir" }).click()]);
   expect(descarga.suggestedFilename()).toBe("postulacion-subsidio-qr.pdf");
