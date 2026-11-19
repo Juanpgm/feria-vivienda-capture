@@ -19,7 +19,9 @@ export default async function Postulaciones({ searchParams }: { searchParams: Pr
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-primary-strong">Postulaciones al subsidio</h1>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <Link href="/dashboard/postulaciones" className={enlace}>Métricas</Link>
+          <Link href="/postulaciones/qr" className={enlace}>Código QR</Link>
           <Link href="/postulaciones/nueva" className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 font-semibold text-on-primary">
             Nueva postulación
           </Link>

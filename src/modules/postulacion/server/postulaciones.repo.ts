@@ -15,6 +15,7 @@ import { fechaBogota, isoBogota } from "@/shared/tiempo";
 import type { DatosPostulacion } from "../domain/armar";
 import type { EstadoPostulacion } from "../domain/catalogos";
 import type { Faltante } from "../domain/faltantes";
+import type { FilaMetrica } from "../domain/metricas";
 import { DECLARACION_VERSION, textoDeclaracion, textoValidacion, VALIDACION_VERSION } from "../domain/texto";
 
 export const COLECCION = "postulantes_subsidios_emergencia";
@@ -198,6 +199,19 @@ export async function listarPostulaciones({ estado, q }: { estado?: string; q?: 
   const t = q?.trim().toUpperCase();
   const porEstado = estado === "sin_validar" || estado === "valido" ? filas.filter((f) => f.estado === estado) : filas;
   return t ? porEstado.filter((f) => f.radicado.includes(t) || f.documento.includes(t.replace(/[^A-Z0-9]/g, "")) || f.nombre.toUpperCase().includes(t)) : porEstado;
+}
+
+// ponytail: per-instance 60 s cache of one projected full scan; move to counters when volume grows past a few thousand.
+let cache: { en: number; filas: FilaMetrica[] } | null = null;
+export async function filasMetricas(): Promise<FilaMetrica[]> {
+  if (cache && Date.now() - cache.en < 60_000) return cache.filas;
+  const snap = await col()
+    .select("estado", "fecha_bogota", "origen", "faltantes", "solicitante.nombre_division", "solicitante.estrato", "solicitante.genero", "solicitante.condiciones_especiales",
+      "solicitante.sisben", "solicitante.sisben_grupo", "solicitante.caja_compensacion", "hogar.personas", "hogar.rango_ingresos_smlmv", "postulacion.modalidad",
+      "postulacion.recursos", "postulacion.total_aportes", "validado_por_nombre")
+    .get();
+  cache = { en: Date.now(), filas: snap.docs.map((d) => d.data() as FilaMetrica) };
+  return cache.filas;
 }
 
 const CODIGO_ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
