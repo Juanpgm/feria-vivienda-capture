@@ -17,6 +17,7 @@ async function servidor(page: Page, { existe = false } = {}) {
   await page.route("**/api/postulaciones/ubicar", async (r) => {
     const { direccion } = r.request().postDataJSON() as { direccion: string };
     const ubicada = /^calle 5 /i.test(direccion);
+    await new Promise((ok) => setTimeout(ok, 700)); // the real service takes a moment: the form must say it is searching
     await r.fulfill({
       json: {
         ubicacion: ubicada
@@ -68,9 +69,12 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await page.getByLabel("Teléfono o celular", exacto).fill("3001234567");
   // A barrio named in the address is used when the geocoder cannot locate it; the estrato then comes from the barrio.
   const dir = page.getByLabel("Dirección de domicilio actual", exacto);
+  // Searched as soon as the person stops typing (no need to leave the field), with a visible notice meanwhile.
   await dir.fill("Av 5 Norte # 5N-02, Barrio Centenario");
-  await dir.press("Tab");
-  await expect(page.getByText("Ubicamos la dirección en el barrio Centenario y lo seleccionamos abajo. Cámbielo si no es correcto.")).toBeVisible();
+  await expect(page.getByTestId("aviso-ubicacion")).toHaveText(/Buscando la comuna y el barrio de esta dirección/);
+  await expect(page.getByRole("combobox", { name: "Comuna o corregimiento", ...exacto })).toBeDisabled();
+  await expect(page.getByTestId("aviso-ubicacion")).toHaveText("Ubicamos la dirección en el barrio Centenario (barrio escrito en la dirección) y lo seleccionamos abajo. Cámbielo si no es correcto.");
+  await expect(dir).toBeFocused();
   await expect(page.getByRole("combobox", { name: "Barrio o vereda", ...exacto })).toHaveValue("Centenario");
   await expect(page.getByTestId("estrato-automatico")).toContainText("Estrato 5");
   await expect(page.getByText("Dirección catastral: AV 5 NORTE # 5N - 02 BO CENTENARIO")).toBeVisible();
@@ -81,6 +85,16 @@ test("a new postulación goes through the 3 steps and is sent with photos, signa
   await expect(page.getByRole("combobox", { name: "Comuna o corregimiento", ...exacto })).toHaveValue("Comuna 19");
   await expect(page.getByTestId("estrato-automatico")).toContainText("Estrato 4");
   await expect(page.getByRole("group", { name: "Estrato socioeconómico" })).toHaveCount(0);
+  // A barrio chosen by hand is never replaced: a different result is offered with a button.
+  const barrio = page.getByRole("combobox", { name: "Barrio o vereda", ...exacto });
+  await barrio.fill("Bellavista");
+  await expect(page.getByRole("listbox").getByRole("option").first()).toBeVisible();
+  await barrio.press("Enter");
+  await page.getByRole("button", { name: "Buscar ubicación" }).click();
+  await expect(page.getByTestId("aviso-ubicacion")).toContainText("Según la dirección, el barrio es Santa Isabel (geocodificador de la Alcaldía), pero usted eligió otro.");
+  await expect(barrio).not.toHaveValue("Santa Isabel");
+  await page.getByRole("button", { name: "Usar Santa Isabel" }).click();
+  await expect(barrio).toHaveValue("Santa Isabel");
   // Places are picked from the 1,122 municipios of Colombia.
   const exp = page.getByRole("combobox", { name: "Lugar de expedición", ...exacto });
   await exp.fill("cali");

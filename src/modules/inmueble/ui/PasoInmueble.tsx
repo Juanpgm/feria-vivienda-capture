@@ -6,6 +6,7 @@ import type { OpcionBusqueda } from "@/shared/busqueda";
 import { normalizarDireccion } from "@/shared/normalizacion/direccion";
 import { Combobox } from "@/shared/ui/Combobox";
 import { Field } from "@/shared/ui/Field";
+import { Button } from "@/shared/ui/Button";
 import { RadioGroup } from "@/shared/ui/Radio";
 import { CampoTexto, Seccion, useError } from "@/modules/registro/ui/campos";
 import divisiones from "../catalogo/divisiones.json";
@@ -30,12 +31,20 @@ export type UbicacionGeocodificada = {
   latitud: number | null;
   longitud: number | null;
 };
-type Estado = { tipo: "buscando" } | { tipo: "hallado"; fuente: "alcaldia" | "texto"; id: string; nombre: string } | { tipo: "no_hallado" } | null;
+type Hallazgo = { id: string; codigo_division: string; nombre: string; fuente: "alcaldia" | "texto"; latitud: number | null; longitud: number | null };
+type Estado = { tipo: "buscando" } | { tipo: "hallado" | "sugerencia"; h: Hallazgo } | { tipo: "no_hallado" } | null;
+
+/** Worth locating: has a house number ("# 38-20", "38 - 20"). Shorter text is still being typed. */
+export const direccionCompleta = (d: string) => /#\s*\d|\d+\s*-\s*\d+/.test(d) && d.trim().length >= 8;
+/** Pause after the last keystroke before locating the address. */
+const PAUSA_MS = 1000;
 
 /**
  * `prefijo`: form section holding direccion / codigo_division / id_barrio_vereda / estrato (reused by the postulación form).
- * `ubicar`: when given, the address is located on blur (geocoder of the Alcaldía first, then a barrio named in the text) and
- * pre-fills comuna and barrio, which stay editable; the estrato then comes from the barrio and is asked only when unknown.
+ * `ubicar`: when given, the address is located as soon as the person stops typing it (or leaves the field, or presses
+ * "Buscar ubicación"): geocoder of the Alcaldía first, then a barrio named in the text. It pre-fills comuna and barrio,
+ * which stay editable; a barrio chosen by hand is never replaced, a different result is offered instead. The estrato then
+ * comes from the barrio and is asked only when unknown.
  */
 export function PasoInmueble({
   prefijo: P = "inmueble.", etiquetaDireccion = "Dirección del inmueble", ubicar,
@@ -75,41 +84,63 @@ export function PasoInmueble({
     }
   }, [barrio, ubicar, P, getValues, setValue]);
 
-  function aplicar(id: string, codigoDivision: string, nombre: string, fuente: "alcaldia" | "texto") {
-    automatico.current = id;
-    setValue(P + "codigo_division", codigoDivision, { shouldDirty: true, shouldValidate: true });
-    setValue(P + "id_barrio_vereda", id, { shouldDirty: true, shouldValidate: true });
-    setEstado({ tipo: "hallado", fuente, id, nombre });
+  function aplicar(h: Hallazgo) {
+    automatico.current = h.id;
+    setValue(P + "latitud", h.latitud ?? "");
+    setValue(P + "longitud", h.longitud ?? "");
+    setValue(P + "codigo_division", h.codigo_division, { shouldDirty: true, shouldValidate: true });
+    setValue(P + "id_barrio_vereda", h.id, { shouldDirty: true, shouldValidate: true });
+    setEstado({ tipo: "hallado", h });
   }
 
-  async function alSalirDireccion(valor: string) {
-    if (!ubicar || valor.trim().length < 5) return;
-    const actual = getValues(P + "id_barrio_vereda");
-    const manual = !!actual && actual !== automatico.current;
+  const buscada = useRef(""); // last address located, so blur + pause + button do not repeat the same request
+  async function buscar(valor: string, forzar = false) {
+    const q = valor.trim();
+    if (!ubicar || q.length < 5 || (!forzar && q === buscada.current)) return;
+    buscada.current = q;
     const n = ++consulta.current;
     setEstado({ tipo: "buscando" });
-    const g = await ubicar(valor).catch(() => null);
+    const g = await ubicar(q).catch(() => null);
     if (n !== consulta.current) return; // a newer address was typed meanwhile
     setValue(P + "direccion_catastral", g?.direccion_catastral ?? "");
-    const enTexto = deteccion?.detectarBarrio(valor);
-    if (manual) return setEstado(null);
-    if (g?.id_barrio_vereda && g.codigo_division) {
-      setValue(P + "latitud", g.latitud ?? "");
-      setValue(P + "longitud", g.longitud ?? "");
-      return aplicar(g.id_barrio_vereda, g.codigo_division, g.nombre_barrio_vereda ?? "", "alcaldia");
-    }
-    setValue(P + "latitud", "");
-    setValue(P + "longitud", "");
-    if (enTexto) return aplicar(enTexto.id, enTexto.codigo_division, enTexto.nombre, "texto");
-    setEstado({ tipo: "no_hallado" });
+    const enTexto = (deteccion ?? (await import("../domain/ubicacion"))).detectarBarrio(q);
+    const h: Hallazgo | null =
+      g?.id_barrio_vereda && g.codigo_division
+        ? { id: g.id_barrio_vereda, codigo_division: g.codigo_division, nombre: g.nombre_barrio_vereda ?? "", fuente: "alcaldia", latitud: g.latitud, longitud: g.longitud }
+        : enTexto ? { ...enTexto, fuente: "texto", latitud: null, longitud: null } : null;
+    if (!h) return setEstado({ tipo: "no_hallado" });
+    const actual = getValues(P + "id_barrio_vereda");
+    if (actual && actual !== automatico.current && actual !== h.id) return setEstado({ tipo: "sugerencia", h });
+    aplicar(h);
   }
 
+  // Locate as soon as the address looks finished and the person paused typing.
+  const buscarRef = useRef(buscar);
+  useEffect(() => {
+    buscarRef.current = buscar;
+  });
+  useEffect(() => {
+    if (!ubicar || !direccionCompleta(direccion)) return;
+    const t = setTimeout(() => void buscarRef.current(direccion), PAUSA_MS);
+    return () => clearTimeout(t);
+  }, [direccion, ubicar]);
+
+  const buscando = estado?.tipo === "buscando";
+  const desde = (h: Hallazgo) => (h.fuente === "alcaldia" ? " (geocodificador de la Alcaldía)" : " (barrio escrito en la dirección)");
   const avisoUbicacion =
-    !ubicar || !estado ? undefined
-    : estado.tipo === "buscando" ? "Buscando la comuna y el barrio de esta dirección…"
-    : estado.tipo === "no_hallado" ? "No pudimos ubicar la dirección: elija la comuna y el barrio de la lista (o escriba el barrio al final de la dirección, por ejemplo «Barrio Centenario»)."
-    : barrio === estado.id ? `Ubicamos la dirección en el barrio ${estado.nombre}${estado.fuente === "alcaldia" ? " (geocodificador de la Alcaldía)" : ""} y lo seleccionamos abajo. Cámbielo si no es correcto.`
-    : undefined;
+    !ubicar || !estado ? null
+    : estado.tipo === "buscando" ? <>Buscando la comuna y el barrio de esta dirección… espere un momento.</>
+    : estado.tipo === "no_hallado" ? <>No pudimos ubicar la dirección: elija la comuna y el barrio de la lista (o escriba el barrio al final de la dirección, por ejemplo «Barrio Centenario», y busque de nuevo).</>
+    : estado.tipo === "sugerencia" ? (
+      <>
+        Según la dirección, el barrio es <strong>{estado.h.nombre}</strong>{desde(estado.h)}, pero usted eligió otro.{" "}
+        <button type="button" onClick={() => aplicar(estado.h)} className="font-semibold text-primary underline underline-offset-2">
+          Usar {estado.h.nombre}
+        </button>
+      </>
+    )
+    : barrio === estado.h.id ? <>Ubicamos la dirección en el barrio {estado.h.nombre}{desde(estado.h)} y lo seleccionamos abajo. Cámbielo si no es correcto.</>
+    : null;
 
   const sel = divisiones.find((d) => d.codigo === division);
   const barrios = useMemo(
@@ -127,10 +158,19 @@ export function PasoInmueble({
             label={etiquetaDireccion}
             autoComplete="off"
             hint={catastral ? `Dirección catastral: ${catastral}` : norm?.es_completa ? `Se guardará como: ${norm.norm}` : undefined}
-            alSalir={ubicar ? alSalirDireccion : undefined}
+            alSalir={ubicar ? (v) => void buscar(v) : undefined}
           />
+          {ubicar && (
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <Button variant="secondary" disabled={buscando || direccion.trim().length < 5} onClick={() => void buscar(direccion, true)}>
+                {buscando ? "Buscando…" : "Buscar ubicación"}
+              </Button>
+              <span className="text-sm text-muted">Buscamos la comuna y el barrio en cuanto termine de escribir la dirección.</span>
+            </div>
+          )}
           {avisoUbicacion && (
-            <p role="status" className="mt-2 rounded-lg border border-border bg-surface p-3 text-sm">
+            <p role="status" data-testid="aviso-ubicacion" className={`mt-2 rounded-lg border p-3 text-sm ${buscando ? "border-primary bg-surface font-semibold" : "border-border bg-surface"}`}>
+              {buscando && <span aria-hidden="true" className="mr-2 inline-block size-3 animate-spin rounded-full border-2 border-primary border-t-transparent align-middle" />}
               {avisoUbicacion}
             </p>
           )}
@@ -146,6 +186,7 @@ export function PasoInmueble({
               {(a11y) => (
                 <Combobox
                   {...a11y}
+                  disabled={buscando}
                   options={OPCIONES_DIVISION}
                   value={field.value ?? ""}
                   onBlur={field.onBlur}
@@ -180,7 +221,7 @@ export function PasoInmueble({
               {(a11y) => (
                 // Validates on blur only when typed text was discarded: an error line appearing on every blur would
                 // shift the layout under a click aimed at the fields below.
-                <Combobox {...a11y} options={barrios} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} disabled={!division} />
+                <Combobox {...a11y} options={barrios} value={field.value ?? ""} onChange={field.onChange} alDescartarTexto={field.onBlur} disabled={!division || buscando} />
               )}
             </Field>
           )}
