@@ -52,7 +52,7 @@ export async function resumenCiudadanos() {
 }
 
 // ---- secrets derived from the service account (no extra env var to provision) ----
-const derivar = (etiqueta: string) => createHmac("sha256", adminFirebaseConfig().privateKey).update(etiqueta).digest();
+export const derivar = (etiqueta: string) => createHmac("sha256", adminFirebaseConfig().privateKey).update(etiqueta).digest();
 export const claveCookieCiudadano = () => derivar("sesion-ciudadano-v1");
 
 /** Deterministic, unguessable RFC-4122 v4-shaped id: the registro of a citizen can only ever exist once. */

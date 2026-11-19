@@ -45,7 +45,7 @@ export function validarAdjunto(cuerpo: unknown): AdjuntoValidado {
   return { tipo, mime: formato, datos };
 }
 
-const registroRef = (id: string) => adminDb().collection("registros").doc(id);
+const registroRef = (id: string, coleccion = "registros") => adminDb().collection(coleccion).doc(id);
 
 /**
  * Idempotent upsert. Only the funcionario who created the registro may attach to it; a registro that does not exist
@@ -73,8 +73,8 @@ export async function guardarAdjunto(registroId: string, a: AdjuntoValidado, act
 }
 
 /** Admin+ read. Logs the access BEFORE returning the bytes: if the log cannot be written, nothing is served. */
-export async function leerAdjunto(registroId: string, tipo: TipoAdjunto, actor: Actor, userAgent: string) {
-  const reg = registroRef(registroId);
+export async function leerAdjunto(registroId: string, tipo: TipoAdjunto, actor: Actor, userAgent: string, coleccion = "registros") {
+  const reg = registroRef(registroId, coleccion);
   const snap = await reg.collection("adjuntos").doc(tipo).get();
   const d = snap.data();
   if (!snap.exists || !d) return null;
