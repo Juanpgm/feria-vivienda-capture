@@ -19,7 +19,7 @@ import { validarSecciones, type Valores } from "../domain/armar";
 import { ESTADOS_POSTULACION } from "../domain/catalogos";
 import type { Seccion } from "../domain/schema";
 import { valoresIniciales } from "../domain/formulario";
-import { Ficha, FichaEscritorio } from "./Ficha";
+import { BarraAvance } from "./Progreso";
 import { PasoHogar } from "./PasoHogar";
 import { PasoSolicitante } from "./PasoSolicitante";
 import { PasoSubsidio } from "./PasoSubsidio";
@@ -163,9 +163,10 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
   const hora = guardadoEn ? new Date(guardadoEn).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" }) : "";
   return (
     <FormProvider {...form}>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
-        <div className="min-w-0">
-          <nav aria-label="Pasos de la postulación" className="mb-8">
+      <div className="mx-auto max-w-3xl">
+        {/* Mobile first: steps and progress in one compact strip that stays on top while scrolling. */}
+        <div className="sticky top-0 z-10 -mx-4 mb-6 border-b border-border bg-bg/95 px-4 pb-3 pt-2 backdrop-blur md:-mx-6 md:px-6">
+          <nav aria-label="Pasos de la postulación" className="mb-2">
             <ol className="flex items-start">
               {PASOS.map((p, i) => {
                 const hecho = i < indice;
@@ -177,28 +178,28 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
                       disabled={i > maximo || enviando}
                       aria-current={actual ? "step" : undefined}
                       onClick={() => irA(i)}
-                      className="group flex min-h-11 flex-col items-center gap-1.5 rounded-lg px-1 text-center disabled:cursor-not-allowed"
+                      className="group flex min-h-11 items-center gap-2 rounded-lg px-1 text-left disabled:cursor-not-allowed"
                     >
                       <span
                         aria-hidden="true"
-                        className={`grid size-9 place-items-center rounded-full border-2 text-sm font-bold transition-colors ${
-                          actual ? "border-primary bg-primary text-on-primary ring-4 ring-primary/15"
+                        className={`grid size-7 shrink-0 place-items-center rounded-full border-2 text-xs font-bold transition-colors ${
+                          actual ? "border-primary bg-primary text-on-primary ring-2 ring-primary/20"
                           : hecho ? "border-primary bg-bg text-primary group-hover:bg-surface"
                           : "border-border bg-bg text-muted"
                         }`}
                       >
                         {hecho ? "✓" : i + 1}
                       </span>
-                      <span className={`max-w-[7rem] text-xs leading-tight sm:text-sm ${actual ? "font-bold text-primary-strong" : hecho ? "font-semibold text-text" : "text-muted"}`}>{p.corto}</span>
+                      <span className={`text-xs leading-tight sm:text-sm ${actual ? "font-bold text-primary-strong" : hecho ? "font-semibold text-text" : "sr-only text-muted sm:not-sr-only"}`}>{p.corto}</span>
                     </button>
-                    {i < PASOS.length - 1 && <span aria-hidden="true" className={`mx-1 mt-[1.1rem] h-0.5 flex-1 rounded-full ${i < indice ? "bg-primary" : "bg-border"}`} />}
+                    {i < PASOS.length - 1 && <span aria-hidden="true" className={`mx-1 mt-[1.35rem] h-0.5 min-w-3 flex-1 rounded-full ${i < indice ? "bg-primary" : "bg-border"}`} />}
                   </li>
                 );
               })}
             </ol>
           </nav>
-
-          <Ficha documento={documento} />
+          <BarraAvance />
+        </div>
 
           <header className="mb-8 border-l-4 border-accent pl-4">
             {edicion && <p className="mb-1 text-sm font-semibold text-muted">Editando la postulación {edicion.radicado}</p>}
@@ -212,14 +213,10 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
             {indice === 1 && <PasoHogar />}
             {indice === 2 && <PasoSubsidio creacion={!edicion} />}
           </form>
-        </div>
-        <div className="hidden lg:block">
-          <FichaEscritorio documento={documento} />
-        </div>
       </div>
 
       <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-bg/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
           <Button variant="secondary" disabled={indice === 0 || enviando} onClick={() => irA(indice - 1)}>
             Atrás
           </Button>
