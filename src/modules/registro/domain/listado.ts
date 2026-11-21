@@ -1,7 +1,7 @@
 // Pure logic of GET /api/registros: filter validation, role scoping, opaque cursor and the neutral query spec that the
 // repo applies to Firestore. No firebase imports so it can be unit tested without mocks.
 import { z } from "zod";
-import type { Rol } from "@/modules/auth/domain/roles";
+import { tieneRol, type Rol } from "@/modules/auth/domain/roles";
 import { ESTADOS_REVISION } from "@/shared/constantes";
 import { normalizarBusqueda } from "@/shared/busqueda";
 import { normalizarDocumento } from "@/shared/normalizacion/texto";
@@ -131,10 +131,10 @@ export type Consulta = {
 
 const inicioDiaBogota = (iso: string) => Date.parse(`${iso}T00:00:00-05:00`);
 
-/** Applies role scoping and maps filters to the neutral query. A `usuario` can only ever see their own registros. */
+/** Applies role scoping and maps filters to the neutral query. Below admin (usuario, inspector) only ever see their own registros. */
 export function construirConsulta(f: Filtros, actor: { uid: string; rol: Rol }): Consulta {
   const igualdad: Consulta["igualdad"] = [];
-  const propios = actor.rol === "usuario";
+  const propios = !tieneRol(actor.rol, "admin");
   const por = propios ? actor.uid : f.registrado_por;
   if (por) igualdad.push(["registrado_por_uid", por]);
   if (f.estado_revision) igualdad.push(["estado_revision", f.estado_revision]);

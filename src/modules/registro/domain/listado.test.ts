@@ -75,6 +75,10 @@ describe("construirConsulta (role scoping and mapping)", () => {
     expect(construirConsulta(ok({}), usuario).igualdad).toEqual([["registrado_por_uid", "u1"]]);
   });
 
+  it("an inspector is scoped like a usuario (only admins see everyone)", () => {
+    expect(construirConsulta(ok({ registrado_por: "otro" }), { uid: "i1", rol: "inspector" }).igualdad).toEqual([["registrado_por_uid", "i1"]]);
+  });
+
   it("admin sees all unless filtering by funcionario", () => {
     expect(construirConsulta(ok({}), admin).igualdad).toEqual([]);
     expect(construirConsulta(ok({ registrado_por: "u9" }), admin).igualdad).toEqual([["registrado_por_uid", "u9"]]);

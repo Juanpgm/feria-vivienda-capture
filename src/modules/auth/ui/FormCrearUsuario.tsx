@@ -5,9 +5,11 @@ import { ALLOWED_EMAIL_DOMAIN } from "@/shared/config";
 import { Button } from "@/shared/ui/Button";
 import { Field, TextInput } from "@/shared/ui/Field";
 import { Select } from "@/shared/ui/Select";
+import { ETIQUETA_ROL, type Rol } from "../domain/roles";
 import { post } from "./post";
 
-export function FormCrearUsuario({ puedeElegirRol, onCreado }: { puedeElegirRol: boolean; onCreado?: () => void }) {
+export function FormCrearUsuario({ roles, onCreado }: { roles: Rol[]; onCreado?: () => void }) {
+  const elegibles = roles.filter((r) => r !== "usuario");
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -44,17 +46,14 @@ export function FormCrearUsuario({ puedeElegirRol, onCreado }: { puedeElegirRol:
       >
         {(a) => <TextInput {...a} name="clave" type="password" minLength={8} autoComplete="new-password" />}
       </Field>
-      {puedeElegirRol && (
+      {elegibles.length > 0 && (
         <Field label="Rol" hint="Si no se elige, la cuenta se crea como usuario.">
           {(a) => (
             <Select
               {...a}
               name="rol"
               placeholder="Usuario"
-              options={[
-                { value: "admin", label: "Administrador" },
-                { value: "superadmin", label: "Superadministrador" },
-              ]}
+              options={elegibles.map((r) => ({ value: r, label: ETIQUETA_ROL[r] }))}
             />
           )}
         </Field>

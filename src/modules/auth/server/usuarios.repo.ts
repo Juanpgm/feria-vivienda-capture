@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/shared/firebase/admin";
-import type { Rol } from "../domain/roles";
+import { rolesAsignables, type Rol } from "../domain/roles";
 
 export type EstadoUsuario = "pendiente" | "aprobado" | "rechazado";
 
@@ -26,9 +26,9 @@ export async function obtenerUsuario(uid: string): Promise<Usuario | null> {
   return s.exists ? (s.data() as Usuario) : null;
 }
 
-/** Admins see only `usuario` accounts; superadmins see everyone. */
+/** Admins see only the accounts they manage (usuario, inspector); superadmins see everyone. */
 export async function listarUsuarios(actor: Rol) {
-  const q = actor === "superadmin" ? col() : col().where("rol", "==", "usuario");
+  const q = actor === "superadmin" ? col() : col().where("rol", "in", rolesAsignables(actor));
   const snap = await q.limit(500).get();
   return snap.docs
     .map((d) => {
@@ -79,6 +79,12 @@ export async function aprobarUsuario(uid: string, rol: Rol, aprobador: string) {
     actualizado_en: FieldValue.serverTimestamp(),
   });
   await auditar(uid, "aprobado", aprobador, rol);
+}
+
+/** Approved account -> new role. The caller updates claims and revokes the session. */
+export async function cambiarRol(uid: string, rol: Rol, actor: string) {
+  await col().doc(uid).update({ rol, actualizado_en: FieldValue.serverTimestamp() });
+  await auditar(uid, "rol_cambiado", actor, rol);
 }
 
 export type ResultadoRechazo = "rechazado" | "ya_rechazado" | "aprobado" | "no_existe";

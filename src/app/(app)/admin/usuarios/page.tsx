@@ -1,3 +1,4 @@
+import { rolesAsignables } from "@/modules/auth/domain/roles";
 import { sesionOLogin } from "@/modules/auth/server/guard";
 import { PanelUsuarios } from "@/modules/auth/ui/PanelUsuarios";
 
@@ -8,7 +9,7 @@ export default async function UsuariosPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold text-primary-strong">Usuarios</h1>
-      <PanelUsuarios puedeElegirRol={sesion.rol === "superadmin"} />
+      <PanelUsuarios roles={rolesAsignables(sesion.rol)} uidActual={sesion.uid} />
     </div>
   );
 }

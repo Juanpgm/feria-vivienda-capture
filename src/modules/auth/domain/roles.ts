@@ -1,20 +1,32 @@
 import { ALLOWED_EMAIL_DOMAIN } from "@/shared/config";
 
-export const ROLES = ["usuario", "admin", "superadmin"] as const;
+export const ROLES = ["usuario", "inspector", "admin", "superadmin"] as const;
 export type Rol = (typeof ROLES)[number];
 
 export const COOKIE_SESION = "sesion";
 
 export const esRol = (v: unknown): v is Rol => ROLES.includes(v as Rol);
 
-/** True when `actual` is at least `minimo` (usuario < admin < superadmin). */
+/** True when `actual` is at least `minimo` (usuario < inspector < admin < superadmin). */
 export const tieneRol = (actual: Rol, minimo: Rol) => ROLES.indexOf(actual) >= ROLES.indexOf(minimo);
 
-/** Admin manages only `usuario`; superadmin manages every role. */
+/** Roles an admin may assign and manage; superadmin manages every role. */
+const GESTIONADOS_POR_ADMIN: readonly Rol[] = ["usuario", "inspector"];
+
 export function puedeGestionar(actor: Rol, objetivo: Rol): boolean {
   if (actor === "superadmin") return true;
-  return actor === "admin" && objetivo === "usuario";
+  return actor === "admin" && GESTIONADOS_POR_ADMIN.includes(objetivo);
 }
+
+/** Roles `actor` may give to someone else (role selector in Usuarios). */
+export const rolesAsignables = (actor: Rol): Rol[] => ROLES.filter((r) => puedeGestionar(actor, r));
+
+export const ETIQUETA_ROL: Record<Rol, string> = {
+  usuario: "Usuario",
+  inspector: "Inspector",
+  admin: "Administrador",
+  superadmin: "Superadministrador",
+};
 
 export type ResultadoPermiso = "ok" | "propia" | "rol";
 

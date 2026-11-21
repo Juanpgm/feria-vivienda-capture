@@ -4,8 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { fechaHoraBogota } from "@/shared/tiempo";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
-import { TextArea } from "@/shared/ui/Field";
-import { MOTIVO_MAX } from "../domain/roles";
+import { TextArea, controlClass } from "@/shared/ui/Field";
+import { ETIQUETA_ROL, MOTIVO_MAX, type Rol } from "../domain/roles";
 import { FormCrearUsuario } from "./FormCrearUsuario";
 import { post } from "./post";
 
@@ -20,11 +20,7 @@ export type FilaUsuario = {
   motivo?: string | null;
 };
 
-const ROL: Record<string, string> = {
-  usuario: "Usuario",
-  admin: "Administrador",
-  superadmin: "Superadministrador",
-};
+const ROL: Record<string, string> = ETIQUETA_ROL;
 const th = "py-2 pr-4 font-semibold";
 // Below md each row becomes a stacked block (labels come from data-label); from md up it is a normal table row.
 const td =
@@ -33,7 +29,8 @@ const tdAccion = "block pt-2 pb-3 md:table-cell md:py-2 md:align-top";
 const grupo = "block border-b border-border py-2 last:border-0 md:table-row-group md:py-0";
 const fila = "block md:table-row";
 
-type Ejecutar = (accion: "aprobar" | "rechazar", u: FilaUsuario, body?: unknown) => Promise<string | null>;
+type Accion = "aprobar" | "rechazar" | "rol";
+type Ejecutar = (accion: Accion, u: FilaUsuario, body?: unknown) => Promise<string | null>;
 
 const Dato = ({ u, rechazado }: { u: FilaUsuario; rechazado?: boolean }) => (
   <>
@@ -60,7 +57,7 @@ const Dato = ({ u, rechazado }: { u: FilaUsuario; rechazado?: boolean }) => (
 function useAccion(u: FilaUsuario, ejecutar: Ejecutar) {
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState("");
-  async function lanzar(accion: "aprobar" | "rechazar", body?: unknown) {
+  async function lanzar(accion: Accion, body?: unknown) {
     setOcupado(true);
     setError("");
     const e = await ejecutar(accion, u, body);
@@ -200,6 +197,57 @@ function FilaRechazada({ u, ejecutar }: { u: FilaUsuario; ejecutar: Ejecutar }) 
   );
 }
 
+/** Approved account: role selector. Changing the role closes that person's session (server revokes tokens). */
+function FilaAprobada({ u, ejecutar, roles, propia }: { u: FilaUsuario; ejecutar: Ejecutar; roles: Rol[]; propia: boolean }) {
+  const { ocupado, error, lanzar } = useAccion(u, ejecutar);
+  const [rol, setRol] = useState(u.rol);
+  const editable = !propia && roles.includes(u.rol as Rol);
+  const idRol = useId();
+  return (
+    <tbody className={grupo}>
+      <tr className={fila}>
+        <Dato u={u} />
+        <td className={tdAccion}>
+          {editable ? (
+            <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
+              <label htmlFor={idRol} className="sr-only">
+                Nuevo rol para {u.nombre}
+              </label>
+              <select
+                id={idRol}
+                className={`${controlClass} md:w-auto`}
+                value={rol}
+                onChange={(ev) => setRol(ev.target.value)}
+                disabled={ocupado}
+              >
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {ROL[r]}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="secondary"
+                className="whitespace-nowrap"
+                onClick={() => lanzar("rol", { rol })}
+                disabled={ocupado || rol === u.rol}
+                aria-label={`Cambiar rol de ${u.nombre}`}
+              >
+                Cambiar rol
+              </Button>
+            </div>
+          ) : (
+            <span className="text-sm text-muted">{propia ? "Su cuenta" : "Sin acciones"}</span>
+          )}
+          <p role="alert" className="mt-1 text-sm text-danger empty:hidden">
+            {error}
+          </p>
+        </td>
+      </tr>
+    </tbody>
+  );
+}
+
 type Tipo = FilaUsuario["estado"];
 
 function Tabla({
@@ -207,11 +255,15 @@ function Tabla({
   vacio,
   tipo,
   ejecutar,
+  roles,
+  uidActual,
 }: {
   filas: FilaUsuario[];
   vacio: string;
   tipo: Tipo;
   ejecutar: Ejecutar;
+  roles: Rol[];
+  uidActual: string;
 }) {
   if (!filas.length) return <p className="text-muted">{vacio}</p>;
   return (
@@ -223,7 +275,7 @@ function Tabla({
             <th className={th}>Correo</th>
             <th className={th}>Rol</th>
             {tipo === "rechazado" && <th className={th}>Decisión</th>}
-            {tipo !== "aprobado" && <th className="py-2 font-semibold">Acción</th>}
+            <th className="py-2 font-semibold">Acción</th>
           </tr>
         </thead>
         {filas.map((u) =>
@@ -232,11 +284,7 @@ function Tabla({
           ) : tipo === "rechazado" ? (
             <FilaRechazada key={u.uid} u={u} ejecutar={ejecutar} />
           ) : (
-            <tbody key={u.uid} className={grupo}>
-              <tr className={fila}>
-                <Dato u={u} />
-              </tr>
-            </tbody>
+            <FilaAprobada key={u.uid} u={u} ejecutar={ejecutar} roles={roles} propia={u.uid === uidActual} />
           ),
         )}
       </table>
@@ -252,7 +300,7 @@ async function pedirUsuarios(): Promise<FilaUsuario[]> {
   return data.usuarios;
 }
 
-export function PanelUsuarios({ puedeElegirRol }: { puedeElegirRol: boolean }) {
+export function PanelUsuarios({ roles, uidActual }: { roles: Rol[]; uidActual: string }) {
   const [filas, setFilas] = useState<FilaUsuario[] | null>(null);
   const [errorCarga, setErrorCarga] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -278,7 +326,13 @@ export function PanelUsuarios({ puedeElegirRol }: { puedeElegirRol: boolean }) {
   const ejecutar: Ejecutar = async (accion, u, body) => {
     const r = await post(`/api/usuarios/${u.uid}/${accion}`, body);
     if (r.error) return r.error;
-    setMensaje(accion === "aprobar" ? `Cuenta de ${u.nombre} aprobada.` : `Cuenta de ${u.nombre} no aprobada.`);
+    setMensaje(
+      accion === "aprobar"
+        ? `Cuenta de ${u.nombre} aprobada.`
+        : accion === "rol"
+          ? `Rol de ${u.nombre} actualizado. Su sesión se cerró y verá el nuevo rol al volver a ingresar.`
+          : `Cuenta de ${u.nombre} no aprobada.`,
+    );
     await cargar();
     estado.current?.focus(); // the row that held focus is gone
     return null;
@@ -310,6 +364,8 @@ export function PanelUsuarios({ puedeElegirRol }: { puedeElegirRol: boolean }) {
             <Tabla
               tipo="pendiente"
               ejecutar={ejecutar}
+              roles={roles}
+              uidActual={uidActual}
               filas={pendientes}
               vacio="No hay cuentas pendientes. Las cuentas nuevas aparecen aquí cuando alguien se registra."
             />
@@ -322,6 +378,8 @@ export function PanelUsuarios({ puedeElegirRol }: { puedeElegirRol: boolean }) {
               <Tabla
                 tipo="rechazado"
                 ejecutar={ejecutar}
+                roles={roles}
+                uidActual={uidActual}
                 filas={rechazados}
                 vacio="No hay cuentas no aprobadas. Cuando se use No aprobar en una cuenta pendiente, aparecerá aquí con la opción de aprobarla."
               />
@@ -331,6 +389,8 @@ export function PanelUsuarios({ puedeElegirRol }: { puedeElegirRol: boolean }) {
             <Tabla
               tipo="aprobado"
               ejecutar={ejecutar}
+              roles={roles}
+              uidActual={uidActual}
               filas={aprobados}
               vacio="Aún no hay usuarios aprobados. Apruebe una cuenta pendiente o cree un usuario abajo."
             />
@@ -339,7 +399,7 @@ export function PanelUsuarios({ puedeElegirRol }: { puedeElegirRol: boolean }) {
       )}
       <Card title="Crear usuario">
         <FormCrearUsuario
-          puedeElegirRol={puedeElegirRol}
+          roles={roles}
           onCreado={() => {
             setMensaje("Usuario creado y aprobado.");
             void cargar();
