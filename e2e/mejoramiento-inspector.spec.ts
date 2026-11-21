@@ -150,9 +150,9 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   await expect(revision.getByText("PISOS")).toBeVisible();
   await expect(revision.getByText(/^2 actividades · .*605\.712$/)).toBeVisible();
   await firmar(page);
-  await page.getByRole("button", { name: "Enviar visita" }).click();
+  await page.getByRole("button", { name: "Enviar levantamiento" }).click();
   await expect(page.getByTestId("codigo-visita")).toHaveText(/MV-02\d{4}/, { timeout: 90_000 });
-  await expect(page.getByText("Sin croquis")).toBeVisible();
+  await expect(page.getByText("Sin croquis.")).toBeVisible();
   codigo = (await page.getByTestId("codigo-visita").textContent())!;
   id = JSON.parse(cuerpoEnvio).visita.id;
   expect(JSON.parse(cuerpoEnvio).visita.diagnostico.estados).toEqual({ piso: "m" });

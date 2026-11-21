@@ -23,10 +23,11 @@ import { PasoDiagnostico } from "./PasoDiagnostico";
 import { IconoCheck } from "@/shared/ui/Iconos";
 
 const PASOS = [
-  { corto: "Anfitrión", titulo: "Anfitrión", descripcion: "Quién recibe al inspector en el predio y los datos del propietario." },
-  { corto: "Diagnóstico", titulo: "Diagnóstico", descripcion: "Si la vivienda aplica al mejoramiento y el estado de cada elemento." },
-  { corto: "Cantidades", titulo: "Cantidades de obra", descripcion: "Capítulos, actividades del listado de precios, cantidades medidas y fotos por actividad." },
-  { corto: "Cierre", titulo: "Observaciones y firmas", descripcion: "Observaciones de la visita y firma de quien atiende." },
+  // The step bar shows `corto`; the page heading shows `titulo`. No description: each step's own headings say it.
+  { corto: "Anfitrión", titulo: "Anfitrión" },
+  { corto: "Diagnóstico", titulo: "Diagnóstico" },
+  { corto: "Cantidades", titulo: "Cantidades de obra" },
+  { corto: "Cierre", titulo: "Cierre" },
 ] as const;
 
 /** `v` 2 = four steps (Anfitrión merged "Atiende" + "Propietario"); drafts without it used the old five steps.
@@ -195,7 +196,7 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
         if (Object.keys(validar(k)).length) {
           ir(k);
           setMostrar(true);
-          setAviso("Hay datos por completar en este paso.");
+          setAviso("Revise los campos marcados antes de continuar.");
           return;
         }
       }
@@ -276,14 +277,10 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
       </nav>
 
       <header className="mb-6 border-l-4 border-accent pl-4">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <p className="text-sm font-semibold text-primary">Paso {visibles.indexOf(paso) + 1} de {visibles.length}</p>
-          <p className={`text-sm ${enLinea ? "text-muted" : "font-semibold text-warning-text"}`}>
-            {!enLinea ? "Sin conexión: se guarda en este equipo" : hora ? `Guardado en este equipo · ${hora}` : null}
-          </p>
-        </div>
-        <h2 className="mt-1 text-2xl font-bold text-primary-strong">{info.titulo}</h2>
-        <p className="mt-1 text-muted">{info.descripcion}</p>
+        <h2 className="text-2xl font-bold text-primary-strong">{info.titulo}</h2>
+        <p className={`mt-1 text-sm ${enLinea ? "text-muted" : "font-semibold text-warning-text"}`}>
+          {!enLinea ? "Sin conexión: se guarda en este equipo" : hora ? `Guardado en este equipo · ${hora}` : null}
+        </p>
       </header>
 
       <form noValidate onSubmit={(ev) => ev.preventDefault()} className="flex flex-col gap-5 pb-10">
@@ -310,17 +307,9 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
             <section aria-labelledby="titulo-propietario" className="flex flex-col gap-5 border-t border-border pt-5">
               <h3 id="titulo-propietario" className="text-lg font-bold text-primary-strong">Propietario y predio</h3>
               {esPropietario ? (
-                <div className="rounded-lg border border-border bg-bg p-3 text-sm">
-                  <p>Quien atiende es el propietario: se usan su nombre y documento.</p>
-                  <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
-                    <dt className="text-muted">Nombre</dt>
-                    <dd>{atiende.nombre || "—"}</dd>
-                    <dt className="text-muted">Tipo de documento</dt>
-                    <dd>{TIPOS_DOCUMENTO[(atiende.tipo_documento ?? "cc") as keyof typeof TIPOS_DOCUMENTO]}</dd>
-                    <dt className="text-muted">Número de documento</dt>
-                    <dd>{atiende.documento || "—"}</dd>
-                  </dl>
-                </div>
+                <p className="rounded-lg border border-border bg-bg p-3 text-sm">
+                  Quien atiende es el propietario: se usan su nombre y su documento.
+                </p>
               ) : (
                 <>
                   <CampoTexto label="Nombre del propietario" value={prop.nombre} error={e("propietario.nombre")} onChange={(nombre) => setProp({ nombre })} />
@@ -352,7 +341,7 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
             <section className="flex flex-col gap-2">
               <h3 className="text-lg font-bold text-primary-strong">Firma de quien atiende la visita</h3>
               <p>
-                <span className="font-semibold">{atiende.nombre}</span>, C.C. {atiende.documento}
+                <span className="font-semibold">{atiende.nombre}</span>, {siglaDocumento(atiende.tipo_documento)} {atiende.documento}
               </p>
               {firma ? (
                 <div className="flex flex-col items-start gap-2">
@@ -371,7 +360,7 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
               {e("firma") && <p role="alert" className="text-sm font-medium text-danger">{e("firma")}</p>}
             </section>
             <p className="rounded-lg border border-border bg-surface p-3 text-sm">
-              Al enviar se agregan automáticamente su firma registrada como inspector, la fecha, la hora y la ubicación del dispositivo. El sistema ubica la comuna o corregimiento y el barrio o vereda a partir de esa ubicación.
+              Al enviar se agregan automáticamente su firma registrada como inspector, la fecha, la hora y la ubicación del dispositivo.
             </p>
           </>
         )}
@@ -386,13 +375,8 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
             <Button className="px-6" onClick={() => avanzar(siguienteVisible)}>{paso === 1 && !aplica ? "Ir al cierre" : "Siguiente"}</Button>
           ) : (
             <Button className="px-6" disabled={enviando} onClick={() => void enviar()}>
-              {enviando ? "Enviando…" : aviso ? "Reintentar envío" : "Enviar visita"}
+              {enviando ? "Enviando…" : aviso ? "Reintentar envío" : "Enviar levantamiento"}
             </Button>
-          )}
-          {aplica && paso >= 2 && (
-            <p className="ml-auto font-bold text-primary-strong md:order-last md:ml-0">
-              Costo directo: <span className="tabular-nums">{formatoCop(presupuesto(v.capitulos, mapa).costo_directo_total)}</span>
-            </p>
           )}
           <div role="status" className="basis-full text-sm md:flex-1 md:basis-auto md:text-right">
             {progreso ? <EstadoEnvio p={progreso} /> : aviso ? <span className="font-semibold text-danger">{aviso}</span> : null}
@@ -403,9 +387,15 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
   );
 }
 
+/** "C.C.", "C.E.", "PPT" or "Pasaporte" for the signature line (from the catalogue label). */
+const siglaDocumento = (tipo?: string) => {
+  const etiqueta = TIPOS_DOCUMENTO[(tipo ?? "cc") as keyof typeof TIPOS_DOCUMENTO] ?? TIPOS_DOCUMENTO.cc;
+  return /\(([^)]+)\)/.exec(etiqueta)?.[1] ?? etiqueta;
+};
+
 function EstadoEnvio({ p }: { p: ProgresoEnvio | "ubicacion" }) {
   if (p === "ubicacion") return <span>Obteniendo la ubicación…</span>;
-  const texto = { datos: "Registrando la visita…", archivos: `Subiendo archivos: ${p.subidos} de ${p.total}`, confirmar: "Confirmando…" }[p.etapa];
+  const texto = { datos: "Registrando el levantamiento…", archivos: `Subiendo archivos: ${p.subidos} de ${p.total}`, confirmar: "Confirmando…" }[p.etapa];
   return (
     <span className="flex items-center gap-2 md:justify-end">
       {texto}
@@ -423,8 +413,8 @@ function obtenerUbicacion(): Promise<UbicacionGps> {
         falla(
           new Error(
             err.code === err.PERMISSION_DENIED
-              ? "Se necesita la ubicación para enviar la visita. Toque el ícono junto a la dirección del navegador, permita «Ubicación» para este sitio, verifique que la ubicación del teléfono esté encendida y toque de nuevo «Enviar visita»."
-              : "No se pudo obtener la ubicación. Encienda la ubicación (GPS) del teléfono, acérquese a una ventana o al exterior y toque de nuevo «Enviar visita».",
+              ? "Se necesita la ubicación para enviar el levantamiento. Toque el ícono junto a la dirección del navegador, permita «Ubicación» para este sitio, verifique que la ubicación del teléfono esté encendida y toque de nuevo «Enviar levantamiento»."
+              : "No se pudo obtener la ubicación. Encienda la ubicación (GPS) del teléfono, acérquese a una ventana o al exterior y toque de nuevo «Enviar levantamiento».",
           ),
         ),
       { enableHighAccuracy: true, timeout: 20_000, maximumAge: 60_000 },
@@ -458,8 +448,12 @@ function Revision({ v, fotos, mapa, onEditar }: { v: Valores; fotos: FotosPorFil
       <Bloque titulo="Anfitrión" onEditar={() => onEditar(0)}>
         <dt className="text-muted">Atiende</dt>
         <dd className="font-semibold">{a.nombre}{relacion && ` (${relacion})`}</dd>
-        <dt className="text-muted">Propietario</dt>
-        <dd className="font-semibold">{v.propietario.nombre}</dd>
+        {a.relacion !== "propietario" && (
+          <>
+            <dt className="text-muted">Propietario</dt>
+            <dd className="font-semibold">{v.propietario.nombre}</dd>
+          </>
+        )}
         <dt className="text-muted">Dirección</dt>
         <dd className="font-semibold">{v.propietario.direccion}</dd>
         <dt className="text-muted">Teléfono</dt>
@@ -508,24 +502,25 @@ function Confirmacion({ r, onNueva }: { r: Resultado; onNueva: () => void }) {
       <div className="overflow-hidden rounded-xl border border-border bg-bg">
         <div className="relative bg-[#00365f] px-6 pb-6 pt-5 text-white">
           <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-accent" />
-          <h2 id="conf-titulo" ref={titulo} tabIndex={-1} className="text-xl font-bold outline-none">Visita registrada</h2>
+          <h2 id="conf-titulo" ref={titulo} tabIndex={-1} className="text-xl font-bold outline-none">Levantamiento registrado</h2>
         </div>
         <div className="flex flex-col gap-4 p-6">
           <div>
-            <p className="text-sm text-muted">Código de visita</p>
+            <p className="text-sm text-muted">Código del levantamiento</p>
             <p data-testid="codigo-visita" className="text-5xl font-bold tabular-nums tracking-tight text-primary-strong">{r.codigo}</p>
           </div>
           <dl className="grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
             <dt className="text-muted">Fecha y hora</dt>
             <dd className="font-semibold">{fechaHoraBogota(r.en)}</dd>
-            <dt className="text-muted">Croquis</dt>
-            <dd className="font-semibold text-warning-text">Sin croquis</dd>
           </dl>
+          <p className="text-sm">
+            <span className="font-semibold text-warning-text">Sin croquis.</span> Cárguelo después desde Levantamientos.
+          </p>
         </div>
       </div>
       <div className="flex flex-wrap gap-3">
-        <Link href="/mejoramiento" className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 font-semibold text-on-primary">Ver mis visitas</Link>
-        <Button variant="secondary" onClick={onNueva}>Nueva visita</Button>
+        <Link href="/mejoramiento" className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 font-semibold text-on-primary">Ver mis levantamientos</Link>
+        <Button variant="secondary" onClick={onNueva}>Nuevo levantamiento</Button>
       </div>
     </section>
   );
