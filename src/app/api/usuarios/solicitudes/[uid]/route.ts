@@ -21,9 +21,12 @@ export function POST(req: Request, ctx: { params: Promise<{ uid: string }> }) {
     if (!puedeGestionar(actor.rol, s.rol_actual) || !puedeGestionar(actor.rol, s.rol_solicitado))
       return respuesta(403, { error: "No puede resolver esa solicitud" });
     const u = await obtenerUsuario(uid);
-    if (!u?.esta_aprobado || u.rol !== s.rol_actual) return respuesta(409, { error: "El rol de la cuenta cambió; la solicitud ya no aplica" });
+    // Already on the requested role (an earlier approval applied it but failed to close the request): just close it.
+    const yaAplicada = aprobar && u?.rol === s.rol_solicitado;
+    if (!u?.esta_aprobado || (u.rol !== s.rol_actual && !yaAplicada))
+      return respuesta(409, { error: "El rol de la cuenta cambió; la solicitud ya no aplica" });
 
-    if (aprobar) await aplicarRol(uid, s.rol_solicitado, actor.uid);
+    if (aprobar && !yaAplicada) await aplicarRol(uid, s.rol_solicitado, actor.uid);
     await resolverSolicitud(uid, aprobar ? "aprobada" : "rechazada", actor.uid, motivo || null);
     return respuesta(200, { ok: true });
   });

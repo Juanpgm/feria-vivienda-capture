@@ -93,7 +93,16 @@ describe("POST /api/usuarios/solicitudes/[uid]", () => {
     repo.obtenerUsuario.mockResolvedValue({ rol: "admin", esta_aprobado: true });
     expect((await llamar("sup", { aprobar: true })).status).toBe(403);
   });
+  it("a retry after the role was applied but the request not closed just closes it", async () => {
+    actor("superadmin", "sup");
+    repo.obtenerUsuario.mockResolvedValue({ rol: "inspector", esta_aprobado: true });
+    expect((await llamar("u1", { aprobar: true })).status).toBe(200);
+    expect(setCustomUserClaims).not.toHaveBeenCalled();
+    expect(repo.resolverSolicitud).toHaveBeenCalledWith("u1", "aprobada", "sup", null);
+  });
+
   it("a stale request (role changed meanwhile) is refused", async () => {
+    repo.obtenerSolicitud.mockResolvedValue({ estado: "pendiente", rol_actual: "usuario", rol_solicitado: "admin" });
     actor("superadmin", "sup");
     repo.obtenerUsuario.mockResolvedValue({ rol: "inspector", esta_aprobado: true });
     expect((await llamar("u1", { aprobar: true })).status).toBe(409);
