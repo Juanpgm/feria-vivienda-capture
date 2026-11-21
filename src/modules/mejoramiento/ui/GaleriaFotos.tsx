@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState, type PointerEvent } from "react";
 import { Button } from "@/shared/ui/Button";
+import { IconoCamara } from "@/shared/ui/Iconos";
 
 export type FotoGaleria = { src?: string; alt: string };
 
@@ -48,10 +49,7 @@ export function GaleriaFotos({ fotos, item, titulo, onQuitar }: { fotos: FotoGal
           onClick={() => abrir()}
           className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-primary underline underline-offset-2 hover:text-primary-strong"
         >
-          <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
-            <circle cx="12" cy="13" r="3.5" />
-          </svg>
+          <IconoCamara className="size-5" />
           {n} {n === 1 ? "foto" : "fotos"}
         </button>
       ) : (

@@ -2,7 +2,7 @@
 // Needs .auth/inspector.json (node context/cuenta-inspector.mjs) and .auth/inspector-state.json (node context/login-inspector.mjs).
 // Data created is removed in afterAll by context/limpiar-visitas-mejoramiento.mjs.
 import { execFileSync } from "node:child_process";
-import { expect, request as pwRequest, test, type Locator, type Page } from "@playwright/test";
+import { expect, request as pwRequest, test, type Page } from "@playwright/test";
 import { imagenPequena } from "./imagenes";
 
 const SCRIPT = "context/limpiar-visitas-mejoramiento.mjs";
@@ -102,37 +102,47 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   await page.getByPlaceholder("Nombre del capítulo").fill("PISOS");
   // The whole price list (~3.8k APUs) loads once; on a cold dev server the route compiles first.
   await expect(page.getByText("Cargando listado de precios…")).toHaveCount(0, { timeout: 45_000 });
-  await expect(page.getByText("Actividades frecuentes")).toBeVisible();
-  // The picker modal: first by search from the root, then it reopens in the last subchapter (20 › 2001).
+  // The picker modal: its root starts with the chapter's frequent activities; first by search from the root,
+  // then it reopens in the last subchapter (20 › 2001).
   const selector = page.getByRole("dialog", { name: "Elegir actividad" });
   await page.getByRole("button", { name: "Agregar actividad" }).click();
+  await expect(selector.getByRole("heading", { name: "Frecuentes para PISOS" })).toBeVisible();
   await selector.getByRole("searchbox").fill(ITEM);
   await selector.getByRole("button", { name: new RegExp(`^${ITEM}`) }).click();
   await expect(selector).toBeHidden();
   await page.getByRole("button", { name: "Agregar actividad" }).click();
   await expect(selector.getByRole("navigation").getByText(/^2001 /)).toBeVisible();
   await selector.getByRole("button", { name: new RegExp(`^${ITEM}`) }).click();
-  // Row 1 through the measurement calculator (M2: Largo × Ancho), row 2 typed.
-  await page.getByRole("button", { name: "Calcular" }).first().click();
-  await page.getByLabel("Largo, medida 1").fill("3,5");
-  await page.getByLabel("Ancho, medida 1").fill("4");
-  await expect(page.getByPlaceholder("Ej.: (1,87+3,4)*2,7").nth(0)).toHaveValue("(3,5*4)");
-  await page.getByPlaceholder("Ej.: (1,87+3,4)*2,7").nth(1).fill("2");
-  const entradas = page.locator('input[type="file"][capture]');
-  await expect(entradas).toHaveCount(2);
-  const fotos = async (campo: Locator, desde: number, n: number) => {
+  // The budget table: row 2 typed inline; row 1 through the row editor and its calculator (M2: Largo × Ancho).
+  const cantidades = page.getByRole("table").getByLabel(`Cantidad de ${ITEM}`);
+  await expect(cantidades).toHaveCount(2);
+  await cantidades.nth(1).fill("2");
+  const editores = page.getByRole("button", { name: new RegExp(`^Editar ${ITEM}`) });
+  const editor = page.getByRole("dialog", { name: `Editar actividad ${ITEM}` });
+  const fotos = async (n: number, desde: number) => {
     const archivos = [];
     for (let i = 0; i < n; i++) {
       const f = await imagenPequena(page, `foto-${desde + i}.jpg`, `hsl(${(desde + i) * 37} 60% 50%)`);
       archivos.push({ name: f.name, mimeType: f.mimeType, buffer: f.buffer });
     }
-    await campo.setInputFiles(archivos);
+    await editor.locator('input[type="file"][capture]').setInputFiles(archivos);
   };
-  await fotos(entradas.nth(0), 1, 4);
-  await expect(page.getByText("4 de 6", { exact: true })).toBeVisible();
-  await fotos(entradas.nth(1), 5, 3);
+  await editores.nth(0).click();
+  await editor.getByLabel("Largo, medida 1").fill("3,5");
+  await editor.getByLabel("Ancho, medida 1").fill("4");
+  await expect(editor.getByLabel(`Cantidad de ${ITEM}`)).toHaveValue("(3,5*4)");
+  await fotos(4, 1);
+  await expect(editor.getByText("4 de 6", { exact: true })).toBeVisible();
+  await editor.getByRole("button", { name: "Listo" }).click();
+  await expect(editor).toBeHidden();
+  await expect(editores.nth(0)).toBeFocused(); // focus returns to the row
+  await expect(cantidades.nth(0)).toHaveValue("(3,5*4)");
+  await editores.nth(1).click();
+  await fotos(3, 5);
+  await expect(editor.getByText("3 de 6", { exact: true })).toBeVisible();
+  await editor.getByRole("button", { name: "Listo" }).click();
   await expect(page.getByText("Fotos (opcionales): 7 de 30 como máximo")).toBeVisible();
-  await expect(page.getByText(/Costo directo total:.*605\.712/)).toBeVisible();
+  await expect(page.getByRole("table").getByText(/Costo directo del mejoramiento de vivienda/i).locator("..")).toContainText(/605\.712/);
   await sig();
   // 4 Cierre: review before signing
   await page.getByLabel("Observaciones").fill("Visita de prueba automatizada e2e (se borra).");

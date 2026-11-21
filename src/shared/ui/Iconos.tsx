@@ -52,3 +52,31 @@ export const IconoCerrar = (p: Props) => (
     <path d="M4 4l8 8M12 4l-8 8" />
   </Icono>
 );
+
+export const IconoMas = (p: Props) => (
+  <Icono {...p}>
+    <path d="M8 3v10M3 8h10" />
+  </Icono>
+);
+
+export const IconoCamara = (p: Props) => (
+  <Icono strokeWidth="1.5" {...p}>
+    <path d="M2 5h2.5L6 3h4l1.5 2H14v8H2z" />
+    <circle cx="8" cy="8.75" r="2.25" />
+  </Icono>
+);
+
+export const IconoLapiz = (p: Props) => (
+  <Icono strokeWidth="1.5" {...p}>
+    <path d="M10.5 2.5l3 3L6 13H3v-3z" />
+  </Icono>
+);
+
+/** Vertical ellipsis of an overflow menu (filled dots). */
+export const IconoMasOpciones = (p: Props) => (
+  <Icono stroke="none" fill="currentColor" {...p}>
+    <circle cx="8" cy="3" r="1.5" />
+    <circle cx="8" cy="8" r="1.5" />
+    <circle cx="8" cy="13" r="1.5" />
+  </Icono>
+);

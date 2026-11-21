@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Apu } from "../domain/apus";
-import { actividadesFrecuentes, buscarApus, capitulosSugeridos, conteosFotos, construirManifiesto, dataUrlAPng, erroresPaso, formatoCop, opcionesApus, visitaVacia, type Valores } from "./armado";
+import { actividadesFrecuentes, buscarApus, capitulosSugeridos, conteosFotos, construirManifiesto, dataUrlAPng, erroresPaso, formatoCop, opcionesApus, valorFila, visitaVacia, type Valores } from "./armado";
 
 const apu = (item: string, descripcion: string): Apu => ({ item, descripcion, und: "M2", costo_unitario: 1000, capitulo: "01", capitulo_nombre: "X" });
 
@@ -109,5 +109,26 @@ describe("actividadesFrecuentes (Sugerencias de APU)", () => {
 describe("capitulosSugeridos", () => {
   it("creates one chapter per selected improvement, with its label", () => {
     expect(capitulosSugeridos(["piso", "bano", "x"]).map((c) => [c.nombre, c.filas])).toEqual([["Piso", []], ["Baño", []]]);
+  });
+});
+
+describe("valorFila (a row of the budget table)", () => {
+  const a = { ...apu("200101", "ALISTADO PISO"), costo_unitario: 37857 };
+
+  it("evaluates the expression and prices it with ROUNDUP, like PRECIO TOTAL", () => {
+    expect(valorFila("(3,5*4)", a)).toEqual({ cantidad: 14, error: "", total: Math.ceil(14 * 37857) });
+    expect(valorFila("0,333", a)).toEqual({ cantidad: 0.333, error: "", total: 12607 });
+  });
+
+  it("shows no error while the quantity is still empty", () => {
+    expect(valorFila("  ", a)).toEqual({ cantidad: null, error: "", total: null });
+  });
+
+  it("returns the evaluarCantidad error of an invalid expression", () => {
+    expect(valorFila("2*(3", a)).toEqual({ cantidad: null, error: "Revise la operación: 2*(3", total: null });
+  });
+
+  it("has no total when the ITEM is not in the price list", () => {
+    expect(valorFila("2", undefined)).toEqual({ cantidad: 2, error: "", total: null });
   });
 });

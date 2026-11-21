@@ -1,6 +1,8 @@
 // Pure helpers of the visit form: form state shape, step validation, APU search and the submit manifest.
 import { filtrarOpciones, type OpcionBusqueda } from "@/shared/busqueda";
 import type { Apu } from "../domain/apus";
+import { evaluarCantidad } from "../domain/cantidad";
+import { costoDirecto } from "../domain/costos";
 import { APLICA_PARA, aplicaDeCapitulo, OBSERVACIONES_PRESET, type ClaveAplica } from "../domain/catalogos";
 import type { ArchivoManifiesto } from "../domain/envio";
 import { visitaSchema, type VisitaEntrada } from "../domain/visita";
@@ -73,6 +75,13 @@ export function actividadesFrecuentes(nombreCapitulo: string, sugeridos: Sugerid
 export const capitulosSugeridos = (aplicaPara: string[]): Capitulo[] =>
   aplicaPara.filter((k) => k in APLICA_PARA).map((k) => ({ id: crypto.randomUUID(), nombre: APLICA_PARA[k as ClaveAplica], filas: [] }));
 
+/** CANTIDAD and PRECIO TOTAL of a budget table row; `error` stays empty while nothing is typed yet. */
+export function valorFila(cantidadExpr: string, apu?: Apu): { cantidad: number | null; error: string; total: number | null } {
+  const r = evaluarCantidad(cantidadExpr);
+  if (!r.ok) return { cantidad: null, error: cantidadExpr.trim() ? r.error : "", total: null };
+  return { cantidad: r.valor, error: "", total: apu ? costoDirecto(r.valor, apu.costo_unitario) : null };
+}
+
 export const conteosFotos = (capitulos: Capitulo[], fotos: FotosPorFila) => capitulos.flatMap((c) => c.filas.map((f) => fotos[f.id]?.length ?? 0));
 
 /** Photos of the rows that still exist, then the single citizen signature (always PNG). */
@@ -93,5 +102,5 @@ export function dataUrlAPng(url: string): Blob {
   return new Blob([Uint8Array.from(binario, (c) => c.charCodeAt(0))], { type: "image/png" });
 }
 
-const COP =new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0, minimumFractionDigits: 0 });
+const COP = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0, minimumFractionDigits: 0 });
 export const formatoCop = (n: number) => COP.format(n);

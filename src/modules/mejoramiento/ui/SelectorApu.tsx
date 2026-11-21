@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { Button } from "@/shared/ui/Button";
 import { controlClass } from "@/shared/ui/Field";
+import { IconoMas } from "@/shared/ui/Iconos";
 import type { Apu } from "../domain/apus";
 import { buscarEnArbol, etiqueta, rutaApu, type Ambito, type CapituloApu } from "./arbolApus";
 import { formatoCop, type OpcionApu } from "./armado";
@@ -14,10 +15,11 @@ const fila = "flex min-h-12 w-full items-center gap-3 border-b border-border px-
 
 /**
  * "Agregar actividad": native modal (full screen below sm) drilling Capítulo > Subcapítulo > Ítems of the LISTADO DE
- * PRECIOS, with a search at every level. Chapters with a single subchapter skip that level.
+ * PRECIOS, with a search at every level. Chapters with a single subchapter skip that level. The root level starts
+ * with the frequent activities of the budget chapter (`frecuentes`, from actividadesFrecuentes).
  */
-export function SelectorApu({ clave, arbol, opciones, disabled, onElegir }: {
-  clave: string; arbol: CapituloApu[]; opciones: OpcionApu[]; disabled: boolean; onElegir: (a: Apu) => void;
+export function SelectorApu({ clave, capitulo, arbol, opciones, frecuentes, disabled, onElegir }: {
+  clave: string; capitulo: string; arbol: CapituloApu[]; opciones: OpcionApu[]; frecuentes: Apu[]; disabled: boolean; onElegir: (a: Apu) => void;
 }) {
   const dialogo = useRef<HTMLDialogElement>(null);
   const disparador = useRef<HTMLButtonElement>(null);
@@ -59,8 +61,16 @@ export function SelectorApu({ clave, arbol, opciones, disabled, onElegir }: {
 
   return (
     <>
-      <Button ref={disparador} className="self-start" disabled={disabled} onClick={abrir}>
-        Agregar actividad
+      <Button
+        ref={disparador}
+        className="inline-flex shrink-0 items-center gap-1.5 px-3 text-sm"
+        aria-label={`Agregar actividad a ${capitulo.trim() || "este capítulo"}`}
+        disabled={disabled}
+        onClick={abrir}
+      >
+        <IconoMas />
+        <span className="sm:hidden">Actividad</span>
+        <span className="hidden sm:inline">Agregar actividad</span>
       </Button>
       <dialog
         ref={dialogo}
@@ -123,7 +133,17 @@ export function SelectorApu({ clave, arbol, opciones, disabled, onElegir }: {
               ))}
             </ul>
           ) : (
-            <ul>
+            <>
+              {frecuentes.length > 0 && (
+                <section aria-labelledby={`${tituloId}-frecuentes`}>
+                  <h3 id={`${tituloId}-frecuentes`} className="bg-surface px-4 py-2 text-sm font-bold [overflow-wrap:anywhere]">
+                    Frecuentes para {capitulo.trim() || "este capítulo"}
+                  </h3>
+                  <Items apus={frecuentes} onElegir={elegir} vacio="" />
+                </section>
+              )}
+              <h3 className="bg-surface px-4 py-2 text-sm font-bold">Capítulos del listado de precios</h3>
+              <ul>
               {arbol.map((c) => (
                 <li key={c.codigo}>
                   <button type="button" className={fila} onClick={() => ir({ capitulo: c.codigo })}>
@@ -132,7 +152,8 @@ export function SelectorApu({ clave, arbol, opciones, disabled, onElegir }: {
                   </button>
                 </li>
               ))}
-            </ul>
+              </ul>
+            </>
           )}
         </div>
       </dialog>
