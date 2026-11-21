@@ -18,13 +18,13 @@ Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4
 
 ## Tasks
 - T1 S7 roles: inspector + change role (claims + revoke) + selector in Usuarios — inline — Risk item 2 — done 6b4920d, 3a67e66 (verifier pass; native review approved review-37e9a677621a8560)
-- T2 S9.1-9.3 Mi cuenta: data (+cargo for the format signature), password (client re-auth + updatePassword), escalation request (+ resolution in Usuarios) — inline — Risk item 2 — done
+- T2 S9.1-9.3 Mi cuenta: data (+cargo for the format signature), password (client re-auth + updatePassword), escalation request (+ resolution in Usuarios) — inline — Risk item 2 — done e88761d, 389fc4b (verifier pass)
 - T3 S2 APU import script + GET /api/apus — inline — done (dry run: 3842 APUs, 1 repeated ITEM 240201; Firestore write pending authorization)
-- T4 S4 S3 base (shared/s3.ts, env, CORS, CSP), AWS profile — inline — Risk items 2,5 — pending
+- T4 S4 S3 base (shared/s3.ts, env, CORS, CSP), AWS profile — inline — Risk items 2,5 — code done ad5b07e; AWS profile + bucket CORS pending user keys
 - T5 S8 inspector signature + layout gate — inline — Risk item 2 — pending
 - T6 S1-S3,S6 visit domain: schema, cantidad, costos, fotos, geo + limites.json — inline — done
-- T7 S1-S3,S6 visit form UI (5 steps) + local draft — inline — pending
-- T8 S3,S4,S7 submit API + confirm + MV code — inline — Risk item 2 — pending
+- T7 S1-S3,S6 visit form UI (5 steps) + local draft — delegated (writer reason: parallel unit with T4/T8 + context backstop) — done d3393cd
+- T8 S3,S4,S7 submit API + confirm + MV code — inline — Risk item 2 — done 10b75aa
 - T9 S5 list, detail, croquis modal — inline — pending
 - T10 S9.4 my visits + PDF — inline — pending
 
@@ -33,3 +33,4 @@ Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4
 - L2 (2026-11-20) Answers: postulación link "Independiente"; insumos "Cantidades y costos"; AIU/tope "Solo costo directo". User: "cree un usuario en el bucket con la politica "Policy-S3-MejoramientoVivienda" y el usuario se llama "s3-mejoramiento-vivienda-app" dentro del bucket "mejoramiento-vivienda" para que lo configures con amazon CLI"; "recuerda configurar ... CORS ... para permitir peticiones PUT y GET desde el dominio de tu frontend". Plan approved.
 - L3 (2026-11-20) Delivery answer: "stacked-to-main". Progress: T1, T3, T6 done (see Tasks).
 - L4 (2026-11-20) Slice 3a67e66..d765456 (T3+T6) assessed medium/under_budget, closed before the high-risk T2 unit so T2 is reviewed alone.
+- L5 (2026-11-20) User authorized APUS load: "Sí, cargar ahora". Written 3842 docs, read back count 3842. AWS profile not yet configured (user step).
