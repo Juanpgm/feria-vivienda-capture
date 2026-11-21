@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const isDev = process.env.NODE_ENV !== "production";
 
 // Visit photos/croquis go browser -> S3 with presigned URLs (PUT) and are shown from presigned GETs.
-const s3 = `https://${process.env.S3_BUCKET_NAME ?? "mejoramiento-vivienda"}.s3.${process.env.AWS_REGION ?? "us-east-1"}.amazonaws.com`;
+const s3 = `https://${process.env.S3_BUCKET_NAME ?? "mejoramiento-vivienda"}.s3.${process.env.AWS_REGION ?? "us-east-2"}.amazonaws.com`;
 
 // Inline script is required by the no-flash theme snippet; Next also injects inline bootstrap scripts.
 // ponytail: 'unsafe-inline' on script-src; move to a nonce-based CSP via middleware if a stricter policy is required.
