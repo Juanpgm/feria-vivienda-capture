@@ -20,13 +20,13 @@ Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4
 - T1 S7 roles: inspector + change role (claims + revoke) + selector in Usuarios — inline — Risk item 2 — done 6b4920d, 3a67e66 (verifier pass; native review approved review-37e9a677621a8560)
 - T2 S9.1-9.3 Mi cuenta: data (+cargo for the format signature), password (client re-auth + updatePassword), escalation request (+ resolution in Usuarios) — inline — Risk item 2 — done e88761d, 389fc4b (verifier pass)
 - T3 S2 APU import script + GET /api/apus — inline — done (dry run: 3842 APUs, 1 repeated ITEM 240201; Firestore write pending authorization)
-- T4 S4 S3 base (shared/s3.ts, env, CORS, CSP), AWS profile — inline — Risk items 2,5 — code done ad5b07e; AWS profile + bucket CORS pending user keys
-- T5 S8 inspector signature + layout gate — inline — Risk item 2 — pending
+- T4 S4 S3 base (shared/s3.ts, env, CORS, CSP), AWS profile — inline — Risk items 2,5 — done ad5b07e, 22b5a42 (B1 empty-body checksum fix), 0238684 (us-east-2); profile configured, real PUT/HEAD/GET verified; bucket CORS must be applied in the console (app user lacks PutBucketCORS)
+- T5 S8 inspector signature + layout gate — inline — Risk item 2 — done 6574f93
 - T6 S1-S3,S6 visit domain: schema, cantidad, costos, fotos, geo + limites.json — inline — done
 - T7 S1-S3,S6 visit form UI (5 steps) + local draft — delegated (writer reason: parallel unit with T4/T8 + context backstop) — done d3393cd
 - T8 S3,S4,S7 submit API + confirm + MV code — inline — Risk item 2 — done 10b75aa
-- T9 S5 list, detail, croquis modal — inline — pending
-- T10 S9.4 my visits + PDF — inline — pending
+- T9 S5 list, detail, croquis modal — delegated (context backstop) — done e7f15d4
+- T10 S9.4 my visits + PDF — delegated with T9 — done d5e934c
 
 ## Log
 - L1 (2026-11-20) User request: "/plan usa el archivo prompt en context/PROMPT-MEJORAMIENTO-VIVIENDA.txt, para planear el diseño de ese flujo de trabajo e interfaz y sus actividades con ODD y si tienes dudas o necesitas tomar decisiones, pregúntame". Prompt content quoted in Specs.
@@ -34,3 +34,5 @@ Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4
 - L3 (2026-11-20) Delivery answer: "stacked-to-main". Progress: T1, T3, T6 done (see Tasks).
 - L4 (2026-11-20) Slice 3a67e66..d765456 (T3+T6) assessed medium/under_budget, closed before the high-risk T2 unit so T2 is reviewed alone.
 - L5 (2026-11-20) User authorized APUS load: "Sí, cargar ahora". Written 3842 docs, read back count 3842. AWS profile not yet configured (user step).
+- L6 (2026-11-20) Native review d765456..6574f93 approved and acknowledged (review-c8a687b39a014cf7); follow-ups 9ebc7e9. Reviewed boundary 6574f93.
+- L7 (2026-11-20) User configured AWS CLI profile ("ya la configuré"). Bucket region is us-east-2. Real S3 round trip: PUT 200, PUT with other type 403, HEAD/GET ok, test object deleted. User chose e2e account: "Crear cuenta inspector nueva" -> prueba.e2e.inspector@cali.gov.co (rol inspector, prueba:true, credentials in .auth/inspector.json). Pending: user applies bucket CORS, adds AWS_PROFILE/AWS_REGION/S3_BUCKET_NAME to .env (agent blocked from writing .env) and Vercel env; then Playwright e2e; native review of 6574f93..HEAD.
