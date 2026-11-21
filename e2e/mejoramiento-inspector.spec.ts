@@ -97,6 +97,8 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   // 3 Cantidades: one chapter, the same ITEM twice (memoria de cálculo), 4 + 3 photos
   await page.getByRole("button", { name: "Agregar capítulo" }).click();
   await page.getByPlaceholder("Nombre del capítulo").fill("PISOS");
+  // The whole price list (~3.8k APUs) loads once; on a cold dev server the route compiles first.
+  await expect(page.getByText("Cargando listado de precios…")).toHaveCount(0, { timeout: 45_000 });
   await expect(page.getByText("Actividades frecuentes")).toBeVisible();
   // The picker modal: first by search from the root, then it reopens in the last subchapter (20 › 2001).
   const selector = page.getByRole("dialog", { name: "Elegir actividad" });
