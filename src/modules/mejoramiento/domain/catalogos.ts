@@ -29,6 +29,7 @@ export const APLICA_PARA = {
   alcantarillado_piso: "Alcantarillado y piso",
   cubierta: "Cubierta",
 } as const;
+export type ClaveAplica = keyof typeof APLICA_PARA;
 
 /** "APLICA AL MEJORAMIENTO? No, por:" */
 export const NO_APLICA_POR = {
@@ -142,6 +143,33 @@ export const SECCIONES: SeccionDiagnostico[] = [
     ],
   },
 ];
+
+/** Diagnostic blocks that matter for each improvement ("Estado enfocado"). */
+export const SECCIONES_POR_APLICA: Record<ClaveAplica, readonly string[]> = {
+  piso: ["piso", "desmonte"],
+  bano: ["bano", "sanitarias", "hidraulicas"],
+  cocina: ["cocina", "hidraulicas", "sanitarias"],
+  acabado_muros: ["repello", "estuco_pintura", "fachada"],
+  espacio_3x3: ["piso", "repello", "cubierta", "electricas"],
+  alcantarillado_piso: ["sanitarias", "piso", "desmonte"],
+  cubierta: ["cubierta"],
+};
+
+/** Splits SECCIONES into the blocks of the selected improvements and the rest, both in SECCIONES order. */
+export function seccionesEnfocadas(aplicaPara: readonly string[]): { relevantes: SeccionDiagnostico[]; otras: SeccionDiagnostico[] } {
+  const claves = new Set(aplicaPara.flatMap((k) => SECCIONES_POR_APLICA[k as ClaveAplica] ?? []));
+  return { relevantes: SECCIONES.filter((s) => claves.has(s.clave)), otras: SECCIONES.filter((s) => !claves.has(s.clave)) };
+}
+
+const normalizar = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+// Longest label first so "Alcantarillado y piso" never falls to a shorter label.
+const ETIQUETAS_APLICA = (Object.entries(APLICA_PARA) as [ClaveAplica, string][]).map(([k, v]) => [k, normalizar(v)] as const).sort((a, b) => b[1].length - a[1].length);
+
+/** Improvement a chapter belongs to, by its name ("Baño", "PISOS", "Baño principal"); undefined for any other chapter. */
+export function aplicaDeCapitulo(nombre: string): ClaveAplica | undefined {
+  const n = normalizar(nombre);
+  return n ? ETIQUETAS_APLICA.find(([, e]) => n.startsWith(e))?.[0] : undefined;
+}
 
 /** Chapter names offered when building the quantities list (free text is also allowed). */
 export const CAPITULOS_SUGERIDOS = [
