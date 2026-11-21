@@ -391,9 +391,9 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
             Atrás
           </Button>
           {siguienteVisible !== undefined ? (
-            <Button className="px-6" onClick={() => avanzar(siguienteVisible)}>{paso === 1 && !aplica ? "Ir al cierre" : "Siguiente"}</Button>
+            <Button className="min-w-0 flex-1 whitespace-nowrap px-4 md:flex-none md:px-6" onClick={() => avanzar(siguienteVisible)}>{paso === 1 && !aplica ? "Ir al cierre" : "Siguiente"}</Button>
           ) : (
-            <Button className="px-6" disabled={enviando} onClick={() => void enviar()}>
+            <Button className="min-w-0 flex-1 whitespace-nowrap px-4 md:flex-none md:px-6" disabled={enviando} onClick={() => void enviar()}>
               {enviando ? "Enviando…" : aviso ? "Reintentar envío" : "Enviar levantamiento"}
             </Button>
           )}

@@ -23,35 +23,31 @@ type Props = {
   refFila: (filaId: string, el: HTMLButtonElement | null) => void;
 };
 
-// Phones: the table scrolls sideways inside its container; ÍTEM stays put and full-width rows keep their content in view.
-const pegado = "sticky left-0 z-[1]";
-const enVista = `${pegado} max-w-[calc(100vw-1.5rem)] md:static md:max-w-none`;
-const celda = "border-b border-border px-2 py-2 align-top";
-const num = `${celda} text-right tabular-nums whitespace-nowrap`;
+// One markup, two layouts. From md up: the budget sheet as a table. Below md each activity is a compact card
+// (item and total, description, unit price and quantity) and chapters/subtotals are full-width bands, so nothing
+// scrolls sideways. Changing `display` on table elements can drop their table semantics, hence the explicit roles.
+const fila = "max-md:block";
+const celda = "max-md:block md:border-b md:border-border md:px-3 md:py-2.5 md:align-top";
+const num = `${celda} md:text-right md:tabular-nums md:whitespace-nowrap`;
 
-/** "Cantidades de obra" as the budget sheet (PRESUPUESTO TOPOP): ÍTEM | ACTIVIDAD | UND | CANTIDAD | PRECIO UNITARIO DIRECTO | PRECIO TOTAL. */
+/** "Cantidades de obra" as the budget sheet (PRESUPUESTO TOPOP): ÍTEM | ACTIVIDAD | UND | CANTIDAD | PRECIO UNITARIO | PRECIO TOTAL. */
 export function TablaPresupuesto({ capitulos, mapa, subtotales, total, fotos, errores, aplicaPara, onCambiar, onQuitarCapitulo, onEditar, refFila }: Props) {
-  // max-w in vw: a definite cap keeps the wide table from widening the page through ancestors sized by content;
-  // relative: sr-only (absolute) labels inside the table must not escape the scroller.
   return (
-    <div className="relative -mx-4 max-w-[100vw] overflow-x-auto border-y border-border md:mx-0 md:max-w-none md:rounded-lg md:border-x">
-      <table className="w-full min-w-[34rem] border-collapse text-sm">
+    <div className="-mx-4 border-y border-border md:mx-0 md:overflow-hidden md:rounded-lg md:border-x">
+      <table role="table" className="w-full border-collapse text-sm max-md:block">
         <caption className="sr-only">Presupuesto de la visita: cantidades de obra por capítulo</caption>
-        <thead>
-          <tr className="bg-primary-strong text-left text-xs font-bold uppercase text-bg">
-            <th scope="col" className={`${pegado} bg-primary-strong px-2 py-2`}>Ítem</th>
-            <th scope="col" className="px-2 py-2">Actividad</th>
-            <th scope="col" className="hidden px-2 py-2 sm:table-cell">Und</th>
-            <th scope="col" className="px-2 py-2 text-right">Cantidad</th>
-            <th scope="col" className="px-2 py-2 text-right">
-              <span aria-hidden className="sm:hidden">P. unit.</span>
-              <span className="sr-only sm:not-sr-only">Precio unitario directo</span>
-            </th>
-            <th scope="col" className="px-2 py-2 text-right">Precio total</th>
+        <thead role="rowgroup" className="max-md:hidden">
+          <tr role="row" className="bg-primary-strong text-left text-xs font-bold uppercase tracking-wide text-bg">
+            <th role="columnheader" scope="col" className="px-3 py-2.5">Ítem</th>
+            <th role="columnheader" scope="col" className="px-3 py-2.5">Actividad</th>
+            <th role="columnheader" scope="col" className="px-3 py-2.5">Und</th>
+            <th role="columnheader" scope="col" className="px-3 py-2.5 text-right">Cantidad</th>
+            <th role="columnheader" scope="col" className="px-3 py-2.5 text-right">Precio unitario</th>
+            <th role="columnheader" scope="col" className="px-3 py-2.5 text-right">Precio total</th>
           </tr>
         </thead>
         {capitulos.map((c, i) => (
-          <tbody key={c.id}>
+          <tbody key={c.id} role="rowgroup" className="max-md:block">
             <FilaCapitulo
               c={c}
               i={i}
@@ -62,9 +58,9 @@ export function TablaPresupuesto({ capitulos, mapa, subtotales, total, fotos, er
               nFotos={c.filas.reduce((s, f) => s + (fotos[f.id]?.length ?? 0), 0)}
             />
             {c.filas.length === 0 && (
-              <tr>
-                <td colSpan={6} className={`${celda} text-muted`}>
-                  <span className={`${enVista} block`}>Sin actividades</span>
+              <tr role="row" className={fila}>
+                <td role="cell" colSpan={6} className={`${celda} text-muted max-md:border-b max-md:border-border max-md:px-4 max-md:py-3`}>
+                  Sin actividades
                 </td>
               </tr>
             )}
@@ -76,37 +72,35 @@ export function TablaPresupuesto({ capitulos, mapa, subtotales, total, fotos, er
               return (
                 <tr
                   key={f.id}
-                  className="group cursor-pointer hover:bg-surface"
+                  role="row"
+                  className="group cursor-pointer hover:bg-surface max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-4 max-md:gap-y-1 max-md:border-b max-md:border-border max-md:px-4 max-md:py-3 max-md:[grid-template-areas:'item_total'_'desc_desc'_'pu_qty']"
                   onClick={(e) => !(e.target as HTMLElement).closest("input, button, label, a") && onEditar(f.id)}
                 >
-                  <th scope="row" className={`${pegado} border-b border-border bg-bg align-top text-left font-semibold group-hover:bg-surface`}>
+                  <th role="rowheader" scope="row" className={`${celda} text-left font-semibold [grid-area:item]`}>
                     <button
                       ref={(el) => refFila(f.id, el)}
                       type="button"
                       aria-label={`Editar ${f.item} ${apu?.descripcion ?? ""}`.trim()}
                       onClick={() => onEditar(f.id)}
-                      className="flex min-h-11 w-full items-center gap-1.5 whitespace-nowrap px-2 py-2 text-left text-primary underline-offset-2 hover:underline"
+                      className="inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap text-left text-primary underline-offset-2 hover:underline md:min-h-11"
                     >
                       {f.item}
                       <IconoLapiz className="size-3.5 opacity-70" />
                     </button>
                   </th>
-                  <td className={`${celda} min-w-40 break-words`}>
+                  <td role="cell" className={`${celda} break-words [grid-area:desc] md:min-w-48`}>
                     {apu ? apu.descripcion : <span className="font-semibold text-danger">No está en el listado de precios</span>}
-                    <span className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted">
-                      {apu && <span className="sm:hidden">{apu.und}</span>}
-                      {n > 0 && (
-                        <span className="inline-flex items-center gap-1">
-                          <IconoCamara className="size-4" />
-                          {n}<span className="sr-only"> {n === 1 ? "foto" : "fotos"}</span>
-                        </span>
-                      )}
-                    </span>
+                    {n > 0 && (
+                      <span className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+                        <IconoCamara className="size-4" />
+                        {n}<span className="sr-only"> {n === 1 ? "foto" : "fotos"}</span>
+                      </span>
+                    )}
                   </td>
-                  <td className={`${celda} hidden sm:table-cell`}>{apu?.und}</td>
-                  <td className={`${celda} w-32 text-right md:w-44`}>
+                  <td role="cell" className={`${celda} max-md:hidden`}>{apu?.und}</td>
+                  <td role="cell" className={`${celda} [grid-area:qty] max-md:justify-self-end md:w-44 md:text-right`}>
                     <input
-                      className="min-h-11 w-28 rounded-md border border-border bg-bg px-2 text-right text-base tabular-nums md:w-40 aria-[invalid=true]:border-danger"
+                      className="min-h-11 w-32 rounded-md border border-border bg-bg px-2 text-right text-base tabular-nums md:w-40 aria-[invalid=true]:border-danger"
                       inputMode="decimal"
                       autoComplete="off"
                       aria-label={`Cantidad de ${f.item}`}
@@ -116,33 +110,42 @@ export function TablaPresupuesto({ capitulos, mapa, subtotales, total, fotos, er
                       onChange={(e) => onCambiar(i, { ...c, filas: c.filas.map((x) => (x.id === f.id ? { ...x, cantidad_expr: e.target.value } : x)) })}
                     />
                     {mensaje ? (
-                      <p id={`cantidad-${f.id}`} role="alert" className="mt-0.5 max-w-28 text-left text-xs font-medium text-danger">{mensaje}</p>
+                      <p id={`cantidad-${f.id}`} role="alert" className="mt-0.5 max-w-32 text-left text-xs font-medium text-danger md:max-w-40">{mensaje}</p>
                     ) : (
                       v.cantidad !== null && f.cantidad_expr.trim() !== String(v.cantidad).replace(".", ",") && (
-                        <p className="mt-0.5 text-xs text-muted tabular-nums">= {v.cantidad.toLocaleString("es-CO")}</p>
+                        <p className="mt-0.5 text-right text-xs text-muted tabular-nums">= {v.cantidad.toLocaleString("es-CO")}</p>
                       )
                     )}
                   </td>
-                  <td className={num}>{apu && formatoCop(apu.costo_unitario)}</td>
-                  <td className={`${num} font-semibold`}>{v.total !== null && formatoCop(v.total)}</td>
+                  <td role="cell" className={`${num} [grid-area:pu] max-md:text-xs max-md:text-muted`}>
+                    {apu && (
+                      <>
+                        {formatoCop(apu.costo_unitario)}
+                        <span className="md:hidden"> / {apu.und}</span>
+                      </>
+                    )}
+                  </td>
+                  <td role="cell" className={`${num} font-semibold tabular-nums [grid-area:total] max-md:text-right`}>
+                    {v.total !== null ? formatoCop(v.total) : <span className="font-normal text-muted md:hidden">Sin cantidad</span>}
+                  </td>
                 </tr>
               );
             })}
-            <tr className="bg-surface font-semibold">
-              <td colSpan={6} className="border-b border-border">
-                <div className={`${enVista} flex items-center justify-between gap-3 bg-surface px-2 py-2`}>
-                  <span className="[overflow-wrap:anywhere]">Subtotal {c.nombre.trim() || `capítulo ${i + 1}`}</span>
+            <tr role="row" className={`${fila} bg-surface font-semibold`}>
+              <td role="cell" colSpan={6} className="border-b border-border px-4 py-2.5 max-md:block md:px-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted [overflow-wrap:anywhere]">Subtotal {c.nombre.trim() || `capítulo ${i + 1}`}</span>
                   <span className="whitespace-nowrap tabular-nums">{formatoCop(subtotales[i] ?? 0)}</span>
                 </div>
               </td>
             </tr>
           </tbody>
         ))}
-        <tfoot>
-          <tr className="bg-primary-strong font-bold text-bg">
-            <td colSpan={6} className="p-0">
-              <div className={`${enVista} flex items-center justify-between gap-3 bg-primary-strong px-2 py-3`}>
-                <span className="text-xs uppercase sm:text-sm">Costo directo del mejoramiento de vivienda</span>
+        <tfoot role="rowgroup" className="max-md:block">
+          <tr role="row" className={`${fila} bg-primary-strong font-bold text-bg`}>
+            <td role="cell" colSpan={6} className="px-4 py-3 max-md:block md:px-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs uppercase tracking-wide sm:text-sm">Costo directo del mejoramiento de vivienda</span>
                 <span className="whitespace-nowrap text-base tabular-nums">{formatoCop(total)}</span>
               </div>
             </td>
@@ -167,9 +170,9 @@ function FilaCapitulo({ c, i, error, fuera, onCambiar, onQuitar, nFotos }: {
     if (!c.filas.length || window.confirm(`¿Quitar el capítulo ${nombre}${detalle}?${aviso}`)) onQuitar();
   }
   return (
-    <tr className="bg-surface">
-      <th scope="rowgroup" colSpan={6} className="border-b border-border p-0 text-left font-normal">
-        <div className={`${enVista} flex flex-col gap-1 bg-surface px-2 py-2`}>
+    <tr role="row" className="bg-surface max-md:block">
+      <th role="rowheader" scope="rowgroup" colSpan={6} className="border-b border-border p-0 text-left font-normal max-md:block">
+        <div className="flex flex-col gap-1 py-2 pl-2 pr-4 md:px-1">
           <div className="flex flex-wrap items-center gap-2">
             {categoria ? (
               <span className="min-w-24 flex-1 px-2 text-base font-bold text-primary-strong">{c.nombre}</span>
