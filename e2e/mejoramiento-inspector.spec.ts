@@ -100,26 +100,34 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   await page.getByRole("radiogroup", { name: "Piso", exact: true }).getByText("Malo").click();
   await expect(page.getByText("1 de 15 elementos con estado.", { exact: false })).toBeVisible();
   await sig();
-  // 3 Cantidades: one chapter, the same ITEM twice (memoria de cálculo), 4 + 3 photos
-  await page.getByRole("button", { name: "Agregar capítulo" }).click();
-  await page.getByPlaceholder("Nombre del capítulo").fill("PISOS");
+  // 3 Cantidades: the chapter PISO comes from "Sí, para"; the same ITEM twice (memoria de cálculo), 4 + 3 photos
   // The whole price list (~3.8k APUs) loads once; on a cold dev server the route compiles first.
   await expect(page.getByText("Cargando listado de precios…")).toHaveCount(0, { timeout: 45_000 });
-  // The picker modal: its root starts with the chapter's frequent activities; first by search from the root,
-  // then it reopens in the last subchapter (20 › 2001).
-  const selector = page.getByRole("dialog", { name: "Elegir actividad" });
-  await page.getByRole("button", { name: "Agregar actividad" }).click();
-  await expect(selector.getByRole("heading", { name: "Frecuentes para PISOS" })).toBeVisible();
-  await selector.getByRole("searchbox").fill(ITEM);
-  await selector.getByRole("button", { name: new RegExp(`^${ITEM}`) }).click();
-  await expect(selector).toBeHidden();
-  await page.getByRole("button", { name: "Agregar actividad" }).click();
-  await expect(selector.getByRole("navigation").getByText(/^2001 /)).toBeVisible();
-  await selector.getByRole("button", { name: new RegExp(`^${ITEM}`) }).click();
-  // The budget table: row 2 typed inline; row 1 through the row editor and its calculator (M2: Largo × Ancho).
-  const cantidades = page.getByRole("table").getByLabel(`Cantidad de ${ITEM}`);
+  const tabla = page.getByRole("table");
+  await expect(tabla.getByText("PISO", { exact: true })).toBeVisible();
+  await expect(tabla.getByText("Sin actividades")).toBeVisible();
+  // The add flow: search, then quantity through the calculator and the chapter chip (PISO by default for 20 PISOS).
+  const agregar = page.getByRole("dialog", { name: "Agregar actividad" });
+  await page.getByRole("button", { name: "Agregar actividad" }).first().click();
+  await expect(agregar.getByRole("heading", { name: "Frecuentes" })).toBeVisible();
+  await agregar.getByRole("searchbox").fill(ITEM);
+  await agregar.getByRole("button", { name: new RegExp(`^${ITEM}`) }).click();
+  await agregar.getByText("Calcular con medidas").click();
+  await agregar.getByLabel("Largo, medida 1").fill("3,5");
+  await agregar.getByLabel("Ancho, medida 1").fill("4");
+  await expect(agregar.getByLabel(`Cantidad de ${ITEM}`)).toHaveValue("(3,5*4)");
+  await expect(agregar.getByRole("radiogroup", { name: "Capítulo del presupuesto" }).getByRole("radio", { name: "PISO" })).toBeChecked();
+  await agregar.getByRole("button", { name: "Agregar y seguir" }).click();
+  await expect(agregar.getByRole("status")).toHaveText(`Agregada ${ITEM} a PISO`);
+  // Back on the list with the search kept: the second row, quantity typed.
+  await agregar.getByRole("button", { name: new RegExp(`^${ITEM}`) }).click();
+  await agregar.getByLabel(`Cantidad de ${ITEM}`).fill("2");
+  await agregar.getByRole("button", { name: "Agregar", exact: true }).click();
+  await expect(agregar).toBeHidden();
+  const cantidades = tabla.getByLabel(`Cantidad de ${ITEM}`);
   await expect(cantidades).toHaveCount(2);
-  await cantidades.nth(1).fill("2");
+  await expect(cantidades.nth(0)).toHaveValue("(3,5*4)");
+  await expect(cantidades.nth(1)).toHaveValue("2");
   const editores = page.getByRole("button", { name: new RegExp(`^Editar ${ITEM}`) });
   const editor = page.getByRole("dialog", { name: `Editar actividad ${ITEM}` });
   const fotos = async (n: number, desde: number) => {
@@ -130,10 +138,8 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
     }
     await editor.locator('input[type="file"][capture]').setInputFiles(archivos);
   };
+  // The row editor: photos per row.
   await editores.nth(0).click();
-  await editor.getByLabel("Largo, medida 1").fill("3,5");
-  await editor.getByLabel("Ancho, medida 1").fill("4");
-  await expect(editor.getByLabel(`Cantidad de ${ITEM}`)).toHaveValue("(3,5*4)");
   await fotos(4, 1);
   await expect(editor.getByText("4 de 6", { exact: true })).toBeVisible();
   await editor.getByRole("button", { name: "Listo" }).click();
@@ -150,7 +156,7 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   // 4 Cierre: review before signing
   await page.getByLabel("Observaciones").fill("Visita de prueba automatizada e2e (se borra).");
   const revision = page.getByRole("region", { name: "Revise antes de firmar" });
-  await expect(revision.getByText("PISOS")).toBeVisible();
+  await expect(revision.getByText("PISO", { exact: true })).toBeVisible();
   await expect(revision.getByText(/^2 actividades · .*605\.712$/)).toBeVisible();
   await firmar(page);
   await page.getByRole("button", { name: "Enviar levantamiento" }).click();

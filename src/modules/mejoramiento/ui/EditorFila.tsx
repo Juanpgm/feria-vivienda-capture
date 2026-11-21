@@ -118,11 +118,24 @@ export function EditorFila({ fila, apu, error, onChange, onQuitar, onCerrar, vis
 const ETIQUETAS: Record<Dimension, string> = { largo: "Largo", ancho: "Ancho", alto: "Alto" };
 
 /** "Calculadora de medidas": Largo × Ancho (M2), × Alto (M3) or Largo (M, ML); lines add up unless "Descontar". */
-function Calculadora({ und, dims, medidas, onChange }: { und: string; dims: readonly Dimension[]; medidas: Medida[]; onChange: (m: Medida[]) => void }) {
+/** `leyendaVisible={false}` when a visible heading right above already names the calculator (kept for screen readers). */
+export function Calculadora({
+  und,
+  dims,
+  medidas,
+  onChange,
+  leyendaVisible = true,
+}: {
+  und: string;
+  dims: readonly Dimension[];
+  medidas: Medida[];
+  onChange: (m: Medida[]) => void;
+  leyendaVisible?: boolean;
+}) {
   const cambiar = (n: number, m: Medida) => onChange(medidas.map((x, k) => (k === n ? m : x)));
   return (
     <fieldset className="flex flex-col gap-3 rounded-lg border border-border p-3">
-      <legend className="px-1 font-semibold">Calcular por medidas ({und}), en metros</legend>
+      <legend className={leyendaVisible ? "px-1 font-semibold" : "sr-only"}>Calcular por medidas ({und}), en metros</legend>
       {medidas.map((m, n) => (
         <div key={n} className="flex flex-wrap items-end gap-2">
           {dims.map((d, k) => (

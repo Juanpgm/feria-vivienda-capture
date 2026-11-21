@@ -3,7 +3,7 @@ import { filtrarOpciones, type OpcionBusqueda } from "@/shared/busqueda";
 import type { Apu } from "../domain/apus";
 import { evaluarCantidad } from "../domain/cantidad";
 import { costoDirecto } from "../domain/costos";
-import { APLICA_PARA, aplicaDeCapitulo, OBSERVACIONES_PRESET, type ClaveAplica } from "../domain/catalogos";
+import { OBSERVACIONES_PRESET } from "../domain/catalogos";
 import type { ArchivoManifiesto } from "../domain/envio";
 import { visitaSchema, type VisitaEntrada } from "../domain/visita";
 
@@ -62,18 +62,12 @@ export function buscarApus(opciones: OpcionApu[], consulta: string, limite = 20)
 /** Shape of catalogo/sugeridos.json (scripts/build-sugeridos-apu.mjs). */
 export type Sugeridos = { comunes: string[]; por_capitulo: Partial<Record<string, string[]>> };
 
-/** "Actividades frecuentes" of a chapter: its own frequent ITEMs, then the common ones; only APUs in the loaded
- * price list and not already in the chapter (repeating one stays possible through the search). */
-export function actividadesFrecuentes(nombreCapitulo: string, sugeridos: Sugeridos, mapa: Map<string, Apu>, filas: Fila[]): Apu[] {
-  const clave = aplicaDeCapitulo(nombreCapitulo);
-  const ya = new Set(filas.map((f) => f.item));
-  const items = new Set([...((clave && sugeridos.por_capitulo[clave]) || []), ...sugeridos.comunes]);
-  return [...items].filter((i) => !ya.has(i) && mapa.has(i)).map((i) => mapa.get(i)!);
+/** "Frecuentes" of the add flow: the frequent ITEMs of each selected improvement (APLICA_PARA order as given), then
+ * the common ones; only APUs in the loaded price list, without repeats, at most `limite`. */
+export function actividadesFrecuentes(aplicaPara: readonly string[], sugeridos: Sugeridos, mapa: Map<string, Apu>, limite = 10): Apu[] {
+  const items = new Set([...aplicaPara.flatMap((k) => sugeridos.por_capitulo[k] ?? []), ...sugeridos.comunes]);
+  return [...items].filter((i) => mapa.has(i)).slice(0, limite).map((i) => mapa.get(i)!);
 }
-
-/** One empty chapter per selected improvement, named with its label ("Crear capítulos sugeridos"). */
-export const capitulosSugeridos = (aplicaPara: string[]): Capitulo[] =>
-  aplicaPara.filter((k) => k in APLICA_PARA).map((k) => ({ id: crypto.randomUUID(), nombre: APLICA_PARA[k as ClaveAplica], filas: [] }));
 
 /** CANTIDAD and PRECIO TOTAL of a budget table row; `error` stays empty while nothing is typed yet. */
 export function valorFila(cantidadExpr: string, apu?: Apu): { cantidad: number | null; error: string; total: number | null } {

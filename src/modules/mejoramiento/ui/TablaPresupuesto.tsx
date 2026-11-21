@@ -1,9 +1,10 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import { IconoCamara, IconoLapiz, IconoMasOpciones } from "@/shared/ui/Iconos";
 import type { Apu } from "../domain/apus";
 import { formatoCop, valorFila, type Capitulo, type FotosPorFila } from "./armado";
+import { esCategoria, fueraDeAplica } from "./capitulosAuto";
 
 type Props = {
   capitulos: Capitulo[];
@@ -13,13 +14,11 @@ type Props = {
   total: number;
   fotos: FotosPorFila;
   errores: Record<string, string>;
-  /** Chapter whose name field takes the focus when it mounts (a chapter just added). */
-  enfocar?: string;
+  /** diagnostico.aplica_para: flags category chapters kept for their rows after leaving "Sí, para". */
+  aplicaPara: string[];
   onCambiar: (i: number, c: Capitulo) => void;
   onQuitarCapitulo: (i: number) => void;
   onEditar: (filaId: string) => void;
-  /** "Agregar actividad" of a chapter (SelectorApu). */
-  agregar: (c: Capitulo, i: number) => ReactNode;
   /** Edit button of each row, to give the focus back when the row editor closes. */
   refFila: (filaId: string, el: HTMLButtonElement | null) => void;
 };
@@ -31,7 +30,7 @@ const celda = "border-b border-border px-2 py-2 align-top";
 const num = `${celda} text-right tabular-nums whitespace-nowrap`;
 
 /** "Cantidades de obra" as the budget sheet (PRESUPUESTO TOPOP): ÍTEM | ACTIVIDAD | UND | CANTIDAD | PRECIO UNITARIO DIRECTO | PRECIO TOTAL. */
-export function TablaPresupuesto({ capitulos, mapa, subtotales, total, fotos, errores, enfocar, onCambiar, onQuitarCapitulo, onEditar, agregar, refFila }: Props) {
+export function TablaPresupuesto({ capitulos, mapa, subtotales, total, fotos, errores, aplicaPara, onCambiar, onQuitarCapitulo, onEditar, refFila }: Props) {
   // max-w in vw: a definite cap keeps the wide table from widening the page through ancestors sized by content;
   // relative: sr-only (absolute) labels inside the table must not escape the scroller.
   return (
@@ -57,16 +56,15 @@ export function TablaPresupuesto({ capitulos, mapa, subtotales, total, fotos, er
               c={c}
               i={i}
               error={errores[`capitulos.${i}.nombre`]}
-              enfocar={enfocar === c.id}
+              fuera={fueraDeAplica(c, aplicaPara)}
               onCambiar={(nuevo) => onCambiar(i, nuevo)}
               onQuitar={() => onQuitarCapitulo(i)}
-              agregar={agregar(c, i)}
               nFotos={c.filas.reduce((s, f) => s + (fotos[f.id]?.length ?? 0), 0)}
             />
             {c.filas.length === 0 && (
               <tr>
                 <td colSpan={6} className={`${celda} text-muted`}>
-                  <span className={`${enVista} block`}>Sin actividades. Use «Agregar actividad».</span>
+                  <span className={`${enVista} block`}>Sin actividades</span>
                 </td>
               </tr>
             )}
@@ -155,30 +153,46 @@ export function TablaPresupuesto({ capitulos, mapa, subtotales, total, fotos, er
   );
 }
 
-function FilaCapitulo({ c, i, error, enfocar, onCambiar, onQuitar, agregar, nFotos }: {
-  c: Capitulo; i: number; error?: string; enfocar: boolean; onCambiar: (c: Capitulo) => void; onQuitar: () => void; agregar: ReactNode; nFotos: number;
+function FilaCapitulo({ c, i, error, fuera, onCambiar, onQuitar, nFotos }: {
+  c: Capitulo; i: number; error?: string; fuera: boolean; onCambiar: (c: Capitulo) => void; onQuitar: () => void; nFotos: number;
 }) {
   const menu = `menu-capitulo-${c.id}`;
   const campo = `nombre-capitulo-${c.id}`;
   const nombre = c.nombre.trim() || `capítulo ${i + 1}`;
+  const categoria = esCategoria(c);
   const cerrarMenu = () => document.getElementById(menu)?.hidePopover();
+  function quitar() {
+    const detalle = c.filas.length ? ` con ${c.filas.length} ${c.filas.length === 1 ? "actividad" : "actividades"}${nFotos ? ` y ${nFotos} fotos` : ""}` : "";
+    const aviso = categoria && !fuera ? " También se desmarca en «Sí, para»." : "";
+    if (!c.filas.length || window.confirm(`¿Quitar el capítulo ${nombre}${detalle}?${aviso}`)) onQuitar();
+  }
   return (
     <tr className="bg-surface">
       <th scope="rowgroup" colSpan={6} className="border-b border-border p-0 text-left font-normal">
         <div className={`${enVista} flex flex-col gap-1 bg-surface px-2 py-2`}>
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              id={campo}
-              className="min-h-11 min-w-24 flex-1 rounded-md border border-transparent bg-transparent px-2 text-base font-bold uppercase text-primary-strong placeholder:font-normal placeholder:normal-case placeholder:text-muted hover:border-border focus:border-border focus:bg-bg aria-[invalid=true]:border-danger"
-              list="capitulos-sugeridos"
-              aria-label={`Nombre del capítulo ${i + 1}`}
-              placeholder="Nombre del capítulo"
-              autoFocus={enfocar}
-              value={c.nombre}
-              aria-invalid={error ? true : undefined}
-              onChange={(e) => onCambiar({ ...c, nombre: e.target.value })}
-            />
-            {agregar}
+            {categoria ? (
+              <span className="min-w-24 flex-1 px-2 text-base font-bold text-primary-strong">{c.nombre}</span>
+            ) : (
+              // Extra chapters keep an inline name field ("Cambiar nombre" focuses it).
+              <input
+                id={campo}
+                className="min-h-11 min-w-24 flex-1 rounded-md border border-transparent bg-transparent px-2 text-base font-bold uppercase text-primary-strong placeholder:font-normal placeholder:normal-case placeholder:text-muted hover:border-border focus:border-border focus:bg-bg aria-[invalid=true]:border-danger"
+                aria-label={`Nombre del capítulo ${i + 1}`}
+                placeholder="Nombre del capítulo"
+                value={c.nombre}
+                aria-invalid={error ? true : undefined}
+                onChange={(e) => onCambiar({ ...c, nombre: e.target.value })}
+              />
+            )}
+            {fuera && (
+              <>
+                <span className="rounded-full bg-warning-bg px-2 py-1 text-xs font-semibold text-warning-text">No está en «Sí, para»</span>
+                <button type="button" onClick={quitar} className="min-h-11 rounded-lg border border-border bg-bg px-3 text-sm font-semibold text-danger hover:bg-surface">
+                  Quitar
+                </button>
+              </>
+            )}
             <button
               type="button"
               popoverTarget={menu}
@@ -194,25 +208,26 @@ function FilaCapitulo({ c, i, error, enfocar, onCambiar, onQuitar, agregar, nFot
               style={{ positionAnchor: `--${menu}` } as CSSProperties}
               className="min-w-48 rounded-lg border border-border bg-bg p-1 text-text shadow-lg [position-area:bottom_span-left] supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-1"
             >
-              <button
-                type="button"
-                className="flex min-h-11 w-full items-center rounded-md px-3 text-left hover:bg-surface"
-                onClick={() => {
-                  cerrarMenu();
-                  const el = document.getElementById(campo) as HTMLInputElement | null;
-                  el?.focus();
-                  el?.select();
-                }}
-              >
-                Cambiar nombre
-              </button>
+              {!categoria && (
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center rounded-md px-3 text-left hover:bg-surface"
+                  onClick={() => {
+                    cerrarMenu();
+                    const el = document.getElementById(campo) as HTMLInputElement | null;
+                    el?.focus();
+                    el?.select();
+                  }}
+                >
+                  Cambiar nombre
+                </button>
+              )}
               <button
                 type="button"
                 className="flex min-h-11 w-full items-center rounded-md px-3 text-left font-semibold text-danger hover:bg-surface"
                 onClick={() => {
                   cerrarMenu();
-                  const detalle = c.filas.length ? ` con ${c.filas.length} ${c.filas.length === 1 ? "actividad" : "actividades"}${nFotos ? ` y ${nFotos} fotos` : ""}` : "";
-                  if (window.confirm(`¿Quitar el capítulo ${nombre}${detalle}?`)) onQuitar();
+                  quitar();
                 }}
               >
                 Quitar capítulo

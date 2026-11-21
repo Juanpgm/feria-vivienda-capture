@@ -17,6 +17,7 @@ import { OBSERVACIONES_MAX } from "../domain/visita";
 import { aEntrada, conteosFotos, construirManifiesto, dataUrlAPng, erroresPaso, formatoCop, visitaVacia, type FotosPorFila, type Valores } from "./armado";
 import { CampoSelect, CampoTexto, Segmentos } from "./campos";
 import { enviarVisita, type ProgresoEnvio } from "./enviarVisita";
+import { sincronizarCapitulos } from "./capitulosAuto";
 import { cargarFotoVisita, quitarFotosVisita } from "./fotosVisita";
 import { PasoCantidades, presupuesto, useApus } from "./PasoCantidades";
 import { PasoDiagnostico } from "./PasoDiagnostico";
@@ -328,9 +329,27 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
           </>
         )}
 
-        {paso === 1 && <PasoDiagnostico d={v.diagnostico} errores={errores} onChange={(diagnostico) => setV({ ...v, diagnostico })} />}
+        {paso === 1 && (
+          <PasoDiagnostico
+            d={v.diagnostico}
+            errores={errores}
+            // "Sí, para" drives the budget chapters (one per category); see capitulosAuto.ts.
+            onChange={(diagnostico) => setV({ ...v, diagnostico, capitulos: diagnostico.aplica === "si" ? sincronizarCapitulos(diagnostico.aplica_para, v.capitulos) : v.capitulos })}
+          />
+        )}
 
-        {paso === 2 && <PasoCantidades visitaId={v.id} aplicaPara={v.diagnostico.aplica === "si" ? v.diagnostico.aplica_para : []} capitulos={v.capitulos} onChange={(capitulos) => setV({ ...v, capitulos })} fotos={fotos} onFotos={setFotos} errores={errores} />}
+        {paso === 2 && (
+          <PasoCantidades
+            visitaId={v.id}
+            aplica={v.diagnostico.aplica === "si"}
+            aplicaPara={v.diagnostico.aplica_para}
+            capitulos={v.capitulos}
+            onChange={({ capitulos, aplicaPara }) => setV({ ...v, capitulos, diagnostico: { ...v.diagnostico, aplica_para: aplicaPara } })}
+            fotos={fotos}
+            onFotos={setFotos}
+            errores={errores}
+          />
+        )}
 
         {paso === 3 && (
           <>
