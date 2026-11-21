@@ -30,6 +30,8 @@
     "vitest": "^5.0.5"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1175.0",
+    "@aws-sdk/s3-request-presigner": "^3.1175.0",
     "@hookform/resolvers": "^5.9.2",
     "firebase": "^13.1.0",
     "firebase-admin": "^14.5.0",
