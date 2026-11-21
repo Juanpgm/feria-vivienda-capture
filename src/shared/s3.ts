@@ -8,7 +8,9 @@ export const SUBIDA_SEGUNDOS = 15 * 60;
 export const LECTURA_SEGUNDOS = 10 * 60;
 
 let cliente: S3Client | null = null;
-const s3 = () => (cliente ??= new S3Client({ region: process.env.AWS_REGION }));
+// WHEN_REQUIRED: by default the SDK adds a CRC32 of the (empty) presign-time body to PUT URLs, and S3 would then
+// reject every real upload with BadDigest.
+const s3 = () => (cliente ??= new S3Client({ region: process.env.AWS_REGION, requestChecksumCalculation: "WHEN_REQUIRED" }));
 
 export function bucket(): string {
   const b = process.env.S3_BUCKET_NAME;
@@ -24,6 +26,11 @@ export async function firmarSubida(key: string, contentType: string, bytes: numb
   const cmd = new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: contentType, ContentLength: bytes });
   const url = await getSignedUrl(s3(), cmd, { expiresIn: SUBIDA_SEGUNDOS, signableHeaders: new Set(["content-type", "content-length"]) });
   return { url, headers: { "Content-Type": contentType } };
+}
+
+/** Server-side upload for small files the server already validated (the inspector's signature). */
+export async function guardarObjeto(key: string, cuerpo: Uint8Array, contentType: string) {
+  await s3().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: cuerpo, ContentType: contentType }));
 }
 
 /** Presigned GET to show a stored file (inline). */
