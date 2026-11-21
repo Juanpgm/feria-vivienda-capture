@@ -60,8 +60,11 @@ test("1. sin firma registrada: puerta de firma, guardar, S3 y Firestore", async 
   await expect(page.getByText("Registre su firma de inspector")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mis levantamientos" })).toHaveCount(0);
   await firmar(page);
+  // Wait for the save itself (the signature route compiles on first use on a cold dev server).
+  const guardado = page.waitForResponse((r) => r.url().endsWith("/api/cuenta/firma") && r.request().method() === "POST", { timeout: 60_000 });
   await page.getByRole("button", { name: "Guardar firma" }).click();
-  await expect(page.getByRole("heading", { name: "Mis levantamientos" })).toBeVisible();
+  expect((await guardado).status()).toBe(200);
+  await expect(page.getByRole("heading", { name: "Mis levantamientos" })).toBeVisible({ timeout: 30_000 });
   const r = script("inspect");
   expect(r.firma_key).toMatch(/^inspectores\/.+\/firma\.png$/);
   expect(r.firma_en_s3).toMatchObject({ existe: true, content_type: "image/png" });
@@ -82,7 +85,7 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   await page.getByRole("radio", { name: "Propietario" }).check({ force: true });
   await page.getByLabel("Nombre completo").fill("PRUEBA E2E Propietario");
   await page.getByLabel("Número de documento", { exact: true }).fill("1234567890");
-  await expect(page.getByText("Quien atiende es el propietario: se usan su nombre y documento.")).toBeVisible();
+  await expect(page.getByText("Quien atiende es el propietario: se usan su nombre y su documento.")).toBeVisible();
   await expect(page.getByLabel("Nombre del propietario")).toHaveCount(0);
   await expect(page.getByLabel("Tipo de documento del propietario")).toHaveCount(0); // read-only: taken from who attends
   await page.getByLabel("Teléfono de contacto").fill("3001234567");
@@ -233,10 +236,12 @@ test("6-7. acceso ajeno y reintento idempotente (API)", async ({ page }) => {
   expect({ status: r.status(), codigo: j.codigo, registrada: j.registrada }).toEqual({ status: 200, codigo, registrada: true });
 });
 
-test("8. Mi cuenta: Mis visitas y PDF", async ({ page }) => {
+test("8. Mi cuenta: resumen de levantamientos, enlace al listado y PDF (sin repetir la lista)", async ({ page }) => {
   await page.goto("/cuenta");
-  await expect(page.getByText("Mis visitas").first()).toBeVisible();
-  await expect(page.getByText(codigo).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mis levantamientos" })).toBeVisible();
+  await expect(page.getByText(/1 levantamiento ·/)).toBeVisible();
+  await expect(page.getByText(codigo)).toHaveCount(0); // the list lives in /mejoramiento only
+  await expect(page.getByRole("link", { name: "Ver mis levantamientos" })).toHaveAttribute("href", "/mejoramiento");
   const [descarga] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Descargar informe PDF" }).click()]);
   expect(descarga.suggestedFilename()).toMatch(/^informe-visitas-.*\.pdf$/);
 });
