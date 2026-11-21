@@ -95,12 +95,13 @@ export async function cambiarRol(uid: string, rol: Rol, actor: string) {
 }
 
 export async function actualizarPerfil(uid: string, perfil: Perfil) {
-  await col().doc(uid).update({ ...perfil, actualizado_en: FieldValue.serverTimestamp() });
+  // merge: also works for an account whose users doc is missing (update() would fail with NOT_FOUND).
+  await col().doc(uid).set({ ...perfil, actualizado_en: FieldValue.serverTimestamp() }, { merge: true });
 }
 
 /** The inspector's signature was stored in S3 under `key`. */
 export async function actualizarFirma(uid: string, key: string) {
-  await col().doc(uid).update({ firma_key: key, firma_registrada_en: FieldValue.serverTimestamp(), actualizado_en: FieldValue.serverTimestamp() });
+  await col().doc(uid).set({ firma_key: key, firma_registrada_en: FieldValue.serverTimestamp(), actualizado_en: FieldValue.serverTimestamp() }, { merge: true });
 }
 
 export type SolicitudRol = {
@@ -137,9 +138,25 @@ export async function listarSolicitudes(): Promise<SolicitudRol[]> {
   return snap.docs.map((d) => d.data() as SolicitudRol);
 }
 
+/**
+ * Closes a pending request and writes its audit entry atomically. Returns false when it was no longer pending
+ * (another admin resolved it first), so two concurrent decisions cannot both land.
+ */
 export async function resolverSolicitud(uid: string, estado: "aprobada" | "rechazada", actor: string, motivo: string | null) {
-  await solicitudes().doc(uid).update({ estado, resuelta_por_uid: actor, respuesta: motivo, resuelta_en: FieldValue.serverTimestamp() });
-  await auditar(uid, `solicitud_rol_${estado}`, actor, (await obtenerUsuario(uid))?.rol ?? "usuario", motivo);
+  const ref = solicitudes().doc(uid);
+  return adminDb().runTransaction(async (tx) => {
+    const [s, u] = await Promise.all([tx.get(ref), tx.get(col().doc(uid))]);
+    if (s.data()?.estado !== "pendiente") return false;
+    tx.update(ref, { estado, resuelta_por_uid: actor, respuesta: motivo, resuelta_en: FieldValue.serverTimestamp() });
+    tx.set(col().doc(uid).collection("auditoria").doc(), {
+      accion: `solicitud_rol_${estado}`,
+      rol: (u.data()?.rol as Rol | undefined) ?? "usuario",
+      ...(motivo ? { motivo } : {}),
+      id_usuario_actor: actor,
+      en: FieldValue.serverTimestamp(),
+    });
+    return true;
+  });
 }
 
 export type ResultadoRechazo = "rechazado" | "ya_rechazado" | "aprobado" | "no_existe";

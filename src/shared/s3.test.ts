@@ -25,13 +25,15 @@ describe("s3 helpers", () => {
     expect(r.headers).toEqual({ "Content-Type": "image/jpeg" });
   });
 
-  it("HeadObject: size/type when present, null when missing, rethrows other errors", async () => {
+  it("HeadObject: size/type when present, null when missing (404 or 403), rethrows other errors", async () => {
     send.mockResolvedValueOnce({ ContentLength: 10, ContentType: "image/png" });
     expect(await verificarObjeto("k")).toEqual({ bytes: 10, content_type: "image/png" });
     send.mockRejectedValueOnce(Object.assign(new Error("x"), { name: "NotFound", $metadata: { httpStatusCode: 404 } }));
     expect(await verificarObjeto("k")).toBeNull();
-    send.mockRejectedValueOnce(Object.assign(new Error("denied"), { $metadata: { httpStatusCode: 403 } }));
-    await expect(verificarObjeto("k")).rejects.toThrow("denied");
+    send.mockRejectedValueOnce(Object.assign(new Error("Forbidden"), { $metadata: { httpStatusCode: 403 } }));
+    expect(await verificarObjeto("k")).toBeNull(); // no s3:ListBucket: a missing key answers 403
+    send.mockRejectedValueOnce(Object.assign(new Error("boom"), { $metadata: { httpStatusCode: 500 } }));
+    await expect(verificarObjeto("k")).rejects.toThrow("boom");
   });
 
   it("fails loudly without a bucket", async () => {

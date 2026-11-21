@@ -44,7 +44,8 @@ export async function verificarObjeto(key: string): Promise<{ bytes: number; con
     return { bytes: r.ContentLength ?? 0, content_type: r.ContentType ?? "" };
   } catch (e) {
     const status = (e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
-    if (status === 404 || (e as Error).name === "NotFound") return null;
+    // Without s3:ListBucket, S3 answers 403 (not 404) for a key that does not exist yet.
+    if (status === 404 || status === 403 || (e as Error).name === "NotFound") return null;
     throw e;
   }
 }

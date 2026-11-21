@@ -66,6 +66,12 @@ describe("POST /api/usuarios/solicitudes/[uid]", () => {
     vi.clearAllMocks();
     repo.obtenerSolicitud.mockResolvedValue({ estado: "pendiente", rol_actual: "usuario", rol_solicitado: "inspector" });
     repo.obtenerUsuario.mockResolvedValue({ rol: "usuario", esta_aprobado: true });
+    repo.resolverSolicitud.mockResolvedValue(true);
+  });
+  it("409 when another admin resolved it first (no second decision lands)", async () => {
+    actor("admin", "adm");
+    repo.resolverSolicitud.mockResolvedValue(false);
+    expect((await llamar("u1", { aprobar: false })).status).toBe(409);
   });
   it("admin approves usuario -> inspector: role changed, session revoked, request closed", async () => {
     actor("admin", "adm");

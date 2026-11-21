@@ -68,6 +68,13 @@ describe("POST /api/visitas", () => {
     expect(keys[6]).toBe("visitas-profesionales/MV-000001/firma-ciudadano/MV-000001_1144555_01.png");
   });
 
+  it("a retry signs only the files that are not yet in S3", async () => {
+    crearVisita.mockImplementation(async (_id: string, _d: unknown, planear: (c: string) => unknown[]) => ({ codigo: "MV-000001", archivos: planear("MV-000001"), registrada: false, reintento: true }));
+    verificarObjeto.mockImplementation(async (k: string) => (k.endsWith("_01.jpg") ? { bytes: 1000, content_type: "image/jpeg" } : null));
+    const { subidas } = await (await post(cuerpo())).json();
+    expect(subidas.map((s: { ref: string }) => s.ref)).toEqual(["p1", "p2", "p3", "p4", "p5", "firma"]);
+  });
+
   it("only the inspector role submits; an inspector without a registered signature is stopped", async () => {
     requireSesion.mockResolvedValue({ uid: "a", correo: "a@x", rol: "admin", aprobado: true });
     expect((await post(cuerpo())).status).toBe(403);

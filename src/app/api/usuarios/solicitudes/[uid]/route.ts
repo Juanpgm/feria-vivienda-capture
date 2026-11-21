@@ -27,7 +27,8 @@ export function POST(req: Request, ctx: { params: Promise<{ uid: string }> }) {
       return respuesta(409, { error: "El rol de la cuenta cambió; la solicitud ya no aplica" });
 
     if (aprobar && !yaAplicada) await aplicarRol(uid, s.rol_solicitado, actor.uid);
-    await resolverSolicitud(uid, aprobar ? "aprobada" : "rechazada", actor.uid, motivo || null);
+    const cerrada = await resolverSolicitud(uid, aprobar ? "aprobada" : "rechazada", actor.uid, motivo || null);
+    if (!cerrada) return respuesta(409, { error: "Otro administrador ya resolvió esta solicitud" });
     return respuesta(200, { ok: true });
   });
 }

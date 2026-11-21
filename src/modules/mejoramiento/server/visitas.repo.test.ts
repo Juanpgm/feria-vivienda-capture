@@ -43,7 +43,7 @@ describe("crearVisita", () => {
     expect((await crearVisita("v1", datos(), planear)).codigo).toBe("MV-000001");
     expect(store.get("contadores/visitas_mejoramiento")?.ultimo).toBe(1);
     store.set("visitas_mejoramiento/v1", { ...store.get("visitas_mejoramiento/v1"), estado: "registrada" });
-    expect(await crearVisita("v1", datos(), planear)).toEqual({ codigo: "MV-000001", archivos: [], registrada: true });
+    expect(await crearVisita("v1", datos(), planear)).toEqual({ codigo: "MV-000001", archivos: [], registrada: true, reintento: true });
   });
 
   it("another inspector cannot reuse an id", async () => {

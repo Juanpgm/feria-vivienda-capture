@@ -64,11 +64,11 @@ export async function crearVisita(id: string, datos: Nueva, planear: (codigo: st
     if (existente.exists) {
       const v = existente.data() as VisitaDoc;
       if (v.inspector.uid !== datos.inspector.uid) throw new VisitaError(409, "Identificador de visita en uso");
-      if (v.estado === "registrada") return { codigo: v.codigo, archivos: [] as ArchivoAsignado[], registrada: true };
+      if (v.estado === "registrada") return { codigo: v.codigo, archivos: [] as ArchivoAsignado[], registrada: true, reintento: true };
       // Retry of a submit whose files did not all arrive: same code, the (possibly corrected) data and keys.
       const archivos = planear(v.codigo);
       tx.update(ref, { ...datos, archivos, actualizado_en: FieldValue.serverTimestamp() });
-      return { codigo: v.codigo, archivos, registrada: false };
+      return { codigo: v.codigo, archivos, registrada: false, reintento: true };
     }
     const numero = ((contador.data()?.ultimo as number | undefined) ?? (prueba ? BASE_PRUEBAS : 0)) + 1;
     const codigo = formatearRadicado(PREFIJO_VISITA, numero);
@@ -87,7 +87,7 @@ export async function crearVisita(id: string, datos: Nueva, planear: (codigo: st
       fecha_visita: isoBogota(),
       creada_en: FieldValue.serverTimestamp(),
     });
-    return { codigo, archivos, registrada: false };
+    return { codigo, archivos, registrada: false, reintento: false };
   });
 }
 
