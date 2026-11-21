@@ -1,6 +1,6 @@
 # Feature: mejoramiento-vivienda
 Objective: inspector field-visit form (format MMDS01.02.04.P003.F003) capturing work quantities with APUs, photos/signatures/croquis in S3, Inspector role, user account module.
-Branch: feat/mejoramiento-vivienda · Delivery: ask-on-risk, work-unit commits · Tests: Vitest (domain/routes) + Playwright (e2e).
+Branch: feat/mejoramiento-vivienda · Delivery: ask-on-risk → stacked-to-main (2026-11-20), work-unit commits; slices: PR1 T1 (6b4920d..3a67e66), PR2 T3+T6 (955b8b1..d765456), next slices from T2 on · Tests: Vitest (domain/routes) + Playwright (e2e).
 Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4355-9144-dcd55fdc751c.md · Source prompt: context/PROMPT-MEJORAMIENTO-VIVIENDA.txt (gitignored).
 
 ## Specs
@@ -18,7 +18,7 @@ Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4
 
 ## Tasks
 - T1 S7 roles: inspector + change role (claims + revoke) + selector in Usuarios — inline — Risk item 2 — done 6b4920d, 3a67e66 (verifier pass; native review approved review-37e9a677621a8560)
-- T2 S9.1-9.3 Mi cuenta: data, password, escalation request (+ resolution in Usuarios) — inline — Risk item 2 — pending
+- T2 S9.1-9.3 Mi cuenta: data (+cargo for the format signature), password (client re-auth + updatePassword), escalation request (+ resolution in Usuarios) — inline — Risk item 2 — done
 - T3 S2 APU import script + GET /api/apus — inline — done (dry run: 3842 APUs, 1 repeated ITEM 240201; Firestore write pending authorization)
 - T4 S4 S3 base (shared/s3.ts, env, CORS, CSP), AWS profile — inline — Risk items 2,5 — pending
 - T5 S8 inspector signature + layout gate — inline — Risk item 2 — pending
@@ -31,3 +31,5 @@ Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4
 ## Log
 - L1 (2026-11-20) User request: "/plan usa el archivo prompt en context/PROMPT-MEJORAMIENTO-VIVIENDA.txt, para planear el diseño de ese flujo de trabajo e interfaz y sus actividades con ODD y si tienes dudas o necesitas tomar decisiones, pregúntame". Prompt content quoted in Specs.
 - L2 (2026-11-20) Answers: postulación link "Independiente"; insumos "Cantidades y costos"; AIU/tope "Solo costo directo". User: "cree un usuario en el bucket con la politica "Policy-S3-MejoramientoVivienda" y el usuario se llama "s3-mejoramiento-vivienda-app" dentro del bucket "mejoramiento-vivienda" para que lo configures con amazon CLI"; "recuerda configurar ... CORS ... para permitir peticiones PUT y GET desde el dominio de tu frontend". Plan approved.
+- L3 (2026-11-20) Delivery answer: "stacked-to-main". Progress: T1, T3, T6 done (see Tasks).
+- L4 (2026-11-20) Slice 3a67e66..d765456 (T3+T6) assessed medium/under_budget, closed before the high-risk T2 unit so T2 is reviewed alone.

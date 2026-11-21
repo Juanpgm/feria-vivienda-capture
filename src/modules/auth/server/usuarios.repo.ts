@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/shared/firebase/admin";
+import type { Perfil } from "../domain/perfil";
 import { rolesAsignables, type Rol } from "../domain/roles";
 
 export type EstadoUsuario = "pendiente" | "aprobado" | "rechazado";
@@ -14,6 +15,12 @@ export type Usuario = {
   estado?: EstadoUsuario;
   rechazado_por_correo?: string;
   motivo?: string | null;
+  /** "Mi cuenta" data (optional; completed by the person). */
+  celular?: string | null;
+  cedula?: string | null;
+  cargo?: string | null;
+  /** S3 key of the inspector's handwritten signature. */
+  firma_key?: string | null;
 };
 
 export const estadoDe = (u: Pick<Usuario, "esta_aprobado" | "estado">): EstadoUsuario =>
@@ -85,6 +92,49 @@ export async function aprobarUsuario(uid: string, rol: Rol, aprobador: string) {
 export async function cambiarRol(uid: string, rol: Rol, actor: string) {
   await col().doc(uid).update({ rol, actualizado_en: FieldValue.serverTimestamp() });
   await auditar(uid, "rol_cambiado", actor, rol);
+}
+
+export async function actualizarPerfil(uid: string, perfil: Perfil) {
+  await col().doc(uid).update({ ...perfil, actualizado_en: FieldValue.serverTimestamp() });
+}
+
+export type SolicitudRol = {
+  uid: string;
+  nombre: string;
+  correo: string;
+  rol_actual: Rol;
+  rol_solicitado: Rol;
+  motivo: string;
+  estado: "pendiente" | "aprobada" | "rechazada";
+};
+
+const solicitudes = () => adminDb().collection("solicitudes_rol");
+
+/** One open request per person (doc id = uid); a resolved one may be replaced by a new request. */
+export async function crearSolicitudRol(uid: string, s: Omit<SolicitudRol, "uid" | "estado">): Promise<"creada" | "ya_pendiente"> {
+  const ref = solicitudes().doc(uid);
+  return adminDb().runTransaction(async (tx) => {
+    const actual = await tx.get(ref);
+    if (actual.exists && actual.data()?.estado === "pendiente") return "ya_pendiente";
+    tx.set(ref, { ...s, uid, estado: "pendiente", creada_en: FieldValue.serverTimestamp() });
+    return "creada";
+  });
+}
+
+/** The pending request of `uid`, or null. */
+export async function obtenerSolicitud(uid: string): Promise<SolicitudRol | null> {
+  const s = await solicitudes().doc(uid).get();
+  return s.exists && s.data()?.estado === "pendiente" ? (s.data() as SolicitudRol) : null;
+}
+
+export async function listarSolicitudes(): Promise<SolicitudRol[]> {
+  const snap = await solicitudes().where("estado", "==", "pendiente").limit(200).get();
+  return snap.docs.map((d) => d.data() as SolicitudRol);
+}
+
+export async function resolverSolicitud(uid: string, estado: "aprobada" | "rechazada", actor: string, motivo: string | null) {
+  await solicitudes().doc(uid).update({ estado, resuelta_por_uid: actor, respuesta: motivo, resuelta_en: FieldValue.serverTimestamp() });
+  await auditar(uid, `solicitud_rol_${estado}`, actor, (await obtenerUsuario(uid))?.rol ?? "usuario", motivo);
 }
 
 export type ResultadoRechazo = "rechazado" | "ya_rechazado" | "aprobado" | "no_existe";

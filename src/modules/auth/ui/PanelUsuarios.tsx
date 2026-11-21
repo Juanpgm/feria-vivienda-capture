@@ -8,6 +8,7 @@ import { TextArea, controlClass } from "@/shared/ui/Field";
 import { ETIQUETA_ROL, MOTIVO_MAX, type Rol } from "../domain/roles";
 import { FormCrearUsuario } from "./FormCrearUsuario";
 import { post } from "./post";
+import { SolicitudesRol } from "./SolicitudesRol";
 
 export type FilaUsuario = {
   uid: string;
@@ -357,6 +358,12 @@ export function PanelUsuarios({ roles, uidActual }: { roles: Rol[]; uidActual: s
           </Button>
         </div>
       )}
+      <SolicitudesRol
+        onResuelta={(m) => {
+          setMensaje(m);
+          void cargar();
+        }}
+      />
       {!filas && !errorCarga && <p className="text-muted">Cargando usuarios…</p>}
       {filas && (
         <>

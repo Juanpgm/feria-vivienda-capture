@@ -41,6 +41,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           Formulario postulación
         </Link>
       )}
+      {sesion.aprobado && (
+        <Link href="/cuenta" className={enlaceNav}>
+          Mi cuenta
+        </Link>
+      )}
       <span className="truncate px-3 pt-2 text-sm text-muted lg:hidden">{sesion.correo}</span>
       <div className="px-3 lg:ml-auto lg:px-0">
         <BotonSalir />
