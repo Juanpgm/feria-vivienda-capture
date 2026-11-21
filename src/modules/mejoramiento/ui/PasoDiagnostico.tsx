@@ -34,7 +34,6 @@ export function PasoDiagnostico({ d, onChange, errores }: { d: D; onChange: (d: 
       {d.aplica === "no" && (
         <>
           <CampoSelect label="No, por" catalogo={NO_APLICA_POR} value={d.no_aplica_por} error={e("no_aplica_por")} onChange={(no_aplica_por) => onChange({ ...d, no_aplica_por })} />
-          <p className="rounded-lg border border-border bg-surface p-3 text-sm">La vivienda no aplica: se registran la visita, el motivo, las observaciones y la firma.</p>
         </>
       )}
 

@@ -59,7 +59,7 @@ export default async function VisitasMejoramiento({ searchParams }: { searchPara
       )}
       <Card>
         <ListadoVisitas key={filtro ?? "todas"} filas={filas} mostrarInspector={!esInspector} />
-        {filas.length >= 500 && <p className="mt-3 text-sm text-muted">Se muestran las 500 visitas más recientes.</p>}
+        {filas.length >= 500 && <p className="mt-3 text-sm text-muted">Se muestran los 500 levantamientos más recientes.</p>}
       </Card>
     </div>
   );

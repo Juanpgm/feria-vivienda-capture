@@ -4,7 +4,7 @@ import { sesionOLogin } from "@/modules/auth/server/guard";
 import { detalleVisible } from "@/modules/mejoramiento/server/listado";
 import { DetalleVisita } from "@/modules/mejoramiento/ui/DetalleVisita";
 
-export const metadata = { title: "Visita de mejoramiento" };
+export const metadata = { title: "Levantamiento | Feria de Vivienda" };
 
 /** Another inspector's visit answers 404, exactly like one that does not exist (S7). */
 export default async function DetalleVisitaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,9 +15,9 @@ export default async function DetalleVisitaPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-4">
       <Link href="/mejoramiento" className="text-sm text-primary-strong underline">
-        Volver a las visitas
+        Volver a los levantamientos
       </Link>
-      <h1 className="text-2xl font-bold text-primary-strong">Visita {d.visita.codigo}</h1>
+      <h1 className="text-2xl font-bold text-primary-strong">Levantamiento {d.visita.codigo}</h1>
       <DetalleVisita v={d.visita} id={id} urls={d.urls} />
     </div>
   );

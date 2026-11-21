@@ -205,7 +205,7 @@ export function MiCuenta({ d }: { d: DatosCuenta }) {
         )}
       </Card>
       {d.visitas && (
-        <Card title="Mis visitas">
+        <Card title="Mis levantamientos">
           <MisVisitas filas={d.visitas} inspector={{ nombre: d.nombre, cargo: d.cargo }} />
         </Card>
       )}

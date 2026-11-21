@@ -38,13 +38,13 @@ export async function descargarInforme(inspector: { nombre: string; cargo: strin
   doc.setTextColor(...AZUL);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Informe de visitas de mejoramiento de vivienda", m, 16);
+  doc.text("Informe de levantamientos de mejoramiento de vivienda", m, 16);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(34, 34, 33);
   doc.text(`Inspector: ${inspector.nombre}${inspector.cargo ? ` · ${inspector.cargo}` : ""}`, m, 23);
   doc.text(`Generado: ${fechaHoraBogota(ahora)} (hora de Bogotá)`, m, 28);
-  doc.text(`Visitas: ${cantidad} · Costo directo total: ${formatoCop(total)}`, m, 33);
+  doc.text(`Levantamientos: ${cantidad} · Costo directo total: ${formatoCop(total)}`, m, 33);
 
   let y = 40;
   const encabezado = () => {
@@ -80,6 +80,6 @@ export async function descargarInforme(inspector: { nombre: string; cargo: strin
     doc.setDrawColor(200, 200, 200);
     doc.line(m, y, m + ANCHOS.reduce((s, a) => s + a, 0), y);
   }
-  if (!filas.length) doc.text("No hay visitas registradas.", m, y + 6);
+  if (!filas.length) doc.text("No hay levantamientos registrados.", m, y + 6);
   doc.save(`informe-visitas-${fechaBogota()}.pdf`);
 }

@@ -90,15 +90,15 @@ export const DETALLES_OPCIONALES: readonly { titulo: string; preguntas: Pregunta
     ],
   },
   {
-    titulo: "Instalaciones",
+    titulo: "Saneamiento y agua",
     preguntas: [siNo("pozo_septico", "Pozo séptico / filtro anaeróbico"), siNo("trampa_grasas", "Trampa de grasas"), siNo("tanque_agua", "Tanque de agua")],
   },
   {
     titulo: "Vivienda",
     preguntas: [
       numero("niveles", "Niveles de la vivienda"),
-      { clave: "escaleras_ubicacion", etiqueta: "Escaleras", tipo: "opcion", opciones: { internas: "Internas", externas: "Externas" } },
-      texto("escaleras_nivel_ejecucion", "Nivel de ejecución (piso)"),
+      { clave: "escaleras_ubicacion", etiqueta: "Ubicación de las escaleras", tipo: "opcion", opciones: { internas: "Internas", externas: "Externas" } },
+      texto("escaleras_nivel_ejecucion", "Nivel de ejecución de las escaleras (piso)"),
       numero("puertas_internas", "Puertas internas, ¿cuántas?"),
     ],
   },

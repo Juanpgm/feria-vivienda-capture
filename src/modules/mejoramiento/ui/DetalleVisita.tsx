@@ -57,16 +57,19 @@ export function DetalleVisita({ v, id, urls }: { v: VisitaDoc; id: string; urls:
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span>{fechaHoraBogota(v.fecha_visita)}</span>
         <span>· {ETIQUETA_ESTADO[v.estado]}</span>
-        <BadgeCroquis tiene={v.tiene_croquis} />
-        {!v.tiene_croquis && v.estado === "registrada" && <ModalCroquis id={id} codigo={v.codigo} />}
       </div>
 
       <Card title="Quién atiende la visita">
         <Datos
           items={[
             ["Relación", atiende.relacion === "otro" ? `Otro: ${atiende.relacion_otro ?? ""}` : etiqueta(RELACIONES_ATIENDE, atiende.relacion)],
-            ["Nombre completo", atiende.nombre],
-            ["Documento", atiende.documento],
+            // The owner attends: name and document are in the Propietario card, not repeated here.
+            ...((atiende.relacion === "propietario"
+              ? []
+              : [
+                  ["Nombre completo", atiende.nombre],
+                  ["Documento", `${etiqueta(TIPOS_DOCUMENTO, atiende.tipo_documento ?? "cc")} ${atiende.documento}`],
+                ]) as [string, ReactNode][]),
             ...(atiende.parentesco ? ([["Parentesco", atiende.parentesco]] as [string, ReactNode][]) : []),
           ]}
         />
@@ -75,7 +78,7 @@ export function DetalleVisita({ v, id, urls }: { v: VisitaDoc; id: string; urls:
       <Card title="Propietario">
         <Datos
           items={[
-            ["Nombre del propietario", propietario.nombre],
+            ["Nombre", propietario.nombre],
             ["Tipo de documento", etiqueta(TIPOS_DOCUMENTO, propietario.tipo_documento)],
             ["Número de documento", propietario.documento],
             ["Teléfono de contacto", propietario.telefono],
@@ -102,13 +105,13 @@ export function DetalleVisita({ v, id, urls }: { v: VisitaDoc; id: string; urls:
       <Card title="Diagnóstico">
         <Datos
           items={[
-            ["¿Aplica al mejoramiento?", etiqueta(SI_NO, diagnostico.aplica)],
-            ...((diagnostico.aplica === "si"
-              ? [
-                  ["Aplica para", diagnostico.aplica_para.map((a) => etiqueta(APLICA_PARA, a)).join(", ")],
-                  ["Alcance", etiqueta(ALCANCES, diagnostico.alcance)],
-                ]
-              : [["No aplica por", etiqueta(NO_APLICA_POR, diagnostico.no_aplica_por)]]) as [string, ReactNode][]),
+            [
+              "¿Aplica al mejoramiento?",
+              diagnostico.aplica === "si"
+                ? `Sí, para ${diagnostico.aplica_para.map((a) => etiqueta(APLICA_PARA, a)).join(", ")}`
+                : `No, por ${etiqueta(NO_APLICA_POR, diagnostico.no_aplica_por)}`,
+            ],
+            ...((diagnostico.aplica === "si" ? [["Alcance", etiqueta(ALCANCES, diagnostico.alcance)]] : []) as [string, ReactNode][]),
           ]}
         />
         {gruposEstado.length > 0 && (
@@ -207,7 +210,11 @@ export function DetalleVisita({ v, id, urls }: { v: VisitaDoc; id: string; urls:
       </Card>
 
       <Card title="Croquis">
-        {v.croquis.length ? (
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <BadgeCroquis tiene={v.tiene_croquis} />
+          {!v.tiene_croquis && v.estado === "registrada" && <ModalCroquis id={id} codigo={v.codigo} />}
+        </div>
+        {v.croquis.length > 0 && (
           <ul className="flex flex-wrap gap-3">
             {v.croquis.map((c, i) => (
               <li key={c.key}>
@@ -221,8 +228,6 @@ export function DetalleVisita({ v, id, urls }: { v: VisitaDoc; id: string; urls:
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="text-sm text-muted">Sin croquis.</p>
         )}
       </Card>
     </div>
