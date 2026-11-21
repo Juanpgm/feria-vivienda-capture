@@ -22,7 +22,7 @@ Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4
 - T3 S2 APU import script + GET /api/apus — inline — done (dry run: 3842 APUs, 1 repeated ITEM 240201; Firestore write pending authorization)
 - T4 S4 S3 base (shared/s3.ts, env, CORS, CSP), AWS profile — inline — Risk items 2,5 — pending
 - T5 S8 inspector signature + layout gate — inline — Risk item 2 — pending
-- T6 S1-S3,S6 visit domain: schema, cantidad, costos, fotos, geo + limites.json — inline — pending
+- T6 S1-S3,S6 visit domain: schema, cantidad, costos, fotos, geo + limites.json — inline — done
 - T7 S1-S3,S6 visit form UI (5 steps) + local draft — inline — pending
 - T8 S3,S4,S7 submit API + confirm + MV code — inline — Risk item 2 — pending
 - T9 S5 list, detail, croquis modal — inline — pending

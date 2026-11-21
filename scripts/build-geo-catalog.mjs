@@ -51,6 +51,31 @@ export function construirCatalogo(comunasGeo, barriosGeo) {
   return { divisiones, barrios: lugares, reporte: { huerfanos, corregimientosSinVeredas: sinVeredas.map((d) => d.nombre) } };
 }
 
+// Geometry for point-in-polygon lookups (mejoramiento visits). Coordinates rounded to 5 decimals (~1.1 m) and
+// consecutive duplicate vertices dropped, which keeps the file small without moving any boundary noticeably.
+const punto = (c) => [+c[0].toFixed(5), +c[1].toFixed(5)];
+const anillo = (r) => r.map(punto).filter((c, i, a) => i === 0 || c[0] !== a[i - 1][0] || c[1] !== a[i - 1][1]);
+const geometria = (g) => ({
+  type: g.type,
+  coordinates: g.type === "Polygon" ? g.coordinates.map(anillo) : g.coordinates.map((pol) => pol.map(anillo)),
+});
+
+export function construirLimites(comunasGeo, barriosGeo) {
+  const divisiones = comunasGeo.features.flatMap(({ properties: p, geometry }) => {
+    if (!geometry) return [];
+    if (p.COMUNA != null) return [{ tipo: "comuna", codigo: pad2(p.COMUNA), nombre: p.NOMBRE, geometria: geometria(geometry) }];
+    if (p.ID_CORREG != null) return [{ tipo: "corregimiento", codigo: String(p.ID_CORREG), nombre: p.CORREGIMIE, geometria: geometria(geometry) }];
+    return [];
+  });
+  const lugares = barriosGeo.features.flatMap(({ properties: p, geometry }) => {
+    if (!geometry) return [];
+    if (p.BARRIO) return [{ tipo: "barrio", id: p.ID_BARRIO, nombre: p.BARRIO, geometria: geometria(geometry) }];
+    if (p.VEREDA) return [{ tipo: "vereda", id: `V${p.ID_VEREDA}`, nombre: p.VEREDA, geometria: geometria(geometry) }];
+    return [];
+  });
+  return { divisiones, lugares };
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
   const leer = (f) => JSON.parse(readFileSync(join(raiz, "basemaps", f), "utf8"));
@@ -61,5 +86,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   writeFileSync(join(out, "divisiones.json"), filas(divisiones));
   writeFileSync(join(out, "barrios.json"), filas(barrios));
   console.log(`divisiones: ${divisiones.length}, barrios+veredas: ${barrios.length}`);
+  const limites = construirLimites(leer("comunas_corregimientos.geojson"), leer("barrios_veredas.geojson"));
+  const outLimites = join(raiz, "src/modules/mejoramiento/catalogo");
+  mkdirSync(outLimites, { recursive: true });
+  writeFileSync(join(outLimites, "limites.json"), JSON.stringify(limites));
+  console.log(`limites: ${limites.divisiones.length} divisiones, ${limites.lugares.length} barrios/veredas`);
   console.log("orphans:", reporte.huerfanos.length, "| corregimientos without veredas:", reporte.corregimientosSinVeredas.join(", ") || "none");
 }
