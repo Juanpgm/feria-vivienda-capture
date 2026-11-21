@@ -14,7 +14,8 @@ vi.mock("@/modules/mejoramiento/server/visitas.repo", async (orig) => ({
 }));
 const firmarSubida = vi.fn(async (key: string) => ({ url: `https://s3/${key}`, headers: { "Content-Type": "x" } }));
 const verificarObjeto = vi.fn();
-vi.mock("@/shared/s3", () => ({ firmarSubida: (k: string) => firmarSubida(k), verificarObjeto: (k: string) => verificarObjeto(k) }));
+const borrarObjeto = vi.fn();
+vi.mock("@/shared/s3", () => ({ firmarSubida: (k: string) => firmarSubida(k), verificarObjeto: (k: string) => verificarObjeto(k), borrarObjeto: (k: string) => borrarObjeto(k) }));
 
 import { SesionError } from "@/modules/auth/server/sesion";
 import { VisitaError } from "@/modules/mejoramiento/server/visitas.repo";
@@ -49,6 +50,15 @@ describe("POST /api/visitas/[id]/croquis", () => {
     ]);
     const { subidas } = await r.json();
     expect(subidas.map((s: { ref: string }) => s.ref)).toEqual(["a1", "a2"]);
+  });
+
+  it("a restart after a partial upload deletes the stale first file and skips one that already matches", async () => {
+    verificarObjeto.mockImplementation(async (k: string) =>
+      k.endsWith("_01.jpg") ? { bytes: 1, content_type: "image/jpeg" } : k.endsWith("_02.pdf") ? { bytes: archivos[1].bytes, content_type: "application/pdf" } : null,
+    );
+    const { subidas } = await (await post({ archivos })).json();
+    expect(borrarObjeto).toHaveBeenCalledWith("visitas-profesionales/MV-000007/croquis-visita/MV-000007_01.jpg");
+    expect(subidas.map((s: { ref: string }) => s.ref)).toEqual(["a1"]);
   });
 
   it("an admin or superadmin acts on any visit (no owner scope)", async () => {

@@ -1,7 +1,7 @@
 // S3 access for visit files (bucket S3_BUCKET_NAME, private: Block all public access). Server only.
 // Credentials come from the AWS SDK default chain: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY on Vercel, or
 // AWS_PROFILE=mejoramiento-vivienda locally. The browser only ever receives short-lived presigned URLs.
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 export const SUBIDA_SEGUNDOS = 15 * 60;
@@ -33,6 +33,11 @@ export async function firmarSubida(key: string, contentType: string, bytes: numb
 /** Server-side upload for small files the server already validated (the inspector's signature). */
 export async function guardarObjeto(key: string, cuerpo: Uint8Array, contentType: string) {
   await s3().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: cuerpo, ContentType: contentType }));
+}
+
+/** Removes an object; only ever called on server-chosen keys of a visit that is not confirmed yet. */
+export async function borrarObjeto(key: string) {
+  await s3().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
 }
 
 /** Presigned GET to show a stored file (inline). */

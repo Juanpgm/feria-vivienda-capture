@@ -9,7 +9,7 @@ import { armarPresupuesto, visitaSchema } from "@/modules/mejoramiento/domain/vi
 import { conVisita, requireInspector } from "@/modules/mejoramiento/server/api";
 import { apusPorItem } from "@/modules/mejoramiento/server/apus.repo";
 import { crearVisita, VisitaError } from "@/modules/mejoramiento/server/visitas.repo";
-import { firmarSubida, verificarObjeto } from "@/shared/s3";
+import { firmarPendientes } from "@/modules/mejoramiento/server/subidas";
 
 export const runtime = "nodejs";
 
@@ -55,11 +55,8 @@ export function POST(req: Request) {
         return p.archivos;
       },
     );
-    // On a retry, files that already reached S3 intact are not uploaded again (spotty field connections).
-    const pendientes = r.reintento
-      ? (await Promise.all(r.archivos.map(async (a) => ({ a, o: await verificarObjeto(a.key) })))).filter(({ a, o }) => !o || o.bytes !== a.bytes || o.content_type !== a.content_type).map(({ a }) => a)
-      : r.archivos;
-    const subidas = await Promise.all(pendientes.map(async (a) => ({ ref: a.ref, ...(await firmarSubida(a.key, a.content_type, a.bytes)) })));
+    // On a retry, files already in S3 intact are skipped and stale ones from the failed attempt are replaced.
+    const subidas = await firmarPendientes(r.archivos, r.reintento);
     return respuesta(200, { id: visita.id, codigo: r.codigo, registrada: r.registrada, subidas });
   });
 }

@@ -5,7 +5,7 @@ import { claveCroquis, MAX_BYTES_ARCHIVO, MAX_CROQUIS, TIPOS_CROQUIS } from "@/m
 import { conVisita } from "@/modules/mejoramiento/server/api";
 import { alcanceDe } from "@/modules/mejoramiento/server/listado";
 import { reservarCroquis } from "@/modules/mejoramiento/server/visitas.repo";
-import { firmarSubida } from "@/shared/s3";
+import { firmarPendientes } from "@/modules/mejoramiento/server/subidas";
 
 export const runtime = "nodejs";
 
@@ -29,7 +29,8 @@ export function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
     const r = await reservarCroquis(id, alcanceDe(sesion), (codigo) =>
       archivos.map((a, i) => ({ ref: a.ref, content_type: a.content_type, bytes: a.bytes, key: claveCroquis(codigo, i + 1, a.content_type) })),
     );
-    const subidas = await Promise.all(r.croquis.map(async (c) => ({ ref: c.ref, ...(await firmarSubida(c.key, c.content_type, c.bytes)) })));
+    // A restart reuses the same positional keys: leftovers of an earlier attempt are replaced, matches skipped.
+    const subidas = await firmarPendientes(r.croquis, true);
     return respuesta(200, { codigo: r.codigo, subidas });
   });
 }

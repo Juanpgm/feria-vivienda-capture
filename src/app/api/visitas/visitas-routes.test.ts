@@ -19,7 +19,8 @@ vi.mock("@/modules/mejoramiento/server/visitas.repo", async (orig) => ({
 }));
 const firmarSubida = vi.fn(async (key: string) => ({ url: `https://s3/${key}`, headers: { "Content-Type": "x" } }));
 const verificarObjeto = vi.fn();
-vi.mock("@/shared/s3", () => ({ firmarSubida: (k: string) => firmarSubida(k), verificarObjeto: (k: string) => verificarObjeto(k) }));
+const borrarObjeto = vi.fn();
+vi.mock("@/shared/s3", () => ({ firmarSubida: (k: string) => firmarSubida(k), verificarObjeto: (k: string) => verificarObjeto(k), borrarObjeto: (k: string) => borrarObjeto(k) }));
 
 import { SesionError } from "@/modules/auth/server/sesion";
 import { POST as confirmar } from "./[id]/confirmar/route";
@@ -73,6 +74,14 @@ describe("POST /api/visitas", () => {
     verificarObjeto.mockImplementation(async (k: string) => (k.endsWith("_01.jpg") ? { bytes: 1000, content_type: "image/jpeg" } : null));
     const { subidas } = await (await post(cuerpo())).json();
     expect(subidas.map((s: { ref: string }) => s.ref)).toEqual(["p1", "p2", "p3", "p4", "p5", "firma"]);
+  });
+
+  it("a corrected retry replaces a stale object left by the failed attempt (create-only PUTs cannot overwrite)", async () => {
+    crearVisita.mockImplementation(async (_id: string, _d: unknown, planear: (c: string) => unknown[]) => ({ codigo: "MV-000001", archivos: planear("MV-000001"), registrada: false, reintento: true }));
+    verificarObjeto.mockImplementation(async (k: string) => (k.endsWith("_01.jpg") ? { bytes: 777, content_type: "image/jpeg" } : null));
+    const { subidas } = await (await post(cuerpo())).json();
+    expect(borrarObjeto).toHaveBeenCalledWith("visitas-profesionales/MV-000001/registro-fotografico/MV-000001_290304_01.jpg");
+    expect(subidas.map((s: { ref: string }) => s.ref)).toContain("p0");
   });
 
   it("only the inspector role submits; an inspector without a registered signature is stopped", async () => {
