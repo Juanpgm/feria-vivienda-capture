@@ -17,9 +17,9 @@ Plan: C:\Users\User\.claude\plans\compressed-petting-mccarthy-of-22edbf52-868f-4
 - Assumptions: code MV-000001 (test accounts from MV-020001); only exact role inspector creates; "No aplica" visits need no quantities nor photo minimum; location required to submit; "Tipo de documento" added.
 
 ## Tasks
-- T1 S7 roles: inspector + change role (claims + revoke) + selector in Usuarios — inline — Risk item 2 — pending
+- T1 S7 roles: inspector + change role (claims + revoke) + selector in Usuarios — inline — Risk item 2 — done 6b4920d, 3a67e66 (verifier pass; native review approved review-37e9a677621a8560)
 - T2 S9.1-9.3 Mi cuenta: data, password, escalation request (+ resolution in Usuarios) — inline — Risk item 2 — pending
-- T3 S2 APU import script + GET /api/apus — inline — pending
+- T3 S2 APU import script + GET /api/apus — inline — done (dry run: 3842 APUs, 1 repeated ITEM 240201; Firestore write pending authorization)
 - T4 S4 S3 base (shared/s3.ts, env, CORS, CSP), AWS profile — inline — Risk items 2,5 — pending
 - T5 S8 inspector signature + layout gate — inline — Risk item 2 — pending
 - T6 S1-S3,S6 visit domain: schema, cantidad, costos, fotos, geo + limites.json — inline — pending
