@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { tieneRol } from "@/modules/auth/domain/roles";
 import { sesionOLogin } from "@/modules/auth/server/guard";
+import { obtenerUsuario } from "@/modules/auth/server/usuarios.repo";
 import { BotonSalir } from "@/modules/auth/ui/BotonSalir";
+import { RegistrarFirma } from "@/modules/mejoramiento/ui/RegistrarFirma";
 import { AppShell } from "@/shared/ui/AppShell";
 
 const enlaceNav = "inline-flex min-h-11 items-center rounded-lg px-3 text-base font-semibold text-primary-strong hover:bg-bg lg:text-sm";
@@ -11,6 +13,9 @@ export const dynamic = "force-dynamic"; // always check the session cookie
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const sesion = await sesionOLogin("usuario", { soloLectura: true }); // pages that need approval guard themselves
+  // An inspector without a registered signature sees only the signature pad until it is saved (S8).
+  const perfil = sesion.rol === "inspector" ? await obtenerUsuario(sesion.uid) : null;
+  const pedirFirma = !!perfil && !perfil.firma_key;
   const nav = (
     <nav aria-label="Principal" className="flex flex-col gap-1 lg:flex-1 lg:flex-row lg:flex-wrap lg:items-center lg:gap-1">
       <Link href="/dashboard" className={enlaceNav}>
@@ -60,7 +65,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           cierre sesión e ingrese de nuevo.
         </p>
       )}
-      {children}
+      {pedirFirma ? <RegistrarFirma nombre={perfil.nombre} /> : children}
     </AppShell>
   );
 }

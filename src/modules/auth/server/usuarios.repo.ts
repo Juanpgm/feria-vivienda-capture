@@ -98,6 +98,11 @@ export async function actualizarPerfil(uid: string, perfil: Perfil) {
   await col().doc(uid).update({ ...perfil, actualizado_en: FieldValue.serverTimestamp() });
 }
 
+/** The inspector's signature was stored in S3 under `key`. */
+export async function actualizarFirma(uid: string, key: string) {
+  await col().doc(uid).update({ firma_key: key, firma_registrada_en: FieldValue.serverTimestamp(), actualizado_en: FieldValue.serverTimestamp() });
+}
+
 export type SolicitudRol = {
   uid: string;
   nombre: string;
