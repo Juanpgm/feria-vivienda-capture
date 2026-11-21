@@ -27,10 +27,12 @@ export function POST(req: Request, ctx: { params: Promise<{ uid: string }> }) {
     if (!objetivo.esta_aprobado) return respuesta(409, { error: "La cuenta aún no está aprobada; apruébela con el rol deseado" });
     if (objetivo.rol === rol) return respuesta(200, { ok: true, sin_cambios: true });
 
-    await cambiarRol(uid, rol, actor.uid);
+    // Claims and revocation first: if they fail the doc keeps the old role, so a retry is not a "no change" no-op
+    // that would leave the old session alive.
     const auth = adminAuth();
     await auth.setCustomUserClaims(uid, { rol, aprobado: true });
     await auth.revokeRefreshTokens(uid); // closes the active session; claims refresh on next login
+    await cambiarRol(uid, rol, actor.uid);
     return respuesta(200, { ok: true });
   });
 }

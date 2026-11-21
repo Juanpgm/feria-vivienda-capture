@@ -50,6 +50,14 @@ describe("POST /api/usuarios/[uid]/rol", () => {
     expect((await llamar("u1", { rol: "superadmin" })).status).toBe(200);
   });
 
+  it("a failed revocation leaves the doc untouched, so a retry still closes the session", async () => {
+    actor("admin");
+    objetivo("usuario");
+    revokeRefreshTokens.mockRejectedValueOnce(new Error("auth down"));
+    expect((await llamar("u1", { rol: "inspector" })).status).toBe(500);
+    expect(cambiarRol).not.toHaveBeenCalled();
+  });
+
   it("nobody changes their own role", async () => {
     actor("superadmin", "yo");
     objetivo("superadmin");
