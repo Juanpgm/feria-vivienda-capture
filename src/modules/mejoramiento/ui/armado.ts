@@ -10,7 +10,7 @@ export type Capitulo = { id: string; nombre: string; filas: Fila[] };
 /** Form state: strings as typed; empty selects are left undefined so optional answers stay absent. */
 export type Valores = {
   id: string;
-  atiende: { relacion?: string; relacion_otro?: string; nombre?: string; documento?: string; parentesco?: string };
+  atiende: { relacion?: string; relacion_otro?: string; nombre?: string; tipo_documento?: string; documento?: string; parentesco?: string };
   propietario: { nombre?: string; tipo_documento?: string; documento?: string; telefono?: string; correo?: string; direccion?: string; anios_habitando?: string; personas?: string };
   diagnostico: { aplica?: string; aplica_para: string[]; no_aplica_por?: string; alcance?: string; secciones: Record<string, Record<string, string | undefined>> };
   capitulos: Capitulo[];

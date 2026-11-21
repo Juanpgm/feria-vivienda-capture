@@ -29,6 +29,8 @@ export const atiendeSchema = z
     relacion: enumDe(RELACIONES_ATIENDE),
     relacion_otro: textoOpcional,
     nombre,
+    /** Older drafts had no field here (the format says "C.C."): default C.C. */
+    tipo_documento: enumDe(TIPOS_DOCUMENTO).default("cc"),
     documento,
     parentesco: textoOpcional,
   })
@@ -134,7 +136,14 @@ export const visitaSchema = z
     if (v.diagnostico.aplica === "si" && !v.capitulos.some((c) => c.filas.length))
       ctx.addIssue({ code: "custom", path: ["capitulos"], message: "Agregue al menos una actividad con su cantidad medida" });
   })
-  .transform((v) => (v.diagnostico.aplica === "si" ? v : { ...v, capitulos: [] }));
+  .transform((v) => {
+    // The owner attends: the owner's identity IS the attendee's (one source, whatever the client sent).
+    const propietario =
+      v.atiende.relacion === "propietario"
+        ? { ...v.propietario, nombre: v.atiende.nombre, tipo_documento: v.atiende.tipo_documento, documento: v.atiende.documento }
+        : v.propietario;
+    return { ...v, propietario, capitulos: v.diagnostico.aplica === "si" ? v.capitulos : [] };
+  });
 
 export type VisitaEntrada = z.input<typeof visitaSchema>;
 export type Visita = z.output<typeof visitaSchema>;

@@ -81,9 +81,10 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   // 1 Anfitrión: who attends + owner in one step; the owner attends, so name/document are typed once
   await page.getByRole("radio", { name: "Propietario" }).check({ force: true });
   await page.getByLabel("Nombre completo").fill("PRUEBA E2E Propietario");
-  await page.getByLabel("Número de documento (C.C.)").fill("1234567890");
+  await page.getByLabel("Número de documento", { exact: true }).fill("1234567890");
   await expect(page.getByText("Quien atiende es el propietario: se usan su nombre y documento.")).toBeVisible();
   await expect(page.getByLabel("Nombre del propietario")).toHaveCount(0);
+  await expect(page.getByLabel("Tipo de documento del propietario")).toHaveCount(0); // read-only: taken from who attends
   await page.getByLabel("Teléfono de contacto").fill("3001234567");
   await page.getByLabel("Dirección del predio").fill("Plaza de Caicedo, prueba e2e");
   await page.getByLabel("Número de años habitando el predio").fill("10");

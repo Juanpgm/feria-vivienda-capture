@@ -230,9 +230,9 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
     const dejaDeSer = atiende.relacion === "propietario" && n.relacion !== "propietario";
     const propietario =
       n.relacion === "propietario"
-        ? { ...prop, nombre: n.nombre, documento: n.documento, tipo_documento: prop.tipo_documento ?? "cc" }
+        ? { ...prop, nombre: n.nombre, documento: n.documento, tipo_documento: n.tipo_documento ?? "cc" }
         : dejaDeSer
-          ? { ...prop, nombre: "", documento: "" }
+          ? { ...prop, nombre: "", documento: "", tipo_documento: undefined }
           : prop;
     setV({ ...v, atiende: n, propietario });
   };
@@ -292,7 +292,8 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
               />
               {atiende.relacion === "otro" && <CampoTexto label="¿Cuál?" value={atiende.relacion_otro} error={e("atiende.relacion_otro")} onChange={(relacion_otro) => setAtiende({ relacion_otro })} />}
               <CampoTexto label="Nombre completo" autoComplete="off" value={atiende.nombre} error={e("atiende.nombre")} onChange={(nombre) => setAtiende({ nombre })} />
-              <CampoTexto label="Número de documento (C.C.)" inputMode="numeric" value={atiende.documento} error={e("atiende.documento")} onChange={(documento) => setAtiende({ documento })} />
+              <CampoSelect label="Tipo de documento" catalogo={TIPOS_DOCUMENTO} value={atiende.tipo_documento ?? "cc"} error={e("atiende.tipo_documento")} onChange={(tipo_documento) => setAtiende({ tipo_documento })} />
+              <CampoTexto label="Número de documento" inputMode="numeric" value={atiende.documento} error={e("atiende.documento")} onChange={(documento) => setAtiende({ documento })} />
               {atiende.relacion && atiende.relacion !== "propietario" && (
                 <CampoTexto label="Parentesco con el propietario" value={atiende.parentesco} error={e("atiende.parentesco")} onChange={(parentesco) => setAtiende({ parentesco })} />
               )}
@@ -300,16 +301,24 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
             <section aria-labelledby="titulo-propietario" className="flex flex-col gap-5 border-t border-border pt-5">
               <h3 id="titulo-propietario" className="text-lg font-bold text-primary-strong">Propietario y predio</h3>
               {esPropietario ? (
-                <p className="rounded-lg border border-border bg-bg p-3 text-sm">
-                  Quien atiende es el propietario: se usan su nombre y documento.
-                </p>
+                <div className="rounded-lg border border-border bg-bg p-3 text-sm">
+                  <p>Quien atiende es el propietario: se usan su nombre y documento.</p>
+                  <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
+                    <dt className="text-muted">Nombre</dt>
+                    <dd>{atiende.nombre || "—"}</dd>
+                    <dt className="text-muted">Tipo de documento</dt>
+                    <dd>{TIPOS_DOCUMENTO[(atiende.tipo_documento ?? "cc") as keyof typeof TIPOS_DOCUMENTO]}</dd>
+                    <dt className="text-muted">Número de documento</dt>
+                    <dd>{atiende.documento || "—"}</dd>
+                  </dl>
+                </div>
               ) : (
                 <>
                   <CampoTexto label="Nombre del propietario" value={prop.nombre} error={e("propietario.nombre")} onChange={(nombre) => setProp({ nombre })} />
+                  <CampoSelect label="Tipo de documento del propietario" catalogo={TIPOS_DOCUMENTO} value={prop.tipo_documento} error={e("propietario.tipo_documento")} onChange={(tipo_documento) => setProp({ tipo_documento })} />
                   <CampoTexto label="Número de documento del propietario" inputMode="numeric" value={prop.documento} error={e("propietario.documento")} onChange={(documento) => setProp({ documento })} />
                 </>
               )}
-              <CampoSelect label="Tipo de documento del propietario" catalogo={TIPOS_DOCUMENTO} value={prop.tipo_documento} error={e("propietario.tipo_documento")} onChange={(tipo_documento) => setProp({ tipo_documento })} />
               <CampoTexto label="Teléfono de contacto" type="tel" inputMode="tel" value={prop.telefono} error={e("propietario.telefono")} onChange={(telefono) => setProp({ telefono })} />
               <CampoTexto label="Correo electrónico (opcional)" type="email" inputMode="email" value={prop.correo} error={e("propietario.correo")} onChange={(correo) => setProp({ correo })} />
               <CampoTexto label="Dirección del predio" value={prop.direccion} error={e("propietario.direccion")} onChange={(direccion) => setProp({ direccion })} />

@@ -27,6 +27,22 @@ describe("visitaSchema", () => {
     expect(v.atiende).toMatchObject({ nombre: "Ana María Pérez", parentesco: null });
   });
 
+  it("when the owner attends, the owner's name, document type and number are the attendee's (server truth)", () => {
+    const v = visitaSchema.parse({
+      ...base,
+      atiende: { relacion: "propietario", nombre: "ana maría pérez", tipo_documento: "ce", documento: "E-998877", parentesco: "" },
+      propietario: { ...base.propietario, nombre: "Otro Nombre", tipo_documento: "cc", documento: "1111111" },
+    });
+    expect(v.propietario).toMatchObject({ nombre: "Ana María Pérez", tipo_documento: "ce", documento: "E998877" });
+  });
+
+  it("the attendee's document type defaults to C.C. and keeps its own value when not the owner", () => {
+    expect(visitaSchema.parse(base).atiende.tipo_documento).toBe("cc");
+    const v = visitaSchema.parse({ ...base, atiende: { relacion: "familiar", nombre: "Luis Gómez", tipo_documento: "pa", documento: "998877", parentesco: "Hijo" } });
+    expect(v.atiende.tipo_documento).toBe("pa");
+    expect(v.propietario).toMatchObject({ tipo_documento: "cc", documento: "1144555" });
+  });
+
   it("someone other than the owner must give the relationship; 'otro' must say which", () => {
     const r = visitaSchema.safeParse({ ...base, atiende: { relacion: "otro", nombre: "Luis Gómez", documento: "998877", parentesco: "" } });
     expect(r.success).toBe(false);
