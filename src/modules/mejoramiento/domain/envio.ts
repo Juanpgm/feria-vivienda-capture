@@ -58,7 +58,7 @@ export function planearArchivos(
   const fotos = archivos.filter((a) => a.tipo === "foto");
   const porFila = new Map(filas.map((f) => [f.id, fotos.filter((a) => a.fila_id === f.id)]));
   if (fotos.some((a) => !porFila.has(a.fila_id))) errores.push("Hay fotos de una actividad que no está en la visita");
-  errores.push(...erroresFotos(filas.map((f) => porFila.get(f.id)!.length), visita.diagnostico.aplica === "si"));
+  errores.push(...erroresFotos(filas.map((f) => porFila.get(f.id)!.length)));
   if (errores.length) return { ok: false, errores };
 
   const nombres = nombresFotos(codigo, filas.map((f) => ({ item: f.item, fotos: porFila.get(f.id)!.length })));

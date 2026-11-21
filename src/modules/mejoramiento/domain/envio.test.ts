@@ -37,9 +37,13 @@ describe("planearArchivos", () => {
         "Hay archivos repetidos en el envío",
         "Se requiere una firma de quien atiende la visita",
         "Hay fotos de una actividad que no está en la visita",
-        "Se requieren al menos 6 fotos por visita (hay 2)",
       ],
     });
+  });
+
+  it("photos are optional: an applicable visit with no photos only needs the signature", () => {
+    const r = planearArchivos("MV-000011", visita, [firma]);
+    expect(r.ok && r.archivos.map((a) => a.tipo)).toEqual(["firma_ciudadano"]);
   });
 
   it("a non-applicable visit only needs the signature", () => {

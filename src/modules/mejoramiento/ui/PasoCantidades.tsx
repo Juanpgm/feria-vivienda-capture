@@ -8,7 +8,7 @@ import type { Apu } from "../domain/apus";
 import { evaluarCantidad } from "../domain/cantidad";
 import { CAPITULOS_SUGERIDOS } from "../domain/catalogos";
 import { costoDirecto } from "../domain/costos";
-import { erroresFotos, MAX_FOTOS_ITEM, MAX_FOTOS_VISITA, MIN_FOTOS_VISITA } from "../domain/fotos";
+import { erroresFotos, MAX_FOTOS_ITEM, MAX_FOTOS_VISITA } from "../domain/fotos";
 import { armarPresupuesto, type Visita } from "../domain/visita";
 import { buscarApus, conteosFotos, formatoCop, opcionesApus, type Capitulo, type Fila, type FotoMeta, type FotosPorFila } from "./armado";
 import { cargarFotoVisita, guardarFotoVisita, quitarFotosVisita } from "./fotosVisita";
@@ -51,7 +51,7 @@ export function PasoCantidades({ visitaId, capitulos, onChange, fotos, onFotos, 
   const p = presupuesto(capitulos, mapa);
   const conteos = conteosFotos(capitulos, fotos);
   const totalFotos = conteos.reduce((s, n) => s + n, 0);
-  const avisosFotos = erroresFotos(conteos, true);
+  const avisosFotos = erroresFotos(conteos);
 
   const cambiar = (i: number, c: Capitulo) => onChange(capitulos.map((x, k) => (k === i ? c : x)));
   function quitarFilas(filas: Fila[]) {
@@ -142,7 +142,7 @@ export function PasoCantidades({ visitaId, capitulos, onChange, fotos, onFotos, 
       <div className="flex flex-col gap-1 rounded-lg border-l-4 border-accent bg-surface p-3">
         <p className="text-lg font-bold text-primary-strong">Costo directo total: {formatoCop(p.costo_directo_total)}</p>
         <p className={avisosFotos.length ? "font-semibold text-warning-text" : "text-muted"}>
-          Fotos: {totalFotos} de {MIN_FOTOS_VISITA}–{MAX_FOTOS_VISITA}
+          Fotos (opcionales): {totalFotos} de {MAX_FOTOS_VISITA} como máximo
         </p>
         {errores.fotos && <p role="alert" className="font-medium text-danger">{errores.fotos}</p>}
       </div>

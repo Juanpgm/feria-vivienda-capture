@@ -31,18 +31,18 @@ export const visitaVacia = (id: string): Valores => ({
 
 export const aEntrada = (v: Valores) => v as unknown as VisitaEntrada;
 
-/** Schema paths each step validates (step 5 validates the whole visit). */
-const PREFIJOS = ["atiende", "propietario", "diagnostico", "capitulos", ""] as const;
+/** Schema paths each step validates (the last step validates the whole visit). Step 1 "Anfitrión" = atiende + propietario. */
+const PREFIJOS: readonly (readonly string[])[] = [["atiende", "propietario"], ["diagnostico"], ["capitulos"], []];
 
 /** `{ "atiende.nombre": message }` of the given step (first message per path). */
 export function erroresPaso(paso: number, v: Valores): Record<string, string> {
   const r = visitaSchema.safeParse(aEntrada(v));
   if (r.success) return {};
-  const prefijo = PREFIJOS[paso] ?? "";
+  const prefijos = PREFIJOS[paso] ?? [];
   const errores: Record<string, string> = {};
   for (const issue of r.error.issues) {
     const ruta = issue.path.join(".");
-    if (prefijo && ruta !== prefijo && !ruta.startsWith(`${prefijo}.`)) continue;
+    if (prefijos.length && !prefijos.some((p) => ruta === p || ruta.startsWith(`${p}.`))) continue;
     errores[ruta] ??= issue.message;
   }
   return errores;

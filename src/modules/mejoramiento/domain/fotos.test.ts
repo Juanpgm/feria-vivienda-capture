@@ -33,17 +33,15 @@ describe("photo names: visit code + ITEM + consecutive", () => {
   });
 });
 
-describe("erroresFotos: 6 to 30 per visit, at most 6 per item", () => {
-  it("accepts a visit within the limits", () => {
-    expect(erroresFotos([3, 3], true)).toEqual([]);
-    expect(erroresFotos([6, 6, 6, 6, 6], true)).toEqual([]);
+describe("erroresFotos: optional photos, at most 6 per activity and 30 per visit", () => {
+  it("accepts a visit without photos and one within the limits", () => {
+    expect(erroresFotos([])).toEqual([]);
+    expect(erroresFotos([0, 0])).toEqual([]);
+    expect(erroresFotos([2, 3])).toEqual([]);
+    expect(erroresFotos([6, 6, 6, 6, 6])).toEqual([]);
   });
-  it("reports too few, too many and an overloaded row", () => {
-    expect(erroresFotos([2, 3], true)).toEqual(["Se requieren al menos 6 fotos por visita (hay 5)"]);
-    expect(erroresFotos([6, 6, 6, 6, 6, 1], true)).toEqual(["Máximo 30 fotos por visita (hay 31)"]);
-    expect(erroresFotos([7], true)).toEqual(["Máximo 6 fotos por actividad (fila 1 tiene 7)"]);
-  });
-  it("a visit that does not apply needs no photos", () => {
-    expect(erroresFotos([], false)).toEqual([]);
+  it("reports too many per visit and an overloaded activity", () => {
+    expect(erroresFotos([6, 6, 6, 6, 6, 1])).toEqual(["Máximo 30 fotos por visita (hay 31)"]);
+    expect(erroresFotos([7])).toEqual(["Máximo 6 fotos por actividad (fila 1 tiene 7)"]);
   });
 });

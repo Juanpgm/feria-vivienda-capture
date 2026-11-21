@@ -5,7 +5,6 @@
 //   inspectores/{uid}/firma.png
 import { normalizarDocumento } from "@/shared/normalizacion/texto";
 
-export const MIN_FOTOS_VISITA = 6;
 export const MAX_FOTOS_VISITA = 30;
 export const MAX_FOTOS_ITEM = 6;
 export const MAX_CROQUIS = 4;
@@ -50,12 +49,10 @@ export const claveCroquis = (codigo: string, n: number, tipo: string) => enVisit
 /** Firebase uids are [A-Za-z0-9]; anything else is replaced so a uid can never change the folder layout. */
 export const claveFirmaInspector = (uid: string) => `inspectores/${uid.replace(/[^A-Za-z0-9_-]/g, "-")}/firma.png`;
 
-/** `conteos` = photos per quantity row. A visit that does not apply has no rows and needs no photos. */
-export function erroresFotos(conteos: number[], aplica: boolean): string[] {
+/** `conteos` = photos per quantity row. Photos are optional (decision 2026-11-21); only the maximums apply. */
+export function erroresFotos(conteos: number[]): string[] {
   const errores = conteos.flatMap((n, i) => (n > MAX_FOTOS_ITEM ? [`Máximo ${MAX_FOTOS_ITEM} fotos por actividad (fila ${i + 1} tiene ${n})`] : []));
-  if (!aplica) return errores;
   const total = conteos.reduce((s, n) => s + n, 0);
-  if (total < MIN_FOTOS_VISITA) errores.push(`Se requieren al menos ${MIN_FOTOS_VISITA} fotos por visita (hay ${total})`);
   if (total > MAX_FOTOS_VISITA) errores.push(`Máximo ${MAX_FOTOS_VISITA} fotos por visita (hay ${total})`);
   return errores;
 }

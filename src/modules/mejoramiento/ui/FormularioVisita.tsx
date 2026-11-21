@@ -21,21 +21,22 @@ import { PasoCantidades, presupuesto, useApus } from "./PasoCantidades";
 import { PasoDiagnostico } from "./PasoDiagnostico";
 
 const PASOS = [
-  { corto: "Atiende", titulo: "Quién atiende la visita", descripcion: "La persona que recibe al inspector en el predio." },
-  { corto: "Propietario", titulo: "Datos del propietario", descripcion: "Quién es dueño del predio y cómo contactarlo." },
+  { corto: "Anfitrión", titulo: "Anfitrión", descripcion: "Quién recibe al inspector en el predio y los datos del propietario." },
   { corto: "Diagnóstico", titulo: "Diagnóstico", descripcion: "Si la vivienda aplica al mejoramiento y el estado de cada elemento." },
   { corto: "Cantidades", titulo: "Cantidades de obra", descripcion: "Capítulos, actividades del listado de precios, cantidades medidas y fotos por actividad." },
   { corto: "Cierre", titulo: "Observaciones y firmas", descripcion: "Observaciones de la visita y firma de quien atiende." },
 ] as const;
 
-type Borrador = { valores: Valores; fotos: FotosPorFila; firma: string | null; paso: number; maximo: number; guardado_en: string };
+/** `v` 2 = four steps (Anfitrión merged "Atiende" + "Propietario"); drafts without it used the old five steps. */
+type Borrador = { v?: 2; valores: Valores; fotos: FotosPorFila; firma: string | null; paso: number; maximo: number; guardado_en: string };
+const migrar = (b: Borrador): Borrador => (b.v === 2 ? b : { ...b, v: 2, paso: Math.max(0, b.paso - 1), maximo: Math.max(0, b.maximo - 1) });
 const claveBorrador = (uid: string, id: string) => `mejoramiento:${uid}:${id}`;
 /** One in-progress visit per inspector: this key points at its draft. */
 const claveActual = (uid: string) => `mejoramiento:${uid}:actual`;
 // idb-keyval opens IndexedDB synchronously: where it is blocked, it throws before returning a promise.
 const idb = <T,>(fn: () => Promise<T>) => Promise.resolve().then(fn).catch(() => undefined);
 
-const nuevo = (): Borrador => ({ valores: visitaVacia(crypto.randomUUID()), fotos: {}, firma: null, paso: 0, maximo: 0, guardado_en: "" });
+const nuevo = (): Borrador => ({ v: 2, valores: visitaVacia(crypto.randomUUID()), fotos: {}, firma: null, paso: 0, maximo: 0, guardado_en: "" });
 
 async function descartar(uid: string, b: Borrador) {
   await Promise.all([
@@ -52,7 +53,7 @@ export function FormularioVisita({ uid }: { uid: string }) {
     void idb(async () => {
       const id = await get<string>(claveActual(uid));
       return id ? get<Borrador>(claveBorrador(uid, id)) : undefined;
-    }).then((b) => setEstado(b ? { b, elegir: true } : { b: nuevo(), elegir: false }));
+    }).then((b) => setEstado(b ? { b: migrar(b), elegir: true } : { b: nuevo(), elegir: false }));
   }, [uid]);
 
   if (!estado) return <p role="status">Cargando…</p>;
@@ -100,14 +101,14 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
   const enviandoRef = useRef(false);
 
   const aplica = v.diagnostico.aplica !== "no";
-  const visibles = PASOS.map((_, i) => i).filter((i) => i !== 3 || aplica);
+  const visibles = PASOS.map((_, i) => i).filter((i) => i !== 2 || aplica);
 
   // Autosave on this device (1 s debounce).
   useEffect(() => {
     const t = setTimeout(() => {
       if (terminado.current) return;
       const ahora = new Date().toISOString();
-      const b: Borrador = { valores: v, fotos, firma, paso, maximo, guardado_en: ahora };
+      const b: Borrador = { v: 2, valores: v, fotos, firma, paso, maximo, guardado_en: ahora };
       void idb(async () => {
         await guardar(claveBorrador(uid, v.id), b);
         await guardar(claveActual(uid), v.id);
@@ -119,11 +120,11 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
 
   function validar(i: number): Record<string, string> {
     const e = erroresPaso(i, v);
-    if (i === 3) {
-      const f = erroresFotos(conteosFotos(v.capitulos, fotos), true);
+    if (i === 2) {
+      const f = erroresFotos(conteosFotos(v.capitulos, fotos));
       if (f.length) e.fotos = f.join(". ");
     }
-    if (i === 4 && !firma) e.firma = "Falta la firma de quien atiende la visita";
+    if (i === 3 && !firma) e.firma = "Falta la firma de quien atiende la visita";
     return e;
   }
   const errores = mostrar ? validar(paso) : {};
@@ -146,9 +147,6 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
         return;
       }
     }
-    // The owner attends: carry name and document over to the owner step.
-    if (paso === 0 && v.atiende.relacion === "propietario" && !v.propietario.nombre && !v.propietario.documento)
-      setV({ ...v, propietario: { ...v.propietario, nombre: v.atiende.nombre, documento: v.atiende.documento, tipo_documento: v.propietario.tipo_documento ?? "cc" } });
     ir(destino);
   }
   const siguienteVisible = visibles.find((i) => i > paso);
@@ -198,8 +196,20 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
   const info = PASOS[paso];
   const hora = guardadoEn ? new Date(guardadoEn).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" }) : "";
   const atiende = v.atiende;
-  const setAtiende = (a: Partial<Valores["atiende"]>) => setV({ ...v, atiende: { ...atiende, ...a } });
   const prop = v.propietario;
+  // When the owner attends, the owner's name and document ARE the attendee's: typed once, kept in sync.
+  const setAtiende = (a: Partial<Valores["atiende"]>) => {
+    const n = { ...atiende, ...a };
+    const dejaDeSer = atiende.relacion === "propietario" && n.relacion !== "propietario";
+    const propietario =
+      n.relacion === "propietario"
+        ? { ...prop, nombre: n.nombre, documento: n.documento, tipo_documento: prop.tipo_documento ?? "cc" }
+        : dejaDeSer
+          ? { ...prop, nombre: "", documento: "" }
+          : prop;
+    setV({ ...v, atiende: n, propietario });
+  };
+  const esPropietario = atiende.relacion === "propietario";
   const setProp = (p: Partial<Valores["propietario"]>) => setV({ ...v, propietario: { ...prop, ...p } });
 
   return (
@@ -234,43 +244,52 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
       <form noValidate onSubmit={(ev) => ev.preventDefault()} className="flex flex-col gap-5 pb-10">
         {paso === 0 && (
           <>
-            <Segmentos
-              legend="Relación con el predio"
-              name="relacion"
-              value={atiende.relacion}
-              catalogo={RELACIONES_ATIENDE}
-              error={e("atiende.relacion")}
-              onChange={(relacion) => setAtiende({ relacion, parentesco: relacion === "arrendatario" && !atiende.parentesco ? RELACIONES_ATIENDE.arrendatario : atiende.parentesco })}
-            />
-            {atiende.relacion === "otro" && <CampoTexto label="¿Cuál?" value={atiende.relacion_otro} error={e("atiende.relacion_otro")} onChange={(relacion_otro) => setAtiende({ relacion_otro })} />}
-            <CampoTexto label="Nombre completo" autoComplete="off" value={atiende.nombre} error={e("atiende.nombre")} onChange={(nombre) => setAtiende({ nombre })} />
-            <CampoTexto label="Número de documento (C.C.)" inputMode="numeric" value={atiende.documento} error={e("atiende.documento")} onChange={(documento) => setAtiende({ documento })} />
-            {atiende.relacion && atiende.relacion !== "propietario" && (
-              <CampoTexto label="Parentesco con el propietario" value={atiende.parentesco} error={e("atiende.parentesco")} onChange={(parentesco) => setAtiende({ parentesco })} />
-            )}
+            <section aria-labelledby="titulo-atiende" className="flex flex-col gap-5">
+              <h3 id="titulo-atiende" className="text-lg font-bold text-primary-strong">Quién atiende la visita</h3>
+              <Segmentos
+                legend="Relación con el predio"
+                name="relacion"
+                value={atiende.relacion}
+                catalogo={RELACIONES_ATIENDE}
+                error={e("atiende.relacion")}
+                onChange={(relacion) => setAtiende({ relacion, parentesco: relacion === "arrendatario" && !atiende.parentesco ? RELACIONES_ATIENDE.arrendatario : atiende.parentesco })}
+              />
+              {atiende.relacion === "otro" && <CampoTexto label="¿Cuál?" value={atiende.relacion_otro} error={e("atiende.relacion_otro")} onChange={(relacion_otro) => setAtiende({ relacion_otro })} />}
+              <CampoTexto label="Nombre completo" autoComplete="off" value={atiende.nombre} error={e("atiende.nombre")} onChange={(nombre) => setAtiende({ nombre })} />
+              <CampoTexto label="Número de documento (C.C.)" inputMode="numeric" value={atiende.documento} error={e("atiende.documento")} onChange={(documento) => setAtiende({ documento })} />
+              {atiende.relacion && atiende.relacion !== "propietario" && (
+                <CampoTexto label="Parentesco con el propietario" value={atiende.parentesco} error={e("atiende.parentesco")} onChange={(parentesco) => setAtiende({ parentesco })} />
+              )}
+            </section>
+            <section aria-labelledby="titulo-propietario" className="flex flex-col gap-5 border-t border-border pt-5">
+              <h3 id="titulo-propietario" className="text-lg font-bold text-primary-strong">Propietario y predio</h3>
+              {esPropietario ? (
+                <p className="rounded-lg border border-border bg-bg p-3 text-sm">
+                  Quien atiende es el propietario: se usan su nombre y documento.
+                </p>
+              ) : (
+                <>
+                  <CampoTexto label="Nombre del propietario" value={prop.nombre} error={e("propietario.nombre")} onChange={(nombre) => setProp({ nombre })} />
+                  <CampoTexto label="Número de documento del propietario" inputMode="numeric" value={prop.documento} error={e("propietario.documento")} onChange={(documento) => setProp({ documento })} />
+                </>
+              )}
+              <CampoSelect label="Tipo de documento del propietario" catalogo={TIPOS_DOCUMENTO} value={prop.tipo_documento} error={e("propietario.tipo_documento")} onChange={(tipo_documento) => setProp({ tipo_documento })} />
+              <CampoTexto label="Teléfono de contacto" type="tel" inputMode="tel" value={prop.telefono} error={e("propietario.telefono")} onChange={(telefono) => setProp({ telefono })} />
+              <CampoTexto label="Correo electrónico (opcional)" type="email" inputMode="email" value={prop.correo} error={e("propietario.correo")} onChange={(correo) => setProp({ correo })} />
+              <CampoTexto label="Dirección del predio" value={prop.direccion} error={e("propietario.direccion")} onChange={(direccion) => setProp({ direccion })} />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <CampoTexto label="Número de años habitando el predio" inputMode="numeric" value={prop.anios_habitando} error={e("propietario.anios_habitando")} onChange={(anios_habitando) => setProp({ anios_habitando })} />
+                <CampoTexto label="Personas que habitan el predio" inputMode="numeric" value={prop.personas} error={e("propietario.personas")} onChange={(personas) => setProp({ personas })} />
+              </div>
+            </section>
           </>
         )}
 
-        {paso === 1 && (
-          <>
-            <CampoTexto label="Nombre del propietario" value={prop.nombre} error={e("propietario.nombre")} onChange={(nombre) => setProp({ nombre })} />
-            <CampoSelect label="Tipo de documento" catalogo={TIPOS_DOCUMENTO} value={prop.tipo_documento} error={e("propietario.tipo_documento")} onChange={(tipo_documento) => setProp({ tipo_documento })} />
-            <CampoTexto label="Número de documento" value={prop.documento} error={e("propietario.documento")} onChange={(documento) => setProp({ documento })} />
-            <CampoTexto label="Teléfono de contacto" type="tel" inputMode="tel" value={prop.telefono} error={e("propietario.telefono")} onChange={(telefono) => setProp({ telefono })} />
-            <CampoTexto label="Correo electrónico (opcional)" type="email" inputMode="email" value={prop.correo} error={e("propietario.correo")} onChange={(correo) => setProp({ correo })} />
-            <CampoTexto label="Dirección del predio" value={prop.direccion} error={e("propietario.direccion")} onChange={(direccion) => setProp({ direccion })} />
-            <div className="grid gap-5 sm:grid-cols-2">
-              <CampoTexto label="Número de años habitando el predio" inputMode="numeric" value={prop.anios_habitando} error={e("propietario.anios_habitando")} onChange={(anios_habitando) => setProp({ anios_habitando })} />
-              <CampoTexto label="Personas que habitan el predio" inputMode="numeric" value={prop.personas} error={e("propietario.personas")} onChange={(personas) => setProp({ personas })} />
-            </div>
-          </>
-        )}
+        {paso === 1 && <PasoDiagnostico d={v.diagnostico} errores={errores} onChange={(diagnostico) => setV({ ...v, diagnostico })} />}
 
-        {paso === 2 && <PasoDiagnostico d={v.diagnostico} errores={errores} onChange={(diagnostico) => setV({ ...v, diagnostico })} />}
+        {paso === 2 && <PasoCantidades visitaId={v.id} capitulos={v.capitulos} onChange={(capitulos) => setV({ ...v, capitulos })} fotos={fotos} onFotos={setFotos} errores={errores} />}
 
-        {paso === 3 && <PasoCantidades visitaId={v.id} capitulos={v.capitulos} onChange={(capitulos) => setV({ ...v, capitulos })} fotos={fotos} onFotos={setFotos} errores={errores} />}
-
-        {paso === 4 && (
+        {paso === 3 && (
           <>
             <Field label="Observaciones" error={e("observaciones")} hint={`${v.observaciones.length} de ${OBSERVACIONES_MAX} caracteres`}>
               {(a11y) => <TextArea {...a11y} rows={10} maxLength={OBSERVACIONES_MAX} value={v.observaciones} onChange={(ev) => setV({ ...v, observaciones: ev.target.value })} />}

@@ -55,18 +55,19 @@ describe("construirManifiesto", () => {
 });
 
 describe("erroresPaso", () => {
-  it("only reports the fields of the requested step, keyed by path", () => {
+  it("step 1 Anfitrión reports who attends AND the owner data, nothing else", () => {
     const e = erroresPaso(0, visitaVacia("6f1c3f0e-6a34-4d53-9b77-2b2f1f6f0c11"));
-    expect(Object.keys(e).every((k) => k.startsWith("atiende."))).toBe(true);
+    expect(Object.keys(e).every((k) => k.startsWith("atiende.") || k.startsWith("propietario."))).toBe(true);
     expect(e["atiende.relacion"]).toBe("Seleccione una opción");
+    expect(Object.keys(e).some((k) => k.startsWith("propietario."))).toBe(true);
   });
 
-  it("asks for at least one activity in step 4 when the visit applies", () => {
+  it("asks for at least one activity in the Cantidades step (index 2) when the visit applies", () => {
     const v = visitaVacia("6f1c3f0e-6a34-4d53-9b77-2b2f1f6f0c11");
     v.atiende = { relacion: "propietario", nombre: "Ana María Pérez", documento: "12345678" };
     v.propietario = { nombre: "Ana María Pérez", tipo_documento: "cc", documento: "12345678", telefono: "3001234567", direccion: "Calle 5 # 10-20", anios_habitando: "3", personas: "2" };
     v.diagnostico = { aplica: "si", aplica_para: ["piso"], alcance: "tipo", secciones: {} };
-    expect(erroresPaso(3, v)).toEqual({ capitulos: "Agregue al menos una actividad con su cantidad medida" });
+    expect(erroresPaso(2, v)).toEqual({ capitulos: "Agregue al menos una actividad con su cantidad medida" });
   });
 });
 

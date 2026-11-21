@@ -67,7 +67,7 @@ test("1. sin firma registrada: puerta de firma, guardar, S3 y Firestore", async 
   expect(r.firma_en_s3).toMatchObject({ existe: true, content_type: "image/png" });
 });
 
-test("2. nueva visita: 5 pasos, 7 fotos, envío", async ({ page }) => {
+test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async ({ page }) => {
   vigilar(page);
   page.on("request", (q) => q.method() === "POST" && new URL(q.url()).pathname === "/api/visitas" && (cuerpoEnvio = q.postData() ?? ""));
   await page.goto("/mejoramiento/nueva");
@@ -78,24 +78,23 @@ test("2. nueva visita: 5 pasos, 7 fotos, envío", async ({ page }) => {
   }
   const sig = () => page.getByRole("button", { name: "Siguiente" }).click();
 
-  // 1 Atiende
+  // 1 Anfitrión: who attends + owner in one step; the owner attends, so name/document are typed once
   await page.getByRole("radio", { name: "Propietario" }).check({ force: true });
   await page.getByLabel("Nombre completo").fill("PRUEBA E2E Propietario");
   await page.getByLabel("Número de documento (C.C.)").fill("1234567890");
-  await sig();
-  // 2 Propietario (name/document carried over)
-  await expect(page.getByLabel("Nombre del propietario")).toHaveValue("PRUEBA E2E Propietario");
+  await expect(page.getByText("Quien atiende es el propietario: se usan su nombre y documento.")).toBeVisible();
+  await expect(page.getByLabel("Nombre del propietario")).toHaveCount(0);
   await page.getByLabel("Teléfono de contacto").fill("3001234567");
   await page.getByLabel("Dirección del predio").fill("Plaza de Caicedo, prueba e2e");
   await page.getByLabel("Número de años habitando el predio").fill("10");
   await page.getByLabel("Personas que habitan el predio").fill("4");
   await sig();
-  // 3 Diagnóstico
+  // 2 Diagnóstico
   await page.getByRole("radio", { name: "Sí" }).first().check({ force: true });
   await page.getByRole("group", { name: "Sí, para" }).getByText("Piso", { exact: true }).click();
   await page.getByRole("radio", { name: "Tipo" }).check({ force: true });
   await sig();
-  // 4 Cantidades: one chapter, the same ITEM twice (memoria de cálculo), 4 + 3 photos
+  // 3 Cantidades: one chapter, the same ITEM twice (memoria de cálculo), 4 + 3 photos
   await page.getByRole("button", { name: "Agregar capítulo" }).click();
   await page.getByPlaceholder("Nombre del capítulo").fill("PISOS");
   for (const [k, cantidad] of ["3,5*4", "2"].entries()) {
@@ -116,10 +115,10 @@ test("2. nueva visita: 5 pasos, 7 fotos, envío", async ({ page }) => {
   await fotos(entradas.nth(0), 1, 4);
   await expect(page.getByText("4 de 6", { exact: true })).toBeVisible();
   await fotos(entradas.nth(1), 5, 3);
-  await expect(page.getByText("Fotos: 7 de 6–30")).toBeVisible();
+  await expect(page.getByText("Fotos (opcionales): 7 de 30 como máximo")).toBeVisible();
   await expect(page.getByText(/Costo directo total:.*605\.712/)).toBeVisible();
   await sig();
-  // 5 Cierre
+  // 4 Cierre
   await page.getByLabel("Observaciones").fill("Visita de prueba automatizada e2e (se borra).");
   await firmar(page);
   await page.getByRole("button", { name: "Enviar visita" }).click();
