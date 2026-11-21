@@ -7,7 +7,7 @@ import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { Select } from "@/shared/ui/Select";
 
-export const metadata = { title: "Visitas de mejoramiento" };
+export const metadata = { title: "Levantamientos | Feria de Vivienda" };
 
 /** Inspector: their own visits. Admin/superadmin: every visit, filterable by inspector (S5, S7). */
 export default async function VisitasMejoramiento({ searchParams }: { searchParams: Promise<{ inspector?: string }> }) {
@@ -21,13 +21,23 @@ export default async function VisitasMejoramiento({ searchParams }: { searchPara
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-primary-strong">{esInspector ? "Mis visitas" : "Visitas de mejoramiento"}</h1>
+        <h1 className="text-2xl font-bold text-primary-strong">{esInspector ? "Mis levantamientos" : "Levantamientos"}</h1>
         {esInspector && (
           <Link href="/mejoramiento/nueva" className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 font-semibold text-on-primary hover:opacity-90">
-            Nueva visita
+            Nuevo levantamiento
           </Link>
         )}
       </div>
+      {!esInspector && (
+        <p role="note" className="rounded-lg border border-border bg-surface p-3 text-sm">
+          Aquí ve los levantamientos de todos los inspectores y puede abrir el detalle de cada uno. Los levantamientos los registra solo una
+          cuenta con rol <span className="font-semibold">Inspector</span>; para dar ese rol use{" "}
+          <Link href="/admin/usuarios" className="font-semibold underline">
+            Usuarios
+          </Link>
+          .
+        </p>
+      )}
       {!esInspector && (
         <form method="get" className="flex flex-wrap items-end gap-3">
           <div className="flex min-w-64 flex-col gap-1">

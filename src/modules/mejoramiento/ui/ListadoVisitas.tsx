@@ -24,7 +24,7 @@ export function BadgeCroquis({ tiene }: { tiene: boolean }) {
 /** Visits table (S5): the croquis badge flips to "Croquis cargado" as soon as the upload is confirmed. */
 export function ListadoVisitas({ filas, mostrarInspector }: { filas: FilaVisita[]; mostrarInspector: boolean }) {
   const [lista, setLista] = useState(filas);
-  if (!lista.length) return <p className="text-sm text-muted">No hay visitas registradas.</p>;
+  if (!lista.length) return <p className="text-sm text-muted">Aún no hay levantamientos registrados.</p>;
   const cargado = (id: string) => setLista((l) => l.map((f) => (f.id === id ? { ...f, tiene_croquis: true } : f)));
   return (
     <table className="w-full text-left text-sm">

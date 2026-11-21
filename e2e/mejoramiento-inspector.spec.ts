@@ -58,10 +58,10 @@ test("1. sin firma registrada: puerta de firma, guardar, S3 y Firestore", async 
   vigilar(page);
   await page.goto("/mejoramiento");
   await expect(page.getByText("Registre su firma de inspector")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Mis visitas" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Mis levantamientos" })).toHaveCount(0);
   await firmar(page);
   await page.getByRole("button", { name: "Guardar firma" }).click();
-  await expect(page.getByRole("heading", { name: "Mis visitas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mis levantamientos" })).toBeVisible();
   const r = script("inspect");
   expect(r.firma_key).toMatch(/^inspectores\/.+\/firma\.png$/);
   expect(r.firma_en_s3).toMatchObject({ existe: true, content_type: "image/png" });
