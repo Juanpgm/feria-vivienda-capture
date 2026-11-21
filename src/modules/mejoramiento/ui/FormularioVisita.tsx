@@ -29,16 +29,23 @@ const PASOS = [
   { corto: "Cierre", titulo: "Observaciones y firmas", descripcion: "Observaciones de la visita y firma de quien atiende." },
 ] as const;
 
-/** `v` 2 = four steps (Anfitrión merged "Atiende" + "Propietario"); drafts without it used the old five steps. */
-type Borrador = { v?: 2; valores: Valores; fotos: FotosPorFila; firma: string | null; paso: number; maximo: number; guardado_en: string };
-const migrar = (b: Borrador): Borrador => (b.v === 2 ? b : { ...b, v: 2, paso: Math.max(0, b.paso - 1), maximo: Math.max(0, b.maximo - 1) });
+/** `v` 2 = four steps (Anfitrión merged "Atiende" + "Propietario"); drafts without it used the old five steps.
+ * `v` 3 = one state per house element (`diagnostico.estados` + `detalles`) instead of the old `secciones`. */
+type Borrador = { v?: 2 | 3; valores: Valores; fotos: FotosPorFila; firma: string | null; paso: number; maximo: number; guardado_en: string };
+function migrar(b: Borrador): Borrador {
+  if (b.v === 3) return b;
+  const pasos = b.v === 2 ? b : { ...b, paso: Math.max(0, b.paso - 1), maximo: Math.max(0, b.maximo - 1) };
+  const diagnostico: Valores["diagnostico"] & { secciones?: unknown } = { ...b.valores.diagnostico };
+  delete diagnostico.secciones;
+  return { ...pasos, v: 3, valores: { ...b.valores, diagnostico: { ...diagnostico, estados: diagnostico.estados ?? {}, detalles: diagnostico.detalles ?? {} } } };
+}
 const claveBorrador = (uid: string, id: string) => `mejoramiento:${uid}:${id}`;
 /** One in-progress visit per inspector: this key points at its draft. */
 const claveActual = (uid: string) => `mejoramiento:${uid}:actual`;
 // idb-keyval opens IndexedDB synchronously: where it is blocked, it throws before returning a promise.
 const idb = <T,>(fn: () => Promise<T>) => Promise.resolve().then(fn).catch(() => undefined);
 
-const nuevo = (): Borrador => ({ v: 2, valores: visitaVacia(crypto.randomUUID()), fotos: {}, firma: null, paso: 0, maximo: 0, guardado_en: "" });
+const nuevo = (): Borrador => ({ v: 3, valores: visitaVacia(crypto.randomUUID()), fotos: {}, firma: null, paso: 0, maximo: 0, guardado_en: "" });
 
 async function descartar(uid: string, b: Borrador) {
   await Promise.all([
@@ -135,7 +142,7 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
     const t = setTimeout(() => {
       if (terminado.current) return;
       const ahora = new Date().toISOString();
-      const b: Borrador = { v: 2, valores: v, fotos, firma, paso, maximo, guardado_en: ahora };
+      const b: Borrador = { v: 3, valores: v, fotos, firma, paso, maximo, guardado_en: ahora };
       void idb(async () => {
         await guardar(claveBorrador(uid, v.id), b);
         await guardar(claveActual(uid), v.id);
@@ -195,6 +202,8 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
       setProgreso("ubicacion");
       const ubicacion = await obtenerUbicacion();
       const capitulos = aplica ? v.capitulos : [];
+      // "No aplica": states typed before switching to No stay in the draft but are never sent.
+      const diagnostico = aplica ? v.diagnostico : { ...v.diagnostico, estados: {}, detalles: {} };
       const png = dataUrlAPng(firma!);
       const archivos = construirManifiesto(capitulos, fotos, png.size);
       const blobs = new Map<string, Blob>([["firma", png]]);
@@ -204,7 +213,7 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
         if (!blob) throw new Error("Una de las fotos ya no está en este equipo. Quítela y tómela de nuevo en el paso Cantidades.");
         blobs.set(a.ref, blob);
       }
-      const r = await enviarVisita({ visita: aEntrada({ ...v, capitulos }), ubicacion, archivos }, blobs, setProgreso);
+      const r = await enviarVisita({ visita: aEntrada({ ...v, diagnostico, capitulos }), ubicacion, archivos }, blobs, setProgreso);
       if (!r.ok) throw new Error(r.error);
       terminado.current = true;
       await descartar(uid, { valores: v, fotos, firma, paso, maximo, guardado_en: "" });
@@ -374,7 +383,7 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
             Atrás
           </Button>
           {siguienteVisible !== undefined ? (
-            <Button className="px-6" onClick={() => avanzar(siguienteVisible)}>Siguiente</Button>
+            <Button className="px-6" onClick={() => avanzar(siguienteVisible)}>{paso === 1 && !aplica ? "Ir al cierre" : "Siguiente"}</Button>
           ) : (
             <Button className="px-6" disabled={enviando} onClick={() => void enviar()}>
               {enviando ? "Enviando…" : aviso ? "Reintentar envío" : "Enviar visita"}
@@ -461,7 +470,7 @@ function Revision({ v, fotos, mapa, onEditar }: { v: Valores; fotos: FotosPorFil
         <dd className="font-semibold">
           {aplica
             ? `Sí, para ${d.aplica_para.map((k) => APLICA_PARA[k as keyof typeof APLICA_PARA]).join(", ")}`
-            : `No, por ${NO_APLICA_POR[d.no_aplica_por as keyof typeof NO_APLICA_POR] ?? ""}`}
+            : `No aplica: ${NO_APLICA_POR[d.no_aplica_por as keyof typeof NO_APLICA_POR] ?? ""}`}
         </dd>
         {aplica && (
           <>

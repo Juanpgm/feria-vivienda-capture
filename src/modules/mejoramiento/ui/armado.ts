@@ -12,7 +12,7 @@ export type Valores = {
   id: string;
   atiende: { relacion?: string; relacion_otro?: string; nombre?: string; tipo_documento?: string; documento?: string; parentesco?: string };
   propietario: { nombre?: string; tipo_documento?: string; documento?: string; telefono?: string; correo?: string; direccion?: string; anios_habitando?: string; personas?: string };
-  diagnostico: { aplica?: string; aplica_para: string[]; no_aplica_por?: string; alcance?: string; secciones: Record<string, Record<string, string | undefined>> };
+  diagnostico: { aplica?: string; aplica_para: string[]; no_aplica_por?: string; alcance?: string; estados: Record<string, string | undefined>; detalles: Record<string, string | undefined> };
   capitulos: Capitulo[];
   observaciones: string;
 };
@@ -24,7 +24,7 @@ export const visitaVacia = (id: string): Valores => ({
   id,
   atiende: {},
   propietario: {},
-  diagnostico: { aplica_para: [], secciones: {} },
+  diagnostico: { aplica_para: [], estados: {}, detalles: {} },
   capitulos: [],
   observaciones: OBSERVACIONES_PRESET,
 });

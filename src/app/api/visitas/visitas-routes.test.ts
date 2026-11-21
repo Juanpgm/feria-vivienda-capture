@@ -33,7 +33,7 @@ const cuerpo = (extra: Record<string, unknown> = {}) => ({
     id: ID,
     atiende: { relacion: "propietario", nombre: "Ana María Pérez", documento: "1144555" },
     propietario: { nombre: "Ana María Pérez", tipo_documento: "cc", documento: "1144555", telefono: "3001234567", direccion: "Cra 5 # 10-20", anios_habitando: 12, personas: 4 },
-    diagnostico: { aplica: "si", aplica_para: ["acabado_muros"], alcance: "tipo", secciones: {} },
+    diagnostico: { aplica: "si", aplica_para: ["acabado_muros"], alcance: "tipo" },
     capitulos: [{ id: "c1", nombre: "Estuco y pintura", filas: [{ id: "f1", item: "290304", cantidad_expr: "(1,87+3,4)*2,7" }] }],
     observaciones: "Se explican los alcances",
   },

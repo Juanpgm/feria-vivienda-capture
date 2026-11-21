@@ -66,7 +66,7 @@ describe("erroresPaso", () => {
     const v = visitaVacia("6f1c3f0e-6a34-4d53-9b77-2b2f1f6f0c11");
     v.atiende = { relacion: "propietario", nombre: "Ana María Pérez", documento: "12345678" };
     v.propietario = { nombre: "Ana María Pérez", tipo_documento: "cc", documento: "12345678", telefono: "3001234567", direccion: "Calle 5 # 10-20", anios_habitando: "3", personas: "2" };
-    v.diagnostico = { aplica: "si", aplica_para: ["piso"], alcance: "tipo", secciones: {} };
+    v.diagnostico = { aplica: "si", aplica_para: ["piso"], alcance: "tipo", estados: {}, detalles: {} };
     expect(erroresPaso(2, v)).toEqual({ capitulos: "Agregue al menos una actividad con su cantidad medida" });
   });
 });

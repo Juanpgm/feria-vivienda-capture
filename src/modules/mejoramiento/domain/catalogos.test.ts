@@ -1,28 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { aplicaDeCapitulo, SECCIONES, seccionesEnfocadas } from "./catalogos";
+import { aplicaDeCapitulo, DETALLES_OPCIONALES, ELEMENTOS_VIVIENDA, elementosEnfocados, ESTADOS_ELEMENTO } from "./catalogos";
 
-const claves = (s: { clave: string }[]) => s.map((x) => x.clave);
+const claves = (s: readonly { clave: string }[]) => s.map((x) => x.clave);
 
-describe("seccionesEnfocadas (Estado enfocado)", () => {
-  it("puts the blocks of the selected improvements first, in SECCIONES order and without duplicates", () => {
-    const { relevantes, otras } = seccionesEnfocadas(["cocina", "bano"]);
-    expect(claves(relevantes)).toEqual(["sanitarias", "hidraulicas", "cocina", "bano"]);
-    expect(claves(otras)).toEqual(claves(SECCIONES).filter((c) => !["sanitarias", "hidraulicas", "cocina", "bano"].includes(c)));
+describe("ELEMENTOS_VIVIENDA (Estado de la vivienda)", () => {
+  it("is one flat list grouped Acabados, Instalaciones, Cocina, Baño, Estructura, rated Bueno/Regular/Malo/No existe", () => {
+    expect(ESTADOS_ELEMENTO).toEqual({ b: "Bueno", r: "Regular", m: "Malo", ne: "No existe" });
+    expect([...new Set(ELEMENTOS_VIVIENDA.map((e) => e.grupo))]).toEqual(["Acabados", "Instalaciones", "Cocina", "Baño", "Estructura"]);
+    expect(claves(ELEMENTOS_VIVIENDA)).toEqual([
+      "repello", "estuco_pintura", "fachada",
+      "sanitarias", "hidraulicas", "electricas",
+      "cocina_enchape", "cocina_meson", "cocina_lavaplatos",
+      "bano_enchape", "bano_sanitario", "bano_lavamanos",
+      "cubierta", "piso", "escaleras",
+    ]);
   });
 
-  it("maps every improvement to its blocks", () => {
-    expect(claves(seccionesEnfocadas(["piso"]).relevantes)).toEqual(["desmonte", "piso"]);
-    expect(claves(seccionesEnfocadas(["acabado_muros"]).relevantes)).toEqual(["repello", "estuco_pintura", "fachada"]);
-    expect(claves(seccionesEnfocadas(["espacio_3x3"]).relevantes)).toEqual(["repello", "electricas", "cubierta", "piso"]);
-    expect(claves(seccionesEnfocadas(["alcantarillado_piso"]).relevantes)).toEqual(["sanitarias", "desmonte", "piso"]);
-    expect(claves(seccionesEnfocadas(["cubierta"]).relevantes)).toEqual(["cubierta"]);
+  it("optional details have unique keys", () => {
+    const todas = DETALLES_OPCIONALES.flatMap((g) => claves(g.preguntas));
+    expect(new Set(todas).size).toBe(todas.length);
+    expect(todas).toEqual(expect.arrayContaining(["cubierta_material", "piso_material", "pozo_septico", "puertas_internas", "desmonte_otros"]));
+  });
+});
+
+describe("elementosEnfocados (Estado enfocado)", () => {
+  it("puts the elements of the selected improvements first, in list order and without duplicates", () => {
+    const { relevantes, otras } = elementosEnfocados(["cocina", "bano"]);
+    const esperadas = ["sanitarias", "hidraulicas", "cocina_enchape", "cocina_meson", "cocina_lavaplatos", "bano_enchape", "bano_sanitario", "bano_lavamanos"];
+    expect(claves(relevantes)).toEqual(esperadas);
+    expect(claves(otras)).toEqual(claves(ELEMENTOS_VIVIENDA).filter((c) => !esperadas.includes(c)));
   });
 
-  it("with nothing selected (or an unknown key) every block is in `otras`", () => {
+  it("maps every improvement to its elements", () => {
+    expect(claves(elementosEnfocados(["piso"]).relevantes)).toEqual(["piso"]);
+    expect(claves(elementosEnfocados(["acabado_muros"]).relevantes)).toEqual(["repello", "estuco_pintura", "fachada"]);
+    expect(claves(elementosEnfocados(["espacio_3x3"]).relevantes)).toEqual(["repello", "electricas", "cubierta", "piso"]);
+    expect(claves(elementosEnfocados(["alcantarillado_piso"]).relevantes)).toEqual(["sanitarias", "piso"]);
+    expect(claves(elementosEnfocados(["cubierta"]).relevantes)).toEqual(["cubierta"]);
+  });
+
+  it("with nothing selected (or an unknown key) every element is in `otras`", () => {
     for (const lista of [[], ["desconocida"]]) {
-      const { relevantes, otras } = seccionesEnfocadas(lista);
+      const { relevantes, otras } = elementosEnfocados(lista);
       expect(relevantes).toEqual([]);
-      expect(claves(otras)).toEqual(claves(SECCIONES));
+      expect(claves(otras)).toEqual(claves(ELEMENTOS_VIVIENDA));
     }
   });
 });

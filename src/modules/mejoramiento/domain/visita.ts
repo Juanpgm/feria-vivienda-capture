@@ -7,7 +7,7 @@ import { normalizarDocumento, normalizarNombre } from "@/shared/normalizacion/te
 import { enumDe, entero, telefono, textoOpcional } from "@/shared/validacion";
 import type { Apu } from "./apus";
 import { evaluarCantidad } from "./cantidad";
-import { ALCANCES, APLICA_PARA, ESTADOS, NO_APLICA_POR, RELACIONES_ATIENDE, SECCIONES, SI_NO, TIPOS_DOCUMENTO, type Pregunta } from "./catalogos";
+import { ALCANCES, APLICA_PARA, DETALLES_OPCIONALES, ELEMENTOS_VIVIENDA, ESTADOS_ELEMENTO, NO_APLICA_POR, RELACIONES_ATIENDE, SI_NO, TIPOS_DOCUMENTO, type Pregunta } from "./catalogos";
 import { costoDirecto } from "./costos";
 
 export const OBSERVACIONES_MAX = 5000;
@@ -63,8 +63,6 @@ const respuesta = (p: Pregunta) => {
   switch (p.tipo) {
     case "si_no":
       return enumDe(SI_NO);
-    case "estado":
-      return enumDe(ESTADOS);
     case "opcion":
       return enumDe(p.opciones);
     case "numero":
@@ -74,14 +72,10 @@ const respuesta = (p: Pregunta) => {
   }
 };
 
-/** One optional object per format block; unknown keys and values are rejected. */
-const seccionesSchema = z
-  .object(
-    Object.fromEntries(
-      SECCIONES.map((s) => [s.clave, z.object(Object.fromEntries(s.preguntas.map((p) => [p.clave, respuesta(p).nullish()]))).strict().optional()]),
-    ),
-  )
-  .strict();
+/** One optional state per house element; unknown elements and values are rejected. */
+const estadosSchema = z.object(Object.fromEntries(ELEMENTOS_VIVIENDA.map((e) => [e.clave, enumDe(ESTADOS_ELEMENTO).nullish()]))).strict();
+/** Optional details of the format (flat keys); unknown keys and values are rejected. */
+const detallesSchema = z.object(Object.fromEntries(DETALLES_OPCIONALES.flatMap((g) => g.preguntas).map((p) => [p.clave, respuesta(p).nullish()]))).strict();
 
 export const diagnosticoSchema = z
   .object({
@@ -89,7 +83,8 @@ export const diagnosticoSchema = z
     aplica_para: z.array(enumDe(APLICA_PARA)).default([]),
     no_aplica_por: enumDe(NO_APLICA_POR).nullish(),
     alcance: enumDe(ALCANCES).nullish(),
-    secciones: seccionesSchema.default({}),
+    estados: estadosSchema.default({}),
+    detalles: detallesSchema.default({}),
   })
   .superRefine((v, ctx) => {
     if (v.aplica === "si") {
@@ -100,7 +95,7 @@ export const diagnosticoSchema = z
   .transform((v) =>
     v.aplica === "si"
       ? { ...v, aplica_para: [...new Set(v.aplica_para)], no_aplica_por: null }
-      : { ...v, aplica_para: [], alcance: null },
+      : { ...v, aplica_para: [], alcance: null, estados: {}, detalles: {} },
   );
 
 const filaSchema = z.object({

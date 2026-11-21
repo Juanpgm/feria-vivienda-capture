@@ -94,6 +94,8 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   await page.getByRole("radio", { name: "Sí" }).first().check({ force: true });
   await page.getByRole("group", { name: "Sí, para" }).getByText("Piso", { exact: true }).click();
   await page.getByRole("radio", { name: "Tipo" }).check({ force: true });
+  await page.getByRole("radiogroup", { name: "Piso", exact: true }).getByText("Malo").click();
+  await expect(page.getByText("1 de 15 elementos con estado.", { exact: false })).toBeVisible();
   await sig();
   // 3 Cantidades: one chapter, the same ITEM twice (memoria de cálculo), 4 + 3 photos
   await page.getByRole("button", { name: "Agregar capítulo" }).click();
@@ -143,6 +145,7 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   await expect(page.getByText("Sin croquis")).toBeVisible();
   codigo = (await page.getByTestId("codigo-visita").textContent())!;
   id = JSON.parse(cuerpoEnvio).visita.id;
+  expect(JSON.parse(cuerpoEnvio).visita.diagnostico.estados).toEqual({ piso: "m" });
 
   await page.goto("/mejoramiento");
   await expect(page.getByRole("row").filter({ hasText: codigo }).getByText("Sin croquis")).toBeVisible();

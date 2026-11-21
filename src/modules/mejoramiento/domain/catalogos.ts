@@ -44,16 +44,27 @@ export const NO_APLICA_POR = {
 export const ALCANCES = { tipo: "Tipo", adecuacion: "Adecuación" } as const;
 
 export const SI_NO = { si: "Sí", no: "No" } as const;
-export const ESTADOS = { b: "Bueno", r: "Regular", m: "Malo" } as const;
+/** State of each house element; "No existe" replaces the format's separate "¿Existen?" question. */
+export const ESTADOS_ELEMENTO = { b: "Bueno", r: "Regular", m: "Malo", ne: "No existe" } as const;
 
 export type Pregunta =
-  | { clave: string; etiqueta: string; tipo: "si_no" | "estado" | "texto" | "numero" }
+  | { clave: string; etiqueta: string; tipo: "si_no" | "texto" | "numero" }
   | { clave: string; etiqueta: string; tipo: "opcion"; opciones: Record<string, string> };
 
-export type SeccionDiagnostico = { clave: string; titulo: string; preguntas: Pregunta[] };
+export type ElementoVivienda = { clave: string; etiqueta: string; grupo: string };
+
+const grupo = (nombre: string, elementos: [string, string][]): ElementoVivienda[] => elementos.map(([clave, etiqueta]) => ({ clave, etiqueta, grupo: nombre }));
+
+/** House elements rated in "Estado de la vivienda", in display order. Keys are stored in Firestore. */
+export const ELEMENTOS_VIVIENDA: readonly ElementoVivienda[] = [
+  ...grupo("Acabados", [["repello", "Repello"], ["estuco_pintura", "Estuco y pintura"], ["fachada", "Fachada"]]),
+  ...grupo("Instalaciones", [["sanitarias", "Instalaciones sanitarias"], ["hidraulicas", "Instalaciones hidráulicas"], ["electricas", "Instalaciones eléctricas"]]),
+  ...grupo("Cocina", [["cocina_enchape", "Enchape"], ["cocina_meson", "Mesón"], ["cocina_lavaplatos", "Lavaplatos"]]),
+  ...grupo("Baño", [["bano_enchape", "Enchape"], ["bano_sanitario", "Sanitario"], ["bano_lavamanos", "Lavamanos"]]),
+  ...grupo("Estructura", [["cubierta", "Cubierta"], ["piso", "Piso"], ["escaleras", "Escaleras"]]),
+];
 
 const siNo = (clave: string, etiqueta: string): Pregunta => ({ clave, etiqueta, tipo: "si_no" });
-const estado = (clave = "estado", etiqueta = "Estado"): Pregunta => ({ clave, etiqueta, tipo: "estado" });
 const texto = (clave: string, etiqueta: string): Pregunta => ({ clave, etiqueta, tipo: "texto" });
 const numero = (clave: string, etiqueta: string): Pregunta => ({ clave, etiqueta, tipo: "numero" });
 
@@ -67,98 +78,61 @@ export const MATERIALES_PISO = {
   otro: "Otro",
 } as const;
 
-/** Diagnostic blocks of the format, in the order they appear on paper. Every answer is optional. */
-export const SECCIONES: SeccionDiagnostico[] = [
-  { clave: "repello", titulo: "Repello", preguntas: [siNo("existen", "¿Existen?"), estado()] },
-  { clave: "estuco_pintura", titulo: "Estuco y pintura", preguntas: [siNo("existen", "¿Existen?"), estado()] },
+/** Non-state fields kept from the format, all optional; keys are flat and unique across groups. */
+export const DETALLES_OPCIONALES: readonly { titulo: string; preguntas: Pregunta[] }[] = [
   {
-    clave: "sanitarias",
-    titulo: "Instalaciones sanitarias",
-    preguntas: [siNo("acometida", "¿Acometida?"), estado(), siNo("pozo_septico", "Pozo séptico / filtro anaeróbico"), siNo("trampa_grasas", "Trampa de grasas")],
-  },
-  { clave: "hidraulicas", titulo: "Instalaciones hidráulicas", preguntas: [siNo("acometida", "¿Acometida?"), estado(), siNo("tanque_agua", "Tanque de agua")] },
-  { clave: "electricas", titulo: "Instalaciones eléctricas", preguntas: [siNo("acometida", "¿Acometida?"), estado()] },
-  {
-    clave: "desmonte",
-    titulo: "Desmonte o demolición",
-    preguntas: [siNo("contrapiso", "Contrapiso"), siNo("enchape", "Enchape"), siNo("muros", "Muros"), siNo("meson", "Mesón"), texto("otros", "Otros (cantidad o descripción)")],
-  },
-  { clave: "fachada", titulo: "Fachada", preguntas: [numero("niveles", "Niveles de la vivienda"), siNo("acabados", "Acabados"), estado()] },
-  {
-    clave: "escaleras",
-    titulo: "Escaleras",
+    titulo: "Materiales",
     preguntas: [
-      siNo("existen", "¿Existen?"),
-      { clave: "ubicacion", etiqueta: "Ubicación", tipo: "opcion", opciones: { internas: "Internas", externas: "Externas" } },
-      texto("nivel_ejecucion", "Nivel de ejecución (piso)"),
+      { clave: "cubierta_material", etiqueta: "Material de la cubierta", tipo: "opcion", opciones: MATERIALES_CUBIERTA },
+      texto("cubierta_material_otro", "Otro material de cubierta, ¿cuál?"),
+      { clave: "piso_material", etiqueta: "Material del piso", tipo: "opcion", opciones: MATERIALES_PISO },
+      texto("piso_material_otro", "Otro material de piso, ¿cuál?"),
     ],
   },
   {
-    clave: "cubierta",
-    titulo: "Cubierta",
+    titulo: "Instalaciones",
+    preguntas: [siNo("pozo_septico", "Pozo séptico / filtro anaeróbico"), siNo("trampa_grasas", "Trampa de grasas"), siNo("tanque_agua", "Tanque de agua")],
+  },
+  {
+    titulo: "Vivienda",
     preguntas: [
-      siNo("existen", "¿Existen?"),
-      { clave: "material", etiqueta: "Tipo de material", tipo: "opcion", opciones: MATERIALES_CUBIERTA },
-      texto("material_otro", "Otro material, ¿cuál?"),
-      estado(),
+      numero("niveles", "Niveles de la vivienda"),
+      { clave: "escaleras_ubicacion", etiqueta: "Escaleras", tipo: "opcion", opciones: { internas: "Internas", externas: "Externas" } },
+      texto("escaleras_nivel_ejecucion", "Nivel de ejecución (piso)"),
+      numero("puertas_internas", "Puertas internas, ¿cuántas?"),
     ],
   },
   {
-    clave: "cocina",
-    titulo: "Cocina",
-    preguntas: [
-      siNo("enchape", "Enchape"),
-      estado("enchape_estado", "Estado del enchape"),
-      siNo("meson", "Mesón"),
-      estado("meson_estado", "Estado del mesón"),
-      siNo("lavaplatos", "Lavaplatos"),
-      estado("lavaplatos_estado", "Estado del lavaplatos"),
-    ],
-  },
-  {
-    clave: "acceso",
     titulo: "Acceso a la vivienda",
-    preguntas: [siNo("peatonal", "Peatonal"), siNo("gradas", "Gradas"), siNo("via_vehicular", "Vía vehicular"), texto("acarreo", "¿Necesita acarreo?")],
-  },
-  { clave: "puertas", titulo: "Puertas internas", preguntas: [numero("cantidad", "¿Cuántas?")] },
-  {
-    clave: "bano",
-    titulo: "Baño",
-    preguntas: [
-      siNo("enchape", "Enchape"),
-      estado("enchape_estado", "Estado del enchape"),
-      siNo("sanitario", "Sanitario"),
-      estado("sanitario_estado", "Estado del sanitario"),
-      siNo("lavamanos", "Lavamanos"),
-      estado("lavamanos_estado", "Estado del lavamanos"),
-    ],
+    preguntas: [siNo("acceso_peatonal", "Peatonal"), siNo("acceso_gradas", "Gradas"), siNo("acceso_via_vehicular", "Vía vehicular"), texto("acarreo", "¿Necesita acarreo?")],
   },
   {
-    clave: "piso",
-    titulo: "Piso",
+    titulo: "Desmonte o demolición",
     preguntas: [
-      { clave: "material", etiqueta: "Tipo de material", tipo: "opcion", opciones: MATERIALES_PISO },
-      texto("material_otro", "Otro material, ¿cuál?"),
-      estado(),
+      siNo("desmonte_contrapiso", "Contrapiso"),
+      siNo("desmonte_enchape", "Enchape"),
+      siNo("desmonte_muros", "Muros"),
+      siNo("desmonte_meson", "Mesón"),
+      texto("desmonte_otros", "Otros (cantidad o descripción)"),
     ],
   },
 ];
 
-/** Diagnostic blocks that matter for each improvement ("Estado enfocado"). */
-export const SECCIONES_POR_APLICA: Record<ClaveAplica, readonly string[]> = {
-  piso: ["piso", "desmonte"],
-  bano: ["bano", "sanitarias", "hidraulicas"],
-  cocina: ["cocina", "hidraulicas", "sanitarias"],
+/** House elements that matter for each improvement ("Estado enfocado"). */
+export const ELEMENTOS_POR_APLICA: Record<ClaveAplica, readonly string[]> = {
+  piso: ["piso"],
+  bano: ["bano_enchape", "bano_sanitario", "bano_lavamanos", "sanitarias", "hidraulicas"],
+  cocina: ["cocina_enchape", "cocina_meson", "cocina_lavaplatos", "hidraulicas", "sanitarias"],
   acabado_muros: ["repello", "estuco_pintura", "fachada"],
   espacio_3x3: ["piso", "repello", "cubierta", "electricas"],
-  alcantarillado_piso: ["sanitarias", "piso", "desmonte"],
+  alcantarillado_piso: ["sanitarias", "piso"],
   cubierta: ["cubierta"],
 };
 
-/** Splits SECCIONES into the blocks of the selected improvements and the rest, both in SECCIONES order. */
-export function seccionesEnfocadas(aplicaPara: readonly string[]): { relevantes: SeccionDiagnostico[]; otras: SeccionDiagnostico[] } {
-  const claves = new Set(aplicaPara.flatMap((k) => SECCIONES_POR_APLICA[k as ClaveAplica] ?? []));
-  return { relevantes: SECCIONES.filter((s) => claves.has(s.clave)), otras: SECCIONES.filter((s) => !claves.has(s.clave)) };
+/** Splits ELEMENTOS_VIVIENDA into the elements of the selected improvements and the rest, both in list order. */
+export function elementosEnfocados(aplicaPara: readonly string[]): { relevantes: ElementoVivienda[]; otras: ElementoVivienda[] } {
+  const claves = new Set(aplicaPara.flatMap((k) => ELEMENTOS_POR_APLICA[k as ClaveAplica] ?? []));
+  return { relevantes: ELEMENTOS_VIVIENDA.filter((e) => claves.has(e.clave)), otras: ELEMENTOS_VIVIENDA.filter((e) => !claves.has(e.clave)) };
 }
 
 const normalizar = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();

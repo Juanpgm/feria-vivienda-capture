@@ -15,7 +15,7 @@ const base = {
     anios_habitando: "12",
     personas: "4",
   },
-  diagnostico: { aplica: "si", aplica_para: ["piso"], alcance: "tipo", secciones: { piso: { material: "tierra", estado: "m" } } },
+  diagnostico: { aplica: "si", aplica_para: ["piso"], alcance: "tipo", estados: { piso: "m", escaleras: "ne" }, detalles: { piso_material: "tierra" } },
   capitulos: [{ id: "c1", nombre: "Piso", filas: [{ id: "f1", item: "200101", cantidad_expr: "3,5*4" }] }],
   observaciones: "Se explican los alcances...",
 };
@@ -51,15 +51,16 @@ describe("visitaSchema", () => {
   });
 
   it("an applicable visit needs what it applies to, its scope and at least one measured activity", () => {
-    const r = visitaSchema.safeParse({ ...base, diagnostico: { aplica: "si", aplica_para: [], secciones: {} }, capitulos: [] });
+    const r = visitaSchema.safeParse({ ...base, diagnostico: { aplica: "si", aplica_para: [] }, capitulos: [] });
     const campos = r.error!.issues.map((i) => i.path.join("."));
     expect(campos).toEqual(expect.arrayContaining(["diagnostico.aplica_para", "diagnostico.alcance", "capitulos"]));
   });
 
   it("a non-applicable visit needs the reason and drops any quantities", () => {
-    expect(visitaSchema.safeParse({ ...base, diagnostico: { aplica: "no", secciones: {} } }).success).toBe(false);
-    const v = visitaSchema.parse({ ...base, diagnostico: { aplica: "no", no_aplica_por: "alquilada", secciones: {} } });
+    expect(visitaSchema.safeParse({ ...base, diagnostico: { aplica: "no" } }).success).toBe(false);
+    const v = visitaSchema.parse({ ...base, diagnostico: { aplica: "no", no_aplica_por: "alquilada", estados: { piso: "m" }, detalles: { piso_material: "tierra" } } });
     expect(v.capitulos).toEqual([]);
+    expect(v.diagnostico).toMatchObject({ estados: {}, detalles: {}, alcance: null, aplica_para: [] });
   });
 
   it("rejects a bad quantity expression at its row", () => {
@@ -67,9 +68,20 @@ describe("visitaSchema", () => {
     expect(r.error!.issues[0]).toMatchObject({ path: ["capitulos", 0, "filas", 0, "cantidad_expr"], message: "Revise la operación: 3*" });
   });
 
-  it("rejects unknown diagnostic answers", () => {
-    const r = visitaSchema.safeParse({ ...base, diagnostico: { ...base.diagnostico, secciones: { piso: { estado: "excelente" } } } });
-    expect(r.success).toBe(false);
+  it("keeps one state per house element and the optional details", () => {
+    const { diagnostico } = visitaSchema.parse(base);
+    expect(diagnostico.estados).toEqual({ piso: "m", escaleras: "ne" });
+    expect(diagnostico.detalles).toEqual({ piso_material: "tierra" });
+    expect(diagnostico).not.toHaveProperty("secciones");
+    expect(visitaSchema.parse({ ...base, diagnostico: { aplica: "no", no_aplica_por: "alquilada" } }).diagnostico).toMatchObject({ estados: {}, detalles: {} });
+  });
+
+  it("rejects unknown states, elements and details", () => {
+    const con = (d: object) => visitaSchema.safeParse({ ...base, diagnostico: { ...base.diagnostico, ...d } });
+    expect(con({ estados: { piso: "excelente" } }).error!.issues[0].path).toEqual(["diagnostico", "estados", "piso"]);
+    expect(con({ estados: { jardin: "b" } }).success).toBe(false);
+    expect(con({ detalles: { color: "azul" } }).success).toBe(false);
+    expect(con({ detalles: { piso_material: "marmol" } }).success).toBe(false);
   });
 });
 

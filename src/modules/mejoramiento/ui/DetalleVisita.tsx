@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { fechaHoraBogota } from "@/shared/tiempo";
 import { Card } from "@/shared/ui/Card";
-import { ALCANCES, APLICA_PARA, ESTADOS, NO_APLICA_POR, RELACIONES_ATIENDE, SECCIONES, SI_NO, TIPOS_DOCUMENTO, type Pregunta } from "../domain/catalogos";
+import { ALCANCES, APLICA_PARA, DETALLES_OPCIONALES, ELEMENTOS_VIVIENDA, ESTADOS_ELEMENTO, NO_APLICA_POR, RELACIONES_ATIENDE, SI_NO, TIPOS_DOCUMENTO, type Pregunta } from "../domain/catalogos";
 import type { VisitaDoc } from "../server/visitas.repo";
 import { formatoCop } from "./armado";
 import { GaleriaFotos } from "./GaleriaFotos";
@@ -16,7 +16,6 @@ const etiqueta = (mapa: Record<string, string>, v: string | null | undefined) =>
 function respuesta(p: Pregunta, v: unknown): string {
   if (v === null || v === undefined || v === "") return "Sin dato";
   if (p.tipo === "si_no") return etiqueta(SI_NO, String(v));
-  if (p.tipo === "estado") return etiqueta(ESTADOS, String(v));
   if (p.tipo === "opcion") return etiqueta(p.opciones, String(v));
   return String(v);
 }
@@ -48,7 +47,11 @@ export function DetalleVisita({ v, id, urls }: { v: VisitaDoc; id: string; urls:
   const { atiende, propietario, diagnostico, ubicacion, inspector } = v;
   const fotos = (filaId: string) => v.archivos.filter((a) => a.tipo === "foto" && a.fila_id === filaId);
   const firma = v.archivos.find((a) => a.tipo === "firma_ciudadano");
-  const secciones = SECCIONES.filter((s) => diagnostico.secciones?.[s.clave as keyof typeof diagnostico.secciones]);
+  const estados: Record<string, string | null | undefined> = diagnostico.estados ?? {};
+  const detalles: Record<string, unknown> = diagnostico.detalles ?? {};
+  const conEstado = ELEMENTOS_VIVIENDA.filter((x) => estados[x.clave]);
+  const gruposEstado = [...new Set(conEstado.map((x) => x.grupo))];
+  const llenos = DETALLES_OPCIONALES.map((g) => ({ ...g, preguntas: g.preguntas.filter((p) => detalles[p.clave] != null && detalles[p.clave] !== "") })).filter((g) => g.preguntas.length);
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -108,15 +111,27 @@ export function DetalleVisita({ v, id, urls }: { v: VisitaDoc; id: string; urls:
               : [["No aplica por", etiqueta(NO_APLICA_POR, diagnostico.no_aplica_por)]]) as [string, ReactNode][]),
           ]}
         />
-        {secciones.map((s) => {
-          const r = diagnostico.secciones[s.clave as keyof typeof diagnostico.secciones] as Record<string, unknown>;
-          return (
-            <div key={s.clave} className="mt-4">
-              <h3 className="mb-1 font-semibold">{s.titulo}</h3>
-              <Datos items={s.preguntas.map((p) => [p.etiqueta, respuesta(p, r[p.clave])])} />
-            </div>
-          );
-        })}
+        {gruposEstado.length > 0 && (
+          <div className="mt-4">
+            <h3 className="mb-1 font-semibold">Estado de la vivienda</h3>
+            <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+              {gruposEstado.map((g) => (
+                <div key={g}>
+                  <dt className="text-muted">{g}</dt>
+                  <dd className="font-medium">
+                    {conEstado.filter((x) => x.grupo === g).map((x) => `${x.etiqueta}: ${etiqueta(ESTADOS_ELEMENTO, estados[x.clave])}`).join(" · ")}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+        {llenos.map((g) => (
+          <div key={g.titulo} className="mt-4">
+            <h3 className="mb-1 font-semibold">{g.titulo}</h3>
+            <Datos items={g.preguntas.map((p) => [p.etiqueta, respuesta(p, detalles[p.clave])])} />
+          </div>
+        ))}
       </Card>
 
       <Card title="Presupuesto">
