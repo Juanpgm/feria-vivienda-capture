@@ -4,12 +4,13 @@
 // shared visitaSchema. The draft autosaves on this device; photo bytes live in fotosVisita.ts.
 import { del, get, set as guardar } from "idb-keyval";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { PadFirma } from "@/modules/firma/ui/PadFirma";
 import { fechaHoraBogota } from "@/shared/tiempo";
 import { Button } from "@/shared/ui/Button";
 import { Field, TextArea } from "@/shared/ui/Field";
 import { ALCANCES, APLICA_PARA, NO_APLICA_POR, RELACIONES_ATIENDE, TIPOS_DOCUMENTO } from "../domain/catalogos";
+import type { Apu } from "../domain/apus";
 import type { UbicacionGps } from "../domain/envio";
 import { erroresFotos } from "../domain/fotos";
 import { OBSERVACIONES_MAX } from "../domain/visita";
@@ -86,6 +87,16 @@ export function FormularioVisita({ uid }: { uid: string }) {
 
 type Resultado = { codigo: string; en: string };
 
+const suscribirConexion = (cb: () => void) => {
+  window.addEventListener("online", cb);
+  window.addEventListener("offline", cb);
+  return () => {
+    window.removeEventListener("online", cb);
+    window.removeEventListener("offline", cb);
+  };
+};
+const useEnLinea = () => useSyncExternalStore(suscribirConexion, () => navigator.onLine, () => true);
+
 function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador; onNueva: () => void }) {
   const [v, setV] = useState(inicial.valores);
   const [fotos, setFotos] = useState(inicial.fotos);
@@ -100,8 +111,23 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
   const terminado = useRef(false);
   const enviandoRef = useRef(false);
 
+  const enLinea = useEnLinea();
+  const { mapa } = useApus();
+
   const aplica = v.diagnostico.aplica !== "no";
   const visibles = PASOS.map((_, i) => i).filter((i) => i !== 2 || aplica);
+
+  // Warn before closing the tab only while a started draft has not been submitted.
+  const pendiente = !!guardadoEn && !resultado;
+  useEffect(() => {
+    if (!pendiente) return;
+    const avisar = (ev: BeforeUnloadEvent) => {
+      ev.preventDefault();
+      ev.returnValue = "";
+    };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [pendiente]);
 
   // Autosave on this device (1 s debounce).
   useEffect(() => {
@@ -236,7 +262,12 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
       </nav>
 
       <header className="mb-6 border-l-4 border-accent pl-4">
-        <p className="text-sm font-semibold text-primary">Paso {visibles.indexOf(paso) + 1} de {visibles.length}</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <p className="text-sm font-semibold text-primary">Paso {visibles.indexOf(paso) + 1} de {visibles.length}</p>
+          <p className={`text-sm ${enLinea ? "text-muted" : "font-semibold text-warning-text"}`}>
+            {!enLinea ? "Sin conexión: se guarda en este equipo" : hora ? `Guardado en este equipo · ${hora}` : null}
+          </p>
+        </div>
         <h2 className="mt-1 text-2xl font-bold text-primary-strong">{info.titulo}</h2>
         <p className="mt-1 text-muted">{info.descripcion}</p>
       </header>
@@ -287,14 +318,14 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
 
         {paso === 1 && <PasoDiagnostico d={v.diagnostico} errores={errores} onChange={(diagnostico) => setV({ ...v, diagnostico })} />}
 
-        {paso === 2 && <PasoCantidades visitaId={v.id} capitulos={v.capitulos} onChange={(capitulos) => setV({ ...v, capitulos })} fotos={fotos} onFotos={setFotos} errores={errores} />}
+        {paso === 2 && <PasoCantidades visitaId={v.id} aplicaPara={v.diagnostico.aplica === "si" ? v.diagnostico.aplica_para : []} capitulos={v.capitulos} onChange={(capitulos) => setV({ ...v, capitulos })} fotos={fotos} onFotos={setFotos} errores={errores} />}
 
         {paso === 3 && (
           <>
             <Field label="Observaciones" error={e("observaciones")} hint={`${v.observaciones.length} de ${OBSERVACIONES_MAX} caracteres`}>
               {(a11y) => <TextArea {...a11y} rows={10} maxLength={OBSERVACIONES_MAX} value={v.observaciones} onChange={(ev) => setV({ ...v, observaciones: ev.target.value })} />}
             </Field>
-            <Resumen v={v} fotos={fotos} />
+            <Revision v={v} fotos={fotos} mapa={mapa} onEditar={(i) => ir(i)} />
             <section className="flex flex-col gap-2">
               <h3 className="text-lg font-bold text-primary-strong">Firma de quien atiende la visita</h3>
               <p>
@@ -335,14 +366,13 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
               {enviando ? "Enviando…" : aviso ? "Reintentar envío" : "Enviar visita"}
             </Button>
           )}
+          {aplica && paso >= 2 && (
+            <p className="ml-auto font-bold text-primary-strong md:order-last md:ml-0">
+              Costo directo: <span className="tabular-nums">{formatoCop(presupuesto(v.capitulos, mapa).costo_directo_total)}</span>
+            </p>
+          )}
           <div role="status" className="basis-full text-sm md:flex-1 md:basis-auto md:text-right">
-            {progreso ? (
-              <EstadoEnvio p={progreso} />
-            ) : aviso ? (
-              <span className="font-semibold text-danger">{aviso}</span>
-            ) : hora ? (
-              <span className="text-muted">Guardado en este equipo a las {hora}</span>
-            ) : null}
+            {progreso ? <EstadoEnvio p={progreso} /> : aviso ? <span className="font-semibold text-danger">{aviso}</span> : null}
           </div>
         </div>
       </div>
@@ -379,35 +409,67 @@ function obtenerUbicacion(): Promise<UbicacionGps> {
   });
 }
 
-function Resumen({ v, fotos }: { v: Valores; fotos: FotosPorFila }) {
-  const { mapa } = useApus();
+function Bloque({ titulo, onEditar, children }: { titulo: string; onEditar: () => void; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 border-t border-border pt-3">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="font-bold">{titulo}</h4>
+        <Button variant="secondary" aria-label={`Editar ${titulo}`} onClick={onEditar}>Editar</Button>
+      </div>
+      <dl className="grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-3 gap-y-1 text-sm [overflow-wrap:anywhere]">{children}</dl>
+    </div>
+  );
+}
+
+/** "Revise antes de firmar": what the person signs, with a shortcut back to each step. */
+function Revision({ v, fotos, mapa, onEditar }: { v: Valores; fotos: FotosPorFila; mapa: Map<string, Apu>; onEditar: (paso: number) => void }) {
   const d = v.diagnostico;
   const aplica = d.aplica === "si";
-  const filas = v.capitulos.reduce((s, c) => s + c.filas.length, 0);
+  const a = v.atiende;
+  const relacion = a.relacion === "otro" ? a.relacion_otro : RELACIONES_ATIENDE[a.relacion as keyof typeof RELACIONES_ATIENDE];
+  const p = presupuesto(v.capitulos, mapa);
   const totalFotos = conteosFotos(v.capitulos, fotos).reduce((s, n) => s + n, 0);
   return (
-    <section className="rounded-xl border border-border bg-surface p-4">
-      <h3 className="mb-2 text-lg font-bold text-primary-strong">Resumen</h3>
-      <dl className="grid grid-cols-[minmax(8rem,auto)_1fr] gap-x-3 gap-y-1 text-sm">
+    <section aria-labelledby="titulo-revision" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+      <h3 id="titulo-revision" className="text-lg font-bold text-primary-strong">Revise antes de firmar</h3>
+      <Bloque titulo="Anfitrión" onEditar={() => onEditar(0)}>
+        <dt className="text-muted">Atiende</dt>
+        <dd className="font-semibold">{a.nombre}{relacion && ` (${relacion})`}</dd>
         <dt className="text-muted">Propietario</dt>
         <dd className="font-semibold">{v.propietario.nombre}</dd>
         <dt className="text-muted">Dirección</dt>
         <dd className="font-semibold">{v.propietario.direccion}</dd>
+        <dt className="text-muted">Teléfono</dt>
+        <dd className="font-semibold">{v.propietario.telefono}</dd>
+      </Bloque>
+      <Bloque titulo="Diagnóstico" onEditar={() => onEditar(1)}>
         <dt className="text-muted">Aplica</dt>
         <dd className="font-semibold">
           {aplica
-            ? `Sí, para ${d.aplica_para.map((k) => APLICA_PARA[k as keyof typeof APLICA_PARA]).join(", ")} (${ALCANCES[d.alcance as keyof typeof ALCANCES] ?? ""})`
+            ? `Sí, para ${d.aplica_para.map((k) => APLICA_PARA[k as keyof typeof APLICA_PARA]).join(", ")}`
             : `No, por ${NO_APLICA_POR[d.no_aplica_por as keyof typeof NO_APLICA_POR] ?? ""}`}
         </dd>
         {aplica && (
           <>
-            <dt className="text-muted">Cantidades</dt>
-            <dd className="font-semibold">{v.capitulos.length} capítulos, {filas} actividades, {totalFotos} fotos</dd>
-            <dt className="text-muted">Costo directo</dt>
-            <dd className="font-semibold">{formatoCop(presupuesto(v.capitulos, mapa).costo_directo_total)}</dd>
+            <dt className="text-muted">Alcance</dt>
+            <dd className="font-semibold">{ALCANCES[d.alcance as keyof typeof ALCANCES] ?? ""}</dd>
           </>
         )}
-      </dl>
+      </Bloque>
+      {aplica && (
+        <Bloque titulo="Cantidades" onEditar={() => onEditar(2)}>
+          {v.capitulos.map((c, i) => (
+            <div key={c.id} className="contents">
+              <dt className="text-muted">{c.nombre || `Capítulo ${i + 1}`}</dt>
+              <dd className="font-semibold">{c.filas.length} actividades · {formatoCop(p.capitulos[i]?.subtotal ?? 0)}</dd>
+            </div>
+          ))}
+          <dt className="text-muted">Costo directo</dt>
+          <dd className="font-bold">{formatoCop(p.costo_directo_total)}</dd>
+          <dt className="text-muted">Fotos</dt>
+          <dd className="font-semibold">{totalFotos}</dd>
+        </Bloque>
+      )}
     </section>
   );
 }

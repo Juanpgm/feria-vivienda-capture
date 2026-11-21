@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Apu } from "../domain/apus";
-import { buscarApus, conteosFotos, construirManifiesto, dataUrlAPng, erroresPaso, formatoCop, opcionesApus, visitaVacia, type Valores } from "./armado";
+import { actividadesFrecuentes, buscarApus, capitulosSugeridos, conteosFotos, construirManifiesto, dataUrlAPng, erroresPaso, formatoCop, opcionesApus, visitaVacia, type Valores } from "./armado";
 
 const apu = (item: string, descripcion: string): Apu => ({ item, descripcion, und: "M2", costo_unitario: 1000, capitulo: "01", capitulo_nombre: "X" });
 
@@ -86,5 +86,28 @@ describe("dataUrlAPng", () => {
 
   it("rejects anything that is not a PNG data URL", () => {
     expect(() => dataUrlAPng("data:image/webp;base64,AAAA")).toThrow();
+  });
+});
+
+describe("actividadesFrecuentes (Sugerencias de APU)", () => {
+  const mapa = new Map(["100113", "310105", "200223", "190533", "250451"].map((i) => [i, apu(i, `APU ${i}`)]));
+  const sugeridos = { comunes: ["100113", "310105", "APU 117"], por_capitulo: { piso: ["200223"], bano: ["190533", "250451", "999999"] } };
+
+  it("offers the chapter's frequent items first, then the common ones, only if they are in the price list", () => {
+    expect(actividadesFrecuentes("Baño", sugeridos, mapa, []).map((a) => a.item)).toEqual(["190533", "250451", "100113", "310105"]);
+  });
+
+  it("leaves out the items already in the chapter", () => {
+    expect(actividadesFrecuentes("PISO", sugeridos, mapa, [{ id: "f", item: "200223", cantidad_expr: "" }]).map((a) => a.item)).toEqual(["100113", "310105"]);
+  });
+
+  it("offers only the common items for a chapter that is not an improvement", () => {
+    expect(actividadesFrecuentes("Preliminares", sugeridos, mapa, []).map((a) => a.item)).toEqual(["100113", "310105"]);
+  });
+});
+
+describe("capitulosSugeridos", () => {
+  it("creates one chapter per selected improvement, with its label", () => {
+    expect(capitulosSugeridos(["piso", "bano", "x"]).map((c) => [c.nombre, c.filas])).toEqual([["Piso", []], ["Baño", []]]);
   });
 });

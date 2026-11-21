@@ -1,7 +1,7 @@
 // Pure helpers of the visit form: form state shape, step validation, APU search and the submit manifest.
 import { filtrarOpciones, type OpcionBusqueda } from "@/shared/busqueda";
 import type { Apu } from "../domain/apus";
-import { OBSERVACIONES_PRESET } from "../domain/catalogos";
+import { APLICA_PARA, aplicaDeCapitulo, OBSERVACIONES_PRESET, type ClaveAplica } from "../domain/catalogos";
 import type { ArchivoManifiesto } from "../domain/envio";
 import { visitaSchema, type VisitaEntrada } from "../domain/visita";
 
@@ -56,6 +56,22 @@ export function buscarApus(opciones: OpcionApu[], consulta: string, limite = 20)
   if (consulta.trim().length < 2) return [];
   return filtrarOpciones(opciones, consulta, limite).map((o) => o.apu);
 }
+
+/** Shape of catalogo/sugeridos.json (scripts/build-sugeridos-apu.mjs). */
+export type Sugeridos = { comunes: string[]; por_capitulo: Partial<Record<string, string[]>> };
+
+/** "Actividades frecuentes" of a chapter: its own frequent ITEMs, then the common ones; only APUs in the loaded
+ * price list and not already in the chapter (repeating one stays possible through the search). */
+export function actividadesFrecuentes(nombreCapitulo: string, sugeridos: Sugeridos, mapa: Map<string, Apu>, filas: Fila[]): Apu[] {
+  const clave = aplicaDeCapitulo(nombreCapitulo);
+  const ya = new Set(filas.map((f) => f.item));
+  const items = new Set([...((clave && sugeridos.por_capitulo[clave]) || []), ...sugeridos.comunes]);
+  return [...items].filter((i) => !ya.has(i) && mapa.has(i)).map((i) => mapa.get(i)!);
+}
+
+/** One empty chapter per selected improvement, named with its label ("Crear capítulos sugeridos"). */
+export const capitulosSugeridos = (aplicaPara: string[]): Capitulo[] =>
+  aplicaPara.filter((k) => k in APLICA_PARA).map((k) => ({ id: crypto.randomUUID(), nombre: APLICA_PARA[k as ClaveAplica], filas: [] }));
 
 export const conteosFotos = (capitulos: Capitulo[], fotos: FotosPorFila) => capitulos.flatMap((c) => c.filas.map((f) => fotos[f.id]?.length ?? 0));
 

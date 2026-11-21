@@ -97,11 +97,17 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   // 3 Cantidades: one chapter, the same ITEM twice (memoria de cálculo), 4 + 3 photos
   await page.getByRole("button", { name: "Agregar capítulo" }).click();
   await page.getByPlaceholder("Nombre del capítulo").fill("PISOS");
-  for (const [k, cantidad] of ["3,5*4", "2"].entries()) {
+  await expect(page.getByText("Actividades frecuentes")).toBeVisible();
+  for (let k = 0; k < 2; k++) {
     await page.getByLabel("Buscar actividad por ITEM o descripción").fill(ITEM);
     await page.getByRole("button", { name: new RegExp(`^Agregar ${ITEM}`) }).click();
-    await page.getByPlaceholder("Ej.: (1,87+3,4)*2,7").nth(k).fill(cantidad);
   }
+  // Row 1 through the measurement calculator (M2: Largo × Ancho), row 2 typed.
+  await page.getByRole("button", { name: "Calcular" }).first().click();
+  await page.getByLabel("Largo, medida 1").fill("3,5");
+  await page.getByLabel("Ancho, medida 1").fill("4");
+  await expect(page.getByPlaceholder("Ej.: (1,87+3,4)*2,7").nth(0)).toHaveValue("(3,5*4)");
+  await page.getByPlaceholder("Ej.: (1,87+3,4)*2,7").nth(1).fill("2");
   const entradas = page.locator('input[type="file"][capture]');
   await expect(entradas).toHaveCount(2);
   const fotos = async (campo: Locator, desde: number, n: number) => {
@@ -118,8 +124,11 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   await expect(page.getByText("Fotos (opcionales): 7 de 30 como máximo")).toBeVisible();
   await expect(page.getByText(/Costo directo total:.*605\.712/)).toBeVisible();
   await sig();
-  // 4 Cierre
+  // 4 Cierre: review before signing
   await page.getByLabel("Observaciones").fill("Visita de prueba automatizada e2e (se borra).");
+  const revision = page.getByRole("region", { name: "Revise antes de firmar" });
+  await expect(revision.getByText("PISOS")).toBeVisible();
+  await expect(revision.getByText(/^2 actividades · .*605\.712$/)).toBeVisible();
   await firmar(page);
   await page.getByRole("button", { name: "Enviar visita" }).click();
   await expect(page.getByTestId("codigo-visita")).toHaveText(/MV-02\d{4}/, { timeout: 90_000 });
