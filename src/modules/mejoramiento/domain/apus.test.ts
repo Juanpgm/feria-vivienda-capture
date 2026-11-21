@@ -13,7 +13,13 @@ const hoja = [
   [10101, "LOCALIZACION Y REPLANTEO", "m2", 3500, null],
   [8.68, "MUROS DE TIERRA ESTABILIZADA MECÁNICAMENTE", null, null, null],
   [29, "PINTURA", null, null, null],
+  [2903, "VINILOS", null, null, null],
   [290304, "  ESTUCO Y PINTURA  VINILO ", "M2", 21000.4, null],
+  [8, "INFRAESTRUCTURA VIAL", null, null, null],
+  [8.2, "EXPLANACIONES", null, null, null],
+  [8.2, "DESMONTE Y LIMPIEZA", null, null, null],
+  [8.201, "DEMOLICIÓN Y REMOCIÓN", null, null, null],
+  [82002, "DESMONTE EN ZONA NO BOSCOSA", "HA", 900000, null],
   [240201, "DIVISION ALUM.-ACRILICO", "M2", 315438, null],
   [240201, "DIV.ALUM.-ACRILICO (repetido)", "M2", 315438, "APU 85"],
   ["SVSH", "APUS UTILIZADOS EN PROCESOS ANTERIORES SVSH - SMIL", null, null, null],
@@ -48,7 +54,7 @@ describe("construirApus", () => {
   const r = construirApus(hoja);
 
   it("keeps only priced rows, skipping title, header and chapter rows", () => {
-    expect(r.apus.map((a) => a.item)).toEqual(["ME0101", "010101", "290304", "240201", "APU 01", "36"]);
+    expect(r.apus.map((a) => a.item)).toEqual(["ME0101", "010101", "290304", "082002", "240201", "APU 01", "36"]);
   });
 
   it("maps ITEM, DESCRIPCION, UND and COSTO UNITARIO, rounding the price to whole pesos", () => {
@@ -59,6 +65,8 @@ describe("construirApus", () => {
       costo_unitario: 21000,
       capitulo: "29",
       capitulo_nombre: "PINTURA",
+      subcapitulo: "2903",
+      subcapitulo_nombre: "VINILOS",
     });
   });
 
@@ -75,3 +83,27 @@ describe("construirApus", () => {
     expect(r.omitidas).toEqual(["290305"]);
   });
 });
+
+describe("subcapítulos (chapter > subchapter > item hierarchy of LISTADO DE PRECIOS)", () => {
+  const r = construirApus(hoja);
+  const sub = (item: string) => r.apus.find((a) => a.item === item);
+
+  it("takes the subchapter from the first 4 characters of the code, named by its header row", () => {
+    expect(sub("ME0101")).toMatchObject({ subcapitulo: "ME01", subcapitulo_nombre: "CONCRETOS" });
+    expect(sub("010101")).toMatchObject({ subcapitulo: "0101", subcapitulo_nombre: "ACTIVIDADES PRELIMINARES" });
+  });
+
+  it("reads decimal headers of chapter 08 (8.2 -> 0820), the last header with that code wins, deeper levels are ignored", () => {
+    expect(sub("082002")).toMatchObject({ capitulo: "08", subcapitulo: "0820", subcapitulo_nombre: "DESMONTE Y LIMPIEZA" });
+  });
+
+  it("an item without a named subchapter header gets a generic name", () => {
+    expect(sub("240201")).toMatchObject({ subcapitulo: "2402", subcapitulo_nombre: "Subcapítulo 2402" });
+  });
+
+  it("lists without subchapters (SVSH APUs, SIM) use the chapter itself as their only subchapter", () => {
+    expect(sub("APU 01")).toMatchObject({ subcapitulo: "SVSH", subcapitulo_nombre: "APUS UTILIZADOS EN PROCESOS ANTERIORES SVSH - SMIL" });
+    expect(sub("36")).toMatchObject({ subcapitulo: "SIM", subcapitulo_nombre: "SECRETARIA DE INFRAESTRUCTURA MUNICIPAL" });
+  });
+});
+

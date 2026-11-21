@@ -10,6 +10,12 @@ export type Apu = {
   costo_unitario: number;
   capitulo: string;
   capitulo_nombre: string;
+  /**
+   * Subchapter of LISTADO DE PRECIOS (first 4 characters of the code, e.g. "2001"); lists without subchapters use the
+   * chapter. Optional: APUs imported before subchapters existed lack it (readers fall back to the chapter).
+   */
+  subcapitulo?: string;
+  subcapitulo_nombre?: string;
   /** Origin reference of the SVSH APUs (column E, e.g. "INP 2"). */
   fuente?: string;
 };
@@ -47,8 +53,26 @@ function claveEncabezado(codigo: unknown): string | null {
   return /^[A-Z]{2,4}$/.test(c) ? c : null;
 }
 
+/**
+ * Subchapter header code: a 4-digit number ("2001"/2001), a letter prefix ("ME01"), or chapter 08's decimal notation
+ * (8.2 -> "0820", 8.21 -> "0821"). Deeper levels (8.201) are not subchapters.
+ */
+function claveSubcapitulo(codigo: unknown): string | null {
+  if (typeof codigo === "number") {
+    if (Number.isInteger(codigo)) return codigo >= 100 && codigo < 10000 ? String(codigo).padStart(4, "0") : null;
+    const [entero, decimales = ""] = String(codigo).split(".");
+    return decimales.length <= 2 ? entero.padStart(2, "0") + decimales.padEnd(2, "0") : null;
+  }
+  const c = texto(codigo).toUpperCase();
+  return /^(\d{4}|[A-Z]{2}\d{2})$/.test(c) ? c : null;
+}
+
+/** "200101" -> "2001", "ME0101" -> "ME01"; codes without that shape (APU 01, SIM items) have none. */
+const subcapituloDe = (item: string) => (/^(\d{6}|[A-Z]{2}\d{4})$/.test(item) ? item.slice(0, 4) : null);
+
 export function construirApus(filas: unknown[][]): { apus: Apu[]; duplicados: string[]; omitidas: string[] } {
   const nombres = new Map<string, string>();
+  const subnombres = new Map<string, string>();
   const apus: Apu[] = [];
   const vistos = new Set<string>();
   const duplicados: string[] = [];
@@ -59,6 +83,8 @@ export function construirApus(filas: unknown[][]): { apus: Apu[]; duplicados: st
     if (und == null || und === "") {
       const clave = claveEncabezado(codigo);
       if (clave && !nombres.has(clave) && descripcion) nombres.set(clave, texto(descripcion));
+      const subclave = claveSubcapitulo(codigo);
+      if (subclave && descripcion) subnombres.set(subclave, texto(descripcion)); // last header with the code wins
       continue;
     }
     const item = normalizarItem(codigo);
@@ -73,6 +99,8 @@ export function construirApus(filas: unknown[][]): { apus: Apu[]; duplicados: st
     }
     vistos.add(item);
     const capitulo = capituloDe(item);
+    const capitulo_nombre = nombres.get(capitulo) ?? capitulo;
+    const sc = subcapituloDe(item);
     const ref = texto(fuente);
     apus.push({
       item,
@@ -80,7 +108,9 @@ export function construirApus(filas: unknown[][]): { apus: Apu[]; duplicados: st
       und: normalizarUnidad(und),
       costo_unitario: Math.round(costo),
       capitulo,
-      capitulo_nombre: nombres.get(capitulo) ?? capitulo,
+      capitulo_nombre,
+      subcapitulo: sc ?? capitulo,
+      subcapitulo_nombre: sc ? (subnombres.get(sc) ?? `Subcapítulo ${sc}`) : capitulo_nombre,
       ...(ref && { fuente: ref }),
     });
   }
