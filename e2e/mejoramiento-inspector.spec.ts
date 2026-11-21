@@ -245,7 +245,7 @@ test("6-7. acceso ajeno y reintento idempotente (API)", async ({ page }) => {
 test("8. Mi cuenta: resumen de levantamientos, enlace al listado y PDF (sin repetir la lista)", async ({ page }) => {
   await page.goto("/cuenta");
   await expect(page.getByRole("heading", { name: "Mis levantamientos" })).toBeVisible();
-  await expect(page.getByText(/1 levantamiento ·/)).toBeVisible();
+  await expect(page.getByText(/\d+ levantamientos? ·/)).toBeVisible(); // the account may hold earlier test data
   await expect(page.getByText(codigo)).toHaveCount(0); // the list lives in /mejoramiento only
   await expect(page.getByRole("link", { name: "Ver mis levantamientos" })).toHaveAttribute("href", "/mejoramiento");
   const [descarga] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Descargar informe PDF" }).click()]);
