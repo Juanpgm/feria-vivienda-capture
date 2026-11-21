@@ -12,7 +12,7 @@ describe("presigned PUT URL", () => {
     const { url } = await firmarSubida("visitas-profesionales/MV-000001/registro-fotografico/MV-000001_290304_01.jpg", "image/jpeg", 1234);
     const u = new URL(url);
     expect(u.host).toBe("mejoramiento-vivienda.s3.us-east-1.amazonaws.com");
-    expect(u.searchParams.get("X-Amz-SignedHeaders")?.split(";")).toEqual(expect.arrayContaining(["content-length", "content-type", "host"]));
+    expect(u.searchParams.get("X-Amz-SignedHeaders")?.split(";")).toEqual(expect.arrayContaining(["content-length", "content-type", "host", "if-none-match"]));
     expect([...u.searchParams.keys()].filter((k) => k.toLowerCase().includes("checksum"))).toEqual([]);
   });
 });

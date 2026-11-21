@@ -6,21 +6,13 @@ import { post } from "@/modules/auth/ui/post";
 import { ErrorFoto, procesarArchivo } from "@/modules/documentos/ui/procesarImagen";
 import { Button } from "@/shared/ui/Button";
 import { MAX_BYTES_ARCHIVO, MAX_CROQUIS } from "../domain/fotos";
+import { subir } from "./enviarVisita";
 
 type Elegido = { ref: string; blob: Blob; nombre: string; vista: string | null };
 type Subida = { ref: string; url: string; headers: Record<string, string> };
 
 const esPdf = async (f: Blob) => new TextDecoder().decode(await f.slice(0, 5).arrayBuffer()) === "%PDF-";
 
-/** PUT with two retries; the presigned URL stays valid for 15 minutes. */
-async function subir({ url, headers }: Subida, blob: Blob) {
-  for (let intento = 0; ; intento++) {
-    const r = await fetch(url, { method: "PUT", headers, body: blob }).catch(() => null);
-    if (r?.ok) return;
-    if (intento === 2) throw new Error("subida");
-    await new Promise((ok) => setTimeout(ok, 1000 * (intento + 1)));
-  }
-}
 
 /**
  * "Cargar croquis" button + native modal dialog (S5): drag and drop or file picker, up to 4 images/PDFs,
@@ -99,7 +91,7 @@ export function ModalCroquis({ id, codigo, onListo }: { id: string; codigo: stri
     try {
       let n = 0;
       for (const s of r.data.subidas as Subida[]) {
-        await subir(s, elegidos.find((e) => e.ref === s.ref)!.blob);
+        await subir(s.url, s.headers, elegidos.find((e) => e.ref === s.ref)!.blob);
         setEstado(`Subiendo croquis... ${++n} de ${elegidos.length}`);
       }
     } catch {

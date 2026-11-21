@@ -19,10 +19,10 @@ describe("s3 helpers", () => {
   it("signs a PUT bound to key, content type and exact size for 15 minutes", async () => {
     const r = await firmarSubida("visitas-profesionales/MV-000001/registro-fotografico/a.jpg", "image/jpeg", 1234);
     const [, cmd, opciones] = getSignedUrl.mock.calls[0] as unknown as [unknown, { input: Record<string, unknown> }, { expiresIn: number; signableHeaders: Set<string> }];
-    expect(cmd.input).toEqual({ Bucket: "mejoramiento-vivienda", Key: "visitas-profesionales/MV-000001/registro-fotografico/a.jpg", ContentType: "image/jpeg", ContentLength: 1234 });
+    expect(cmd.input).toEqual({ Bucket: "mejoramiento-vivienda", Key: "visitas-profesionales/MV-000001/registro-fotografico/a.jpg", ContentType: "image/jpeg", ContentLength: 1234, IfNoneMatch: "*" });
     expect(opciones.expiresIn).toBe(900);
-    expect([...opciones.signableHeaders]).toEqual(["content-type", "content-length"]);
-    expect(r.headers).toEqual({ "Content-Type": "image/jpeg" });
+    expect([...opciones.signableHeaders]).toEqual(["content-type", "content-length", "if-none-match"]);
+    expect(r.headers).toEqual({ "Content-Type": "image/jpeg", "If-None-Match": "*" }); // create-only: no overwrite
   });
 
   it("HeadObject: size/type when present, null when missing (404 or 403), rethrows other errors", async () => {

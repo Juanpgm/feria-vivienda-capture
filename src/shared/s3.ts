@@ -23,9 +23,11 @@ export function bucket(): string {
  * browser cannot upload a different type or a bigger file under that URL).
  */
 export async function firmarSubida(key: string, contentType: string, bytes: number) {
-  const cmd = new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: contentType, ContentLength: bytes });
-  const url = await getSignedUrl(s3(), cmd, { expiresIn: SUBIDA_SEGUNDOS, signableHeaders: new Set(["content-type", "content-length"]) });
-  return { url, headers: { "Content-Type": contentType } };
+  // If-None-Match: * (signed) makes the write create-only: once a file is stored, no URL can overwrite it. A retry of
+  // an upload that already landed answers 412, which the client treats as "already there".
+  const cmd = new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: contentType, ContentLength: bytes, IfNoneMatch: "*" });
+  const url = await getSignedUrl(s3(), cmd, { expiresIn: SUBIDA_SEGUNDOS, signableHeaders: new Set(["content-type", "content-length", "if-none-match"]) });
+  return { url, headers: { "Content-Type": contentType, "If-None-Match": "*" } };
 }
 
 /** Server-side upload for small files the server already validated (the inspector's signature). */

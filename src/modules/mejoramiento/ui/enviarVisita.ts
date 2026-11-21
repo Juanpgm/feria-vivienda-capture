@@ -11,11 +11,14 @@ async function json(url: string, body?: unknown): Promise<{ ok: boolean; status:
   return { ok: res.ok, status: res.status, data: (await res.json().catch(() => ({}))) as Record<string, unknown> };
 }
 
-/** PUT with two retries (spotty field connections); the presigned URL stays valid for 15 minutes. */
-async function subir(url: string, headers: Record<string, string>, blob: Blob) {
+/**
+ * PUT with two retries (spotty field connections); the presigned URL stays valid for 15 minutes. Uploads are
+ * create-only (If-None-Match: *): 412 means an earlier attempt already stored this file, so it counts as done.
+ */
+export async function subir(url: string, headers: Record<string, string>, blob: Blob) {
   for (let intento = 0; ; intento++) {
     const r = await fetch(url, { method: "PUT", headers, body: blob }).catch(() => null);
-    if (r?.ok) return;
+    if (r?.ok || r?.status === 412) return;
     if (intento === 2) throw new Error("subida");
     await new Promise((ok) => setTimeout(ok, 1000 * (intento + 1)));
   }
