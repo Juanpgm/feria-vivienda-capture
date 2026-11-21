@@ -2,6 +2,8 @@
 
 import { signInWithEmailAndPassword, signOut, updatePassword } from "firebase/auth";
 import { useState, type FormEvent } from "react";
+import type { FilaVisita } from "@/modules/mejoramiento/server/visitas.repo";
+import { MisVisitas } from "@/modules/mejoramiento/ui/MisVisitas";
 import { clienteAuth } from "@/shared/firebase/cliente";
 import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
@@ -20,6 +22,8 @@ export type DatosCuenta = {
   cargo: string | null;
   solicitud: { rol_solicitado: Rol; motivo: string } | null;
   solicitables: Rol[];
+  /** Inspectors only: their visits for "Mis visitas" (S9 9.4). */
+  visitas?: FilaVisita[];
 };
 
 /** Error + success line shared by the three forms (announced politely). */
@@ -200,6 +204,11 @@ export function MiCuenta({ d }: { d: DatosCuenta }) {
           <p className="text-sm text-muted">Usted ingresa con su cuenta de Google; la contraseña se administra en Google.</p>
         )}
       </Card>
+      {d.visitas && (
+        <Card title="Mis visitas">
+          <MisVisitas filas={d.visitas} inspector={{ nombre: d.nombre, cargo: d.cargo }} />
+        </Card>
+      )}
       <Card title="Solicitar cambio de rol">
         <FormSolicitud d={d} />
       </Card>
