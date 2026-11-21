@@ -6,6 +6,7 @@ import { useError } from "@/modules/registro/ui/campos";
 import {
   CONSENTIMIENTO_VERSION, ETIQUETA_SENSIBLES, ETIQUETA_TRATAMIENTO, POLITICA_URL, SECCIONES_TEXTO,
 } from "../domain/texto";
+import { IconoChevronAbajo } from "@/shared/ui/Iconos";
 
 const P = "consentimiento.";
 
@@ -60,7 +61,7 @@ export function PasoConsentimiento({ plegable = false }: { plegable?: boolean } 
           <details className="group rounded-lg border border-border">
             <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 font-semibold text-primary [&::-webkit-details-marker]:hidden">
               Ver la política de tratamiento de datos personales
-              <span aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none">▾</span>
+              <IconoChevronAbajo className="size-5 transition-transform group-open:rotate-180 motion-reduce:transition-none" />
             </summary>
             <div className="border-t border-border px-4 py-4">{texto}</div>
           </details>

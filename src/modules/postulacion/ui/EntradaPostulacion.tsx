@@ -9,6 +9,7 @@ import { Select } from "@/shared/ui/Select";
 import { ESTADOS_POSTULACION, TIPOS_DOCUMENTO_SOLICITANTE, opciones, type EstadoPostulacion } from "../domain/catalogos";
 import { DOCUMENTACION, DOCUMENTACION_NOTA, DOCUMENTACION_TITULO } from "../domain/texto";
 import { FormularioPostulacion } from "./FormularioPostulacion";
+import { IconoCheck } from "@/shared/ui/Iconos";
 
 type Existente = { radicado: string; estado: EstadoPostulacion; id?: string };
 
@@ -123,7 +124,7 @@ export function EntradaPostulacion({ uid, publico }: { uid: string; publico: boo
               <p className="mt-1 text-muted">Se le pedirá:</p>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {DOCUMENTACION.map((d) => (
-                  <li key={d} className="flex gap-2"><span aria-hidden="true" className="text-primary">✓</span>{d}</li>
+                  <li key={d} className="flex gap-2"><IconoCheck className="mt-1 size-4 text-primary" />{d}</li>
                 ))}
               </ul>
               <p className="mt-3 text-muted">{DOCUMENTACION_NOTA} Toma unos 12 minutos y lo que escriba se guarda en este equipo, así que puede retomarlo.</p>

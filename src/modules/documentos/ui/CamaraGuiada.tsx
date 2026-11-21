@@ -312,9 +312,9 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
                 Volver a la detección automática
               </Button>
             </div>
-            <ul className="text-sm text-white/90">
-              <li>• Solo se guarda lo que quede dentro del marco: acomode la cédula para que llene el marco y se vean sus cuatro bordes.</li>
-              <li>• Con buena luz y sin reflejos.</li>
+            <ul className="list-disc pl-5 text-sm text-white/90">
+              <li>Solo se guarda lo que quede dentro del marco: acomode la cédula para que llene el marco y se vean sus cuatro bordes.</li>
+              <li>Con buena luz y sin reflejos.</li>
             </ul>
           </>
         ) : (
@@ -356,9 +356,9 @@ export function CamaraGuiada({ tipo, alAceptar, alCerrar }: { tipo: TipoFoto; /*
                 {luz === "poca" ? "Hay poca luz. Busque un lugar más iluminado o encienda una luz." : "Hay demasiada luz o reflejo. Incline un poco la cédula para evitar el brillo."}
               </p>
             )}
-            <ul className="text-sm text-white/90">
-              <li>• Ponga la cédula {tipo === "documento_frente" ? "con su foto hacia arriba" : "del lado del código de barras"}, sobre un fondo de otro color.</li>
-              <li>• Sin reflejos, y que el texto se lea. Se toma sola al detectarla; si prefiere, use «Tomar foto manualmente» y encuádrela usted.</li>
+            <ul className="list-disc pl-5 text-sm text-white/90">
+              <li>Ponga la cédula {tipo === "documento_frente" ? "con su foto hacia arriba" : "del lado del código de barras"}, sobre un fondo de otro color.</li>
+              <li>Sin reflejos, y que el texto se lea. Se toma sola al detectarla; si prefiere, use «Tomar foto manualmente» y encuádrela usted.</li>
             </ul>
           </>
         )}

@@ -4,6 +4,7 @@ import { tieneRol } from "@/modules/auth/domain/roles";
 import { sesionOLogin } from "@/modules/auth/server/guard";
 import { obtenerPostulacion } from "@/modules/postulacion/server/postulaciones.repo";
 import { DetallePostulacion } from "@/modules/postulacion/ui/DetallePostulacion";
+import { IconoFlechaIzquierda } from "@/shared/ui/Iconos";
 
 export const metadata = { title: "Postulación" };
 
@@ -15,7 +16,8 @@ export default async function VerPostulacion({ params }: { params: Promise<{ id:
   return (
     <div className="flex flex-col gap-4">
       <Link href="/postulaciones" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline underline-offset-2">
-        ← Volver a postulaciones
+        <IconoFlechaIzquierda className="mr-1 size-4 align-[-2px]" />
+        Volver a postulaciones
       </Link>
       <DetallePostulacion p={p} esAdmin={tieneRol(sesion.rol, "admin")} />
     </div>

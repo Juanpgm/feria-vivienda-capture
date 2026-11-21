@@ -26,6 +26,7 @@ import { PasoHogar } from "./PasoHogar";
 import { PasoSolicitante } from "./PasoSolicitante";
 import { PasoSubsidio } from "./PasoSubsidio";
 import { QrPostulacion } from "./QrPostulacion";
+import { IconoCheck } from "@/shared/ui/Iconos";
 
 const PASOS = [
   { id: "solicitante", corto: "Usted", titulo: "Datos del solicitante", descripcion: "Primero autorice el uso de sus datos. Luego, quién se postula como jefe del hogar, dónde vive y las fotos de su documento.", minutos: 5, secciones: ["consentimiento", "solicitante", "documentos"] },
@@ -254,7 +255,7 @@ function Formulario({ uid, documento, inicial, publico, edicion }: { uid: string
                           : "border-border bg-bg text-muted"
                         }`}
                       >
-                        {hecho ? "✓" : i + 1}
+                        {hecho ? <IconoCheck className="size-3.5" /> : i + 1}
                       </span>
                       <span className={`text-xs leading-tight sm:text-sm ${actual ? "font-bold text-primary-strong" : hecho ? "font-semibold text-text" : "sr-only text-muted sm:not-sr-only"}`}>{p.corto}</span>
                     </button>

@@ -4,6 +4,7 @@ import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { filtrarOpciones, type OpcionBusqueda } from "../busqueda";
 import { alternarSeleccion } from "../seleccionMultiple";
 import { controlClass, Field } from "./Field";
+import { IconoCerrar, IconoCheck } from "@/shared/ui/Iconos";
 
 type Props = {
   label: string;
@@ -97,7 +98,7 @@ export function MultiSelect({ label, hint, error, options, value, onChange, onBl
                     className="flex min-h-11 items-center gap-2 rounded-lg border border-primary bg-surface px-3 text-left text-base text-text"
                   >
                     {o.label}
-                    <span aria-hidden="true" className="text-lg leading-none text-muted">×</span>
+                    <IconoCerrar className="size-4 text-muted" />
                   </button>
                 </li>
               ))}
@@ -153,7 +154,7 @@ export function MultiSelect({ label, hint, error, options, value, onChange, onBl
                     onMouseEnter={() => setActivo(i)}
                     className={`flex min-h-11 cursor-pointer items-center gap-3 px-3 text-base ${i === indice ? "bg-primary text-on-primary" : "text-text"} ${marcada ? "font-semibold" : ""}`}
                   >
-                    <span aria-hidden="true" className="w-4 flex-none text-center">{marcada ? "✓" : ""}</span>
+                    <span className="w-4 flex-none">{marcada && <IconoCheck className="size-4" />}</span>
                     {o.label}
                   </li>
                 );

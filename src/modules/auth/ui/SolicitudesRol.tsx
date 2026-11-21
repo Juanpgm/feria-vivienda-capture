@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui/Button";
 import { Card } from "@/shared/ui/Card";
 import { ETIQUETA_ROL, type Rol } from "../domain/roles";
 import { post } from "./post";
+import { IconoFlechaDerecha } from "@/shared/ui/Iconos";
 
 type Solicitud = { uid: string; nombre: string; correo: string; rol_actual: Rol; rol_solicitado: Rol; motivo: string };
 
@@ -65,7 +66,9 @@ export function SolicitudesRol({ onResuelta }: { onResuelta: (mensaje: string) =
                 {s.nombre} <span className="font-normal text-muted">· {s.correo}</span>
               </p>
               <p>
-                {ETIQUETA_ROL[s.rol_actual]} → <span className="font-semibold">{ETIQUETA_ROL[s.rol_solicitado]}</span>
+                {ETIQUETA_ROL[s.rol_actual]} <IconoFlechaDerecha className="mx-1 size-4 align-[-2px]" />
+                <span className="sr-only">a </span>
+                <span className="font-semibold">{ETIQUETA_ROL[s.rol_solicitado]}</span>
               </p>
               <p className="text-muted">Motivo: {s.motivo}</p>
             </div>

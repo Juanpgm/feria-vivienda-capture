@@ -20,6 +20,7 @@ import { enviarVisita, type ProgresoEnvio } from "./enviarVisita";
 import { cargarFotoVisita, quitarFotosVisita } from "./fotosVisita";
 import { PasoCantidades, presupuesto, useApus } from "./PasoCantidades";
 import { PasoDiagnostico } from "./PasoDiagnostico";
+import { IconoCheck } from "@/shared/ui/Iconos";
 
 const PASOS = [
   { corto: "Anfitrión", titulo: "Anfitrión", descripcion: "Quién recibe al inspector en el predio y los datos del propietario." },
@@ -253,9 +254,7 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
               >
                 <span aria-hidden="true" className={`grid size-7 place-items-center rounded-full border-2 text-xs font-bold ${i === paso ? "border-primary bg-primary text-on-primary" : i < paso ? "border-primary text-primary" : "border-border text-muted"}`}>
                   {i < paso ? (
-                    <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 8.5l3.2 3L13 4.5" />
-                    </svg>
+                    <IconoCheck className="size-3.5" />
                   ) : (
                     n + 1
                   )}

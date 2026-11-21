@@ -12,6 +12,7 @@ import { cargarBorrador, descartarBorrador, guardarBorrador, VERSION_BORRADOR, t
 import { useModo } from "./modo";
 import { VISTAS } from "./vistas";
 import { ETIQUETA_ESTADO, estadoPaso, PASOS, validarPaso, type Marca, type Valores } from "./pasos";
+import { IconoCheck } from "@/shared/ui/Iconos";
 
 export const nuevoBorrador = (id: string): Borrador => ({
   id,
@@ -249,7 +250,7 @@ function Formulario({ uid, inicial, recuperado }: { uid: string; inicial: Borrad
                         : "border-border text-muted"
                       }`}
                     >
-                      {e === "completo" ? "✓" : i + 1}
+                      {e === "completo" ? <IconoCheck className="size-3.5" /> : i + 1}
                     </span>
                     <span className={`text-sm ${e === "en_curso" ? "font-bold" : "font-semibold"}`}>{p.titulo}</span>
                     <span className={`text-sm ${e === "con_errores" ? "text-danger" : "text-muted"}`}>{ETIQUETA_ESTADO[e]}</span>
