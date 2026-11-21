@@ -6,6 +6,7 @@ import { Card } from "@/shared/ui/Card";
 import { ALCANCES, APLICA_PARA, ESTADOS, NO_APLICA_POR, RELACIONES_ATIENDE, SECCIONES, SI_NO, TIPOS_DOCUMENTO, type Pregunta } from "../domain/catalogos";
 import type { VisitaDoc } from "../server/visitas.repo";
 import { formatoCop } from "./armado";
+import { GaleriaFotos } from "./GaleriaFotos";
 import { ETIQUETA_ESTADO } from "./informe";
 import { BadgeCroquis } from "./ListadoVisitas";
 import { ModalCroquis } from "./ModalCroquis";
@@ -140,13 +141,9 @@ export function DetalleVisita({ v, id, urls }: { v: VisitaDoc; id: string; urls:
                     <td className="py-2 pr-3">{f.item}</td>
                     <td className="py-2 pr-3">
                       {f.descripcion}
-                      {fotos(f.id).length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {fotos(f.id).map((a, i) => (
-                            <Imagen key={a.key} url={urls[a.key]} alt={`Foto ${i + 1} de ${f.item}`} className="h-20 w-20" />
-                          ))}
-                        </div>
-                      )}
+                      <div className="mt-1">
+                        <GaleriaFotos item={f.item} titulo={f.descripcion} fotos={fotos(f.id).map((a, i) => ({ src: urls[a.key], alt: `Foto ${i + 1} de ${f.item} ${f.descripcion}` }))} />
+                      </div>
                     </td>
                     <td className="py-2 pr-3">{f.und}</td>
                     <td className="py-2 pr-3 text-right">

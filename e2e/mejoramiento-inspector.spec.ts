@@ -98,10 +98,15 @@ test("2. nueva visita: 4 pasos (Anfitrión), 7 fotos opcionales, envío", async 
   await page.getByRole("button", { name: "Agregar capítulo" }).click();
   await page.getByPlaceholder("Nombre del capítulo").fill("PISOS");
   await expect(page.getByText("Actividades frecuentes")).toBeVisible();
-  for (let k = 0; k < 2; k++) {
-    await page.getByLabel("Buscar actividad por ITEM o descripción").fill(ITEM);
-    await page.getByRole("button", { name: new RegExp(`^Agregar ${ITEM}`) }).click();
-  }
+  // The picker modal: first by search from the root, then it reopens in the last subchapter (20 › 2001).
+  const selector = page.getByRole("dialog", { name: "Elegir actividad" });
+  await page.getByRole("button", { name: "Agregar actividad" }).click();
+  await selector.getByRole("searchbox").fill(ITEM);
+  await selector.getByRole("button", { name: new RegExp(`^${ITEM}`) }).click();
+  await expect(selector).toBeHidden();
+  await page.getByRole("button", { name: "Agregar actividad" }).click();
+  await expect(selector.getByRole("navigation").getByText(/^2001 /)).toBeVisible();
+  await selector.getByRole("button", { name: new RegExp(`^${ITEM}`) }).click();
   // Row 1 through the measurement calculator (M2: Largo × Ancho), row 2 typed.
   await page.getByRole("button", { name: "Calcular" }).first().click();
   await page.getByLabel("Largo, medida 1").fill("3,5");

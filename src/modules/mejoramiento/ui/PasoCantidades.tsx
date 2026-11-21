@@ -12,8 +12,11 @@ import { costoDirecto } from "../domain/costos";
 import { erroresFotos, MAX_FOTOS_ITEM, MAX_FOTOS_VISITA } from "../domain/fotos";
 import { dimensionesDe, expresionMedidas, type Dimension, type Medida } from "../domain/medidas";
 import { armarPresupuesto, type Visita } from "../domain/visita";
-import { actividadesFrecuentes, buscarApus, capitulosSugeridos, conteosFotos, formatoCop, opcionesApus, type Capitulo, type Fila, type FotoMeta, type FotosPorFila } from "./armado";
+import { actividadesFrecuentes, capitulosSugeridos, conteosFotos, formatoCop, opcionesApus, type Capitulo, type Fila, type FotoMeta, type FotosPorFila } from "./armado";
+import { arbolApus } from "./arbolApus";
 import { cargarFotoVisita, guardarFotoVisita, quitarFotosVisita } from "./fotosVisita";
+import { GaleriaFotos } from "./GaleriaFotos";
+import { SelectorApu } from "./SelectorApu";
 
 // The catalogue is fetched once per page load and shared by every step that prices rows.
 let catalogo: Promise<Apu[]> | null = null;
@@ -52,6 +55,7 @@ type Props = {
 export function PasoCantidades({ visitaId, aplicaPara, capitulos, onChange, fotos, onFotos, errores }: Props) {
   const { apus, error, mapa } = useApus();
   const opciones = useMemo(() => opcionesApus(apus ?? []), [apus]);
+  const arbol = useMemo(() => arbolApus(apus ?? []), [apus]);
   const p = presupuesto(capitulos, mapa);
   const conteos = conteosFotos(capitulos, fotos);
   const totalFotos = conteos.reduce((s, n) => s + n, 0);
@@ -101,7 +105,7 @@ export function PasoCantidades({ visitaId, aplicaPara, capitulos, onChange, foto
           </div>
           {errores[`capitulos.${i}.nombre`] && <p role="alert" className="text-sm font-medium text-danger">{errores[`capitulos.${i}.nombre`]}</p>}
 
-          <BuscadorApu disabled={!apus} buscar={(q) => buscarApus(opciones, q)} onAgregar={(a) => cambiar(i, { ...c, filas: [...c.filas, nuevaFila(a.item)] })} />
+          <SelectorApu clave={c.id} arbol={arbol} opciones={opciones} disabled={!apus} onElegir={(a) => cambiar(i, { ...c, filas: [...c.filas, nuevaFila(a.item)] })} />
           <Frecuentes apus={actividadesFrecuentes(c.nombre, sugeridos, mapa, c.filas)} onAgregar={(a) => cambiar(i, { ...c, filas: [...c.filas, nuevaFila(a.item)] })} />
 
           {c.filas.length > 0 && (
@@ -155,34 +159,6 @@ export function PasoCantidades({ visitaId, aplicaPara, capitulos, onChange, foto
         </p>
         {errores.fotos && <p role="alert" className="font-medium text-danger">{errores.fotos}</p>}
       </div>
-    </div>
-  );
-}
-
-function BuscadorApu({ buscar, onAgregar, disabled }: { buscar: (q: string) => Apu[]; onAgregar: (a: Apu) => void; disabled: boolean }) {
-  const [q, setQ] = useState("");
-  const resultados = buscar(q);
-  return (
-    <div className="flex flex-col gap-2">
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-semibold">Buscar actividad por ITEM o descripción</span>
-        <input type="search" className={controlClass} value={q} disabled={disabled} placeholder="Ej.: 240201 o excavación" onChange={(e) => setQ(e.target.value)} />
-      </label>
-      {q.trim().length >= 2 && (
-        <ul className="max-h-72 overflow-auto rounded-lg border border-border bg-bg">
-          {resultados.map((a) => (
-            <li key={a.item} className="flex items-center gap-3 border-b border-border px-3 py-2 last:border-0">
-              <span className="min-w-0 flex-1 text-sm">
-                <span className="font-semibold">{a.item}</span> · {a.descripcion} <span className="text-muted">({a.und}, {formatoCop(a.costo_unitario)})</span>
-              </span>
-              <Button variant="secondary" aria-label={`Agregar ${a.item} ${a.descripcion}`} onClick={() => onAgregar(a)}>
-                Agregar
-              </Button>
-            </li>
-          ))}
-          {!resultados.length && <li className="px-3 py-2 text-sm text-muted">Sin resultados</li>}
-        </ul>
-      )}
     </div>
   );
 }
@@ -272,7 +248,7 @@ function FilaCantidad({ f, apu, error, onChange, onQuitar, visitaId, fotos, onFo
       <tr className="block md:table-row">
         <td colSpan={7} className="block pb-2 md:table-cell">
           {dims && calcular && <Calculadora item={f.item} und={apu!.und} dims={dims} medidas={medidas} onChange={medir} />}
-          <FotosFila visitaId={visitaId} item={f.item} fotos={fotos} onFotos={onFotos} lleno={totalVisita >= MAX_FOTOS_VISITA} />
+          <FotosFila visitaId={visitaId} item={f.item} descripcion={apu?.descripcion ?? ""} fotos={fotos} onFotos={onFotos} lleno={totalVisita >= MAX_FOTOS_VISITA} />
         </td>
       </tr>
     </tbody>
@@ -314,7 +290,7 @@ function Calculadora({ item, und, dims, medidas, onChange }: { item: string; und
   );
 }
 
-function FotosFila({ visitaId, item, fotos, onFotos, lleno }: { visitaId: string; item: string; fotos: FotoMeta[]; onFotos: (f: FotoMeta[]) => void; lleno: boolean }) {
+function FotosFila({ visitaId, item, descripcion, fotos, onFotos, lleno }: { visitaId: string; item: string; descripcion: string; fotos: FotoMeta[]; onFotos: (f: FotoMeta[]) => void; lleno: boolean }) {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [aviso, setAviso] = useState("");
   const [procesando, setProcesando] = useState(false);
@@ -360,27 +336,16 @@ function FotosFila({ visitaId, item, fotos, onFotos, lleno }: { visitaId: string
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        {fotos.map((x, n) => (
-          <div key={x.ref} className="relative">
-            {urls[x.ref] ? (
-              // eslint-disable-next-line @next/next/no-img-element -- local blob URL
-              <img src={urls[x.ref]} alt={`Foto ${n + 1} de ${item}`} className="size-20 rounded-md border border-border object-cover" />
-            ) : (
-              <div className="grid size-20 place-items-center rounded-md border border-border text-xs text-muted">Foto {n + 1}</div>
-            )}
-            <button
-              type="button"
-              aria-label={`Quitar foto ${n + 1} de ${item}`}
-              onClick={() => {
-                void quitarFotosVisita(visitaId, [x.ref]);
-                onFotos(fotos.filter((y) => y.ref !== x.ref));
-              }}
-              className="absolute -right-2 -top-2 grid size-8 place-items-center rounded-full border border-border bg-bg text-lg leading-none"
-            >
-              ×
-            </button>
-          </div>
-        ))}
+        <GaleriaFotos
+          item={item}
+          titulo={descripcion}
+          fotos={fotos.map((x, n) => ({ src: urls[x.ref], alt: `Foto ${n + 1} de ${item} ${descripcion}` }))}
+          onQuitar={(n) => {
+            const x = fotos[n];
+            void quitarFotosVisita(visitaId, [x.ref]);
+            onFotos(fotos.filter((y) => y.ref !== x.ref));
+          }}
+        />
         {fotos.length < MAX_FOTOS_ITEM && !lleno && (
           <label className="inline-flex min-h-12 min-w-36 cursor-pointer items-center justify-center rounded-lg bg-primary px-4 text-base font-semibold text-on-primary has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary has-disabled:opacity-50">
             {procesando ? "Procesando…" : "Tomar foto"}

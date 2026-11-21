@@ -252,7 +252,13 @@ function Formulario({ uid, inicial, onNueva }: { uid: string; inicial: Borrador;
                 className={`flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${i === paso ? "font-bold text-primary-strong" : "text-text"}`}
               >
                 <span aria-hidden="true" className={`grid size-7 place-items-center rounded-full border-2 text-xs font-bold ${i === paso ? "border-primary bg-primary text-on-primary" : i < paso ? "border-primary text-primary" : "border-border text-muted"}`}>
-                  {i < paso ? "✓" : n + 1}
+                  {i < paso ? (
+                    <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 8.5l3.2 3L13 4.5" />
+                    </svg>
+                  ) : (
+                    n + 1
+                  )}
                 </span>
                 <span className={i === paso ? "" : "sr-only sm:not-sr-only"}>{PASOS[i].corto}</span>
               </button>
