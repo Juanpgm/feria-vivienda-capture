@@ -31,6 +31,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           Postulaciones
         </Link>
       )}
+      {tieneRol(sesion.rol, "inspector") && (
+        <Link href="/mejoramiento" className={enlaceNav}>
+          Mejoramiento
+        </Link>
+      )}
       {tieneRol(sesion.rol, "admin") && (
         <Link href="/admin/usuarios" className={enlaceNav}>
           Usuarios
