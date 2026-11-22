@@ -7,6 +7,7 @@ import { BotonBorrar } from "@/modules/postulacion/ui/BotonBorrar";
 import { EstadoBadge } from "@/modules/postulacion/ui/DetallePostulacion";
 import { fechaHoraBogota } from "@/shared/tiempo";
 import { controlClass } from "@/shared/ui/Field";
+import { IconoImpresora } from "@/shared/ui/Iconos";
 
 export const metadata = { title: "Postulaciones al subsidio" };
 
@@ -50,7 +51,7 @@ export default async function Postulaciones({ searchParams }: { searchParams: Pr
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
             <thead className="bg-surface">
-              <tr>{["Radicado", "Postulante", "Documento", "Modalidad", "Estado", "Faltantes", "Registrada", ...(esAdmin ? ["Acciones"] : [])].map((h) => <th key={h} className="p-2">{h}</th>)}</tr>
+              <tr>{["Radicado", "Postulante", "Documento", "Modalidad", "Estado", "Faltantes", "Registrada", "Acciones"].map((h) => <th key={h} className="p-2">{h}</th>)}</tr>
             </thead>
             <tbody>
               {filas.map((f) => (
@@ -62,7 +63,17 @@ export default async function Postulaciones({ searchParams }: { searchParams: Pr
                   <td className="p-2"><EstadoBadge estado={f.estado} /></td>
                   <td className={`p-2 ${f.faltantes ? "font-semibold text-warning-text" : "text-success"}`}>{f.faltantes || "Completa"}</td>
                   <td className="p-2">{f.creado_en ? fechaHoraBogota(f.creado_en) : ""}</td>
-                  {esAdmin && <td className="p-2"><BotonBorrar id={f.id} radicado={f.radicado} nombre={f.nombre} compacto /></td>}
+                  <td className="p-2">
+                    <div className="flex items-center gap-3">
+                      {f.estado === "valido" && (
+                        <a href={`/api/postulaciones/${f.id}/pdf`} target="_blank" rel="noreferrer" className={`inline-flex min-h-11 items-center gap-1 ${enlace}`} aria-label={`Imprimir la postulación ${f.radicado} (PDF)`}>
+                          <IconoImpresora className="size-4" />
+                          Imprimir
+                        </a>
+                      )}
+                      {esAdmin && <BotonBorrar id={f.id} radicado={f.radicado} nombre={f.nombre} compacto />}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -69,4 +69,8 @@ describe("export plan (<= 100 KB)", () => {
     elegirExportacion((e) => (vistos.push(e.mime), "data:image/png;base64,AAAA".replace("image/png", "image/gif")));
     expect(vistos.length).toBe(PLAN_EXPORTACION.length);
   });
+
+  it("only exports PNG or JPEG, the formats the printed postulación can embed", () => {
+    expect(new Set(PLAN_EXPORTACION.map((e) => e.mime))).toEqual(new Set(["image/png", "image/jpeg"]));
+  });
 });

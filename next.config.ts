@@ -28,6 +28,8 @@ const nextConfig: NextConfig = {
   agentRules: false,
   // Set by `next upgrade --agent=security` (16.4.3 -> 16.4.6, security advisory).
   experimental: { agentUpgrade: "security" },
+  // The postulación printout reads its template from disk at runtime.
+  outputFileTracingIncludes: { "/api/postulaciones/*/pdf": ["./src/modules/postulacion/plantilla/*.pdf"] },
   async headers() {
     return [
       {

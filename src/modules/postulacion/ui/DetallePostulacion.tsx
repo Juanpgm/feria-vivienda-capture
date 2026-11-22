@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { formatoCop } from "@/modules/cierre-financiero/domain/smlmv";
 import { fechaHoraBogota } from "@/shared/tiempo";
+import { IconoImpresora } from "@/shared/ui/Iconos";
 import {
   CONDICIONES_ESPECIALES, ENTIDADES_ACREEDORAS, ESTADOS_CIVILES, ESTADOS_OBLIGACION, ESTADOS_POSTULACION, FUENTES_RECURSOS, GENEROS_SOLICITANTE,
   IDENTIDADES_GENERO, MODALIDADES, OCUPACIONES_INTEGRANTE, OCUPACIONES_SOLICITANTE, PARENTESCOS, TIPOS_DOCUMENTO_INTEGRANTE, TIPOS_DOCUMENTO_SOLICITANTE,
@@ -223,6 +224,15 @@ export function DetallePostulacion({ p, esAdmin = false }: { p: PostulacionVista
             </dl>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`${foto("firma")}?validacion=${p.validacion.codigo_validacion}`} alt="Firma del funcionario que validó" className="h-24 w-48 rounded-lg border border-border bg-white object-contain" />
+            <a
+              href={`/api/postulaciones/${p.id}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center gap-2 justify-self-start rounded-lg bg-primary px-4 font-semibold text-on-primary"
+            >
+              <IconoImpresora className="size-5" />
+              Imprimir postulación (PDF)
+            </a>
           </div>
         ) : (
           <BotonValidar id={p.id} radicado={p.radicado} faltantes={p.faltantes.length} />

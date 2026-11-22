@@ -72,6 +72,13 @@ export const IconoLapiz = (p: Props) => (
   </Icono>
 );
 
+export const IconoImpresora = (p: Props) => (
+  <Icono strokeWidth="1.5" {...p}>
+    <path d="M4 6V2h8v4M4 12H2V6h12v6h-2" />
+    <path d="M4 9h8v5H4z" />
+  </Icono>
+);
+
 /** Vertical ellipsis of an overflow menu (filled dots). */
 export const IconoMasOpciones = (p: Props) => (
   <Icono stroke="none" fill="currentColor" {...p}>
