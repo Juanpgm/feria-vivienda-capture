@@ -1,7 +1,9 @@
 // Staff flow of the postulaciones against the REAL backend (authorized 2026-11-18): create -> missing data -> edit ->
 // signed validation -> list, public status and metrics. Test data: documents 99900001xx, names "PRUEBA E2E"; it is
 // deleted afterwards with context/limpiar-postulaciones.mjs. Needs .auth/state.json of an approved admin.
+import { writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
+import { PDFDocument } from "pdf-lib";
 import { hayEstadoAuth, MENSAJE_SIN_SESION } from "./auth";
 import { dibujarFirma } from "./ayudas-envio";
 import { autorizar, fotos, llenarIntegrante, llenarTitular } from "./ayudas-postulacion";
@@ -21,14 +23,20 @@ async function firmar(page: Page) {
   await page.getByRole("button", { name: "Usar esta firma", ...ex }).click();
 }
 
-test("the form switch turns the public form on and off (left off)", async ({ page }) => {
+// The switch is the live public form in production: the test leaves it as it found it.
+test("the form switch turns the public form on and off (left as found)", async ({ page }) => {
   await page.goto("/admin/postulaciones");
   const boton = page.getByRole("button", { name: /^(Habilitar|Deshabilitar) formulario$/ });
-  if ((await boton.textContent()) === "Habilitar formulario") await boton.click();
+  const estabaHabilitado = (await boton.textContent()) === "Deshabilitar formulario";
+  if (!estabaHabilitado) await boton.click();
   await expect(page.getByText("Habilitado", ex)).toBeVisible();
   await page.getByRole("button", { name: "Deshabilitar formulario" }).click();
   await expect(page.getByText("Deshabilitado", ex)).toBeVisible();
   await expect(page.getByRole("link", { name: "Descargar QR en PDF" })).toBeVisible();
+  if (estabaHabilitado) {
+    await page.getByRole("button", { name: "Habilitar formulario" }).click();
+    await expect(page.getByText("Habilitado", ex)).toBeVisible();
+  }
 });
 
 test("a staff member creates an incomplete postulación: it cannot be validated yet", async ({ page }) => {
@@ -160,6 +168,24 @@ test("an official validates it with signature and confirmation of the document p
   await expect(page.getByText(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}-05:00$/)).toBeVisible();
   await expect(page.getByRole("link", { name: "Editar datos" })).toHaveCount(0);
   await expect.poll(() => page.getByRole("img", { name: "Firma del funcionario que validó" }).evaluate((i: HTMLImageElement) => i.naturalWidth), { timeout: 30_000 }).toBeGreaterThan(0);
+});
+
+test("the validated postulación prints on the official format, from its detail and from the list", async ({ page }) => {
+  await page.goto(detalle);
+  const enlace = page.getByRole("link", { name: "Imprimir postulación (PDF)" });
+  const ruta = await enlace.getAttribute("href");
+  expect(ruta).toMatch(/^\/api\/postulaciones\/[^/]+\/pdf$/);
+  const r = await page.request.get(ruta!);
+  expect(r.status()).toBe(200);
+  expect(r.headers()["content-type"]).toBe("application/pdf");
+  expect(r.headers()["content-disposition"]).toMatch(/^inline; filename="postulacion-PSE-\d{6}\.pdf"$/);
+  const pdf = await r.body();
+  if (process.env.E2E_PDF_SALIDA) await writeFile(process.env.E2E_PDF_SALIDA, pdf);
+  const doc = await PDFDocument.load(pdf);
+  expect(doc.getPageCount()).toBe(4);
+  expect(doc.getTitle()).toMatch(/^Postulación PSE-\d{6}$/);
+  await page.goto(`/postulaciones?q=${DOC}`);
+  await expect(page.getByRole("row", { name: /PRUEBA E2E/i }).getByRole("link", { name: /^Imprimir la postulación PSE-\d{6} \(PDF\)$/ })).toHaveAttribute("href", ruta!);
 });
 
 test("list, public status and metrics reflect the validated postulación", async ({ page }) => {

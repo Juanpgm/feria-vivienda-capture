@@ -54,13 +54,16 @@ export function aligerar(t: Trazo, minimo = 0.8): Trazo {
   return out;
 }
 
-/** Export attempts, largest first: PNG at decreasing scales (ink on white compresses very well), then WebP. */
-export const PLAN_EXPORTACION: readonly { mime: "image/png" | "image/webp"; escala: number; calidad?: number }[] = [
+/**
+ * Export attempts, largest first: PNG at decreasing scales (ink on white compresses very well), then JPEG (the pad
+ * fills a white background). No WebP: the printed postulación (pdf-lib) can only embed PNG and JPEG.
+ */
+export const PLAN_EXPORTACION: readonly { mime: "image/png" | "image/jpeg"; escala: number; calidad?: number }[] = [
   { mime: "image/png", escala: 1 },
   { mime: "image/png", escala: 0.75 },
   { mime: "image/png", escala: 0.5 },
-  { mime: "image/webp", escala: 0.5, calidad: 0.8 },
-  { mime: "image/webp", escala: 0.4, calidad: 0.6 },
+  { mime: "image/jpeg", escala: 0.5, calidad: 0.85 },
+  { mime: "image/jpeg", escala: 0.4, calidad: 0.7 },
 ];
 
 /** Bytes of a data URL's payload (base64 length * 3/4 minus padding). */
